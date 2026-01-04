@@ -14,6 +14,12 @@ import restoreHandler from '../../journal/[id]/restore';
 import { createMockRequest, createMockResponse } from '../helpers/vercelMock';
 import { createValidToken } from '../helpers/jwt';
 import { ErrorCodes } from '../../_lib/errors';
+import { DexPaprikaAdapter } from '../../_lib/domain/journal/onchain/dexpaprika';
+import { MoralisAdapter } from '../../_lib/domain/journal/onchain/moralis';
+
+// Mock Onchain Adapters
+vi.mock('../../_lib/domain/journal/onchain/dexpaprika');
+vi.mock('../../_lib/domain/journal/onchain/moralis');
 
 const TEST_USER_ID = 'test-user-123';
 const AUTH_HEADER = { authorization: `Bearer ${createValidToken(TEST_USER_ID)}` };
@@ -212,6 +218,84 @@ describe('Journal API Integration', () => {
       const calls = (res.json as any).mock.calls;
       expect(calls.length).toBeGreaterThan(0);
       expect(calls[0][0].code).toBe(ErrorCodes.JOURNAL_NOT_FOUND);
+    });
+  });
+
+  describe('Onchain Snapshot (P1.2)', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it('POST creates entry with onchainContext if symbolOrAddress provided', async () => {
+      // Setup successful mocks
+      vi.mocked(DexPaprikaAdapter.prototype.fetchTokenData).mockResolvedValue({
+        priceUsd: 1.23,
+        liquidityUsd: 1000,
+        volume24h: 500,
+        marketCap: 1000000,
+        ageMinutes: 10,
+        dexId: 'raydium',
+      });
+      vi.mocked(MoralisAdapter.prototype.fetchTokenData).mockResolvedValue({
+        holders: 100,
+        transfers24h: 20,
+      });
+
+      const req = createMockRequest({
+        method: 'POST',
+        headers: { ...AUTH_HEADER },
+        body: {
+          side: 'BUY',
+          summary: 'Snapshot test',
+          symbolOrAddress: 'So11111111111111111111111111111111111111112',
+        },
+      });
+      const res = createMockResponse();
+
+      await journalHandler(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(201);
+      const data = getJson(res).data;
+      
+      expect(data.onchainContext).toBeDefined();
+      expect(data.onchainContext.priceUsd).toBe(1.23);
+      expect(data.onchainContext.holders).toBe(100);
+      // Meta fields only in persistence, not mapped to V1 frontend contract?
+      // Wait, Plan says: "JournalEntryV1 extension... Zusätzlich (additiv...): onchainContextMeta"
+      // But in types-contract I extended JournalEvent (Persistence) and JournalEntryV1 (Response) only with onchainContext?
+      // Let's check mapper again.
+    });
+
+    it('POST succeeds even if providers fail (Partial Snapshot)', async () => {
+      vi.mocked(DexPaprikaAdapter.prototype.fetchTokenData).mockRejectedValue(new Error('Timeout'));
+      vi.mocked(MoralisAdapter.prototype.fetchTokenData).mockResolvedValue({
+        holders: 50,
+        transfers24h: 5,
+      });
+
+      const req = createMockRequest({
+        method: 'POST',
+        headers: { ...AUTH_HEADER },
+        body: {
+          side: 'SELL',
+          summary: 'Partial test',
+          symbolOrAddress: 'So11111111111111111111111111111111111111112',
+        },
+      });
+      const res = createMockResponse();
+
+      await journalHandler(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(201);
+      const data = getJson(res).data;
+      
+      expect(data.onchainContext).toBeDefined();
+      expect(data.onchainContext.priceUsd).toBe(0); // Failed
+      expect(data.onchainContext.holders).toBe(50); // Succeeded
+      
+      expect(data.onchainContextMeta).toBeDefined();
+      expect(data.onchainContextMeta.errors).toHaveLength(1);
+      expect(data.onchainContextMeta.errors[0].provider).toBe('dexpaprika');
     });
   });
 });

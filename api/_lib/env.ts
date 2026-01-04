@@ -25,7 +25,14 @@ const envSchema = z.object({
   
   // External providers (optional)
   DEXPAPRIKA_API_KEY: z.string().optional(),
+  DEXPAPRIKA_BASE_URL: z.string().default('https://api.dexpaprika.com'),
+  
   MORALIS_API_KEY: z.string().optional(),
+  MORALIS_BASE_URL: z.string().default('https://solana-gateway.moralis.io'),
+
+  // Onchain Snapshot Config
+  ONCHAIN_CONTEXT_PROVIDER_TIMEOUT_MS: z.coerce.number().default(1200),
+  ONCHAIN_CONTEXT_TOTAL_BUDGET_MS: z.coerce.number().default(2000),
   
   // AI (optional)
   OPENAI_API_KEY: z.string().optional(),
