@@ -29,6 +29,8 @@ export function normalizeStatus(status: string): JournalStatus {
 // JOURNAL EVENT TYPE
 // ─────────────────────────────────────────────────────────────
 
+import type { OnchainContextV1, OnchainContextMetaV1 } from './onchain/types';
+
 export type JournalEntrySide = 'BUY' | 'SELL';
 
 export interface JournalEvent {
@@ -41,6 +43,10 @@ export interface JournalEvent {
   dayKey: string; // YYYY-MM-DD - derived from timestamp, stored for indexing
   createdAt: string; // ISO 8601
   updatedAt: string; // ISO 8601
+  
+  // Frozen Onchain Snapshot (P1.2)
+  onchainContext?: OnchainContextV1;
+  onchainContextMeta?: OnchainContextMetaV1;
   
   // Optional confirmation data
   confirmData?: {
@@ -65,6 +71,7 @@ export interface JournalCreateRequest {
   side: JournalEntrySide;
   summary: string;
   timestamp?: string; // defaults to now
+  symbolOrAddress?: string; // optional: Solana address (base58) for snapshot
 }
 
 export interface JournalConfirmPayload {

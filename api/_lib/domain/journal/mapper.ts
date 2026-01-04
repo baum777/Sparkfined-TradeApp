@@ -1,4 +1,5 @@
 import { JournalEvent, JournalStatus } from './types';
+import type { OnchainContextV1, OnchainContextMetaV1 } from './onchain/types';
 
 export type JournalEntryStatus = 'pending' | 'confirmed' | 'archived';
 export type JournalEntrySide = 'BUY' | 'SELL';
@@ -16,6 +17,9 @@ export interface JournalEntryV1 {
 
   confirmedAt?: string; // ISO, nur wenn bestätigt
   archivedAt?: string;  // ISO, nur wenn archiviert
+  
+  onchainContext?: OnchainContextV1;
+  onchainContextMeta?: OnchainContextMetaV1;
 }
 
 export function toApiJournalStatus(status: JournalStatus): JournalEntryStatus {
@@ -36,6 +40,8 @@ export function toApiJournalEntryV1(event: JournalEvent): JournalEntryV1 {
     summary: event.summary,
     createdAt: event.createdAt,
     updatedAt: event.updatedAt,
+    onchainContext: event.onchainContext,
+    onchainContextMeta: event.onchainContextMeta,
   };
 
   if (event.status === 'CONFIRMED' && event.confirmData?.confirmedAt) {

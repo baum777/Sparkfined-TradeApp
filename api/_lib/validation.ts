@@ -81,6 +81,7 @@ export const journalCreateRequestSchema = z.object({
   side: journalEntrySideSchema,
   summary: z.string().min(1, 'Summary is required').max(1000),
   timestamp: z.string().datetime().optional(),
+  symbolOrAddress: z.string().regex(solanaAddressRegex, 'Must be a valid Solana address').optional(),
 });
 
 export const journalConfirmPayloadSchema = z.object({
