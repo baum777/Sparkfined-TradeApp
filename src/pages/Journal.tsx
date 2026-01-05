@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { PageContainer } from "@/components/layout/PageContainer";
-import { useJournalStub, type ConfirmPayload } from "@/stubs/hooks";
+import { useJournalApi, type ConfirmPayload } from "@/services/journal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -32,10 +32,11 @@ import {
   type JournalView,
   type CreateEntryPayload,
   type ReflectionData,
-  type SyncStatus,
 } from "@/components/journal";
-import type { JournalEntryStub } from "@/stubs/contracts";
-import { getQueue, getSyncErrors } from "@/services/journal/journalQueue";
+import type { JournalEntryLocal } from "@/services/journal/types";
+
+// Alias for backward compatibility with JournalEntryStub interface
+type JournalEntryStub = JournalEntryLocal;
 
 // localStorage key for view mode persistence (legacy)
 const VIEW_MODE_KEY = "journalViewMode";
@@ -51,7 +52,10 @@ export default function Journal() {
     archiveEntry,
     deleteEntry,
     restoreEntry,
-  } = useJournalStub();
+    syncStatus,
+    queueCount,
+    retrySync,
+  } = useJournalApi();
 
   // Wallet guard state (stub) - default to true for demo
   const [isWalletConnected, setIsWalletConnected] = useState(true);
@@ -88,16 +92,14 @@ export default function Journal() {
   const entryRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const urlProcessedRef = useRef(false);
 
-  // Sync state
-  const [syncErrors, setSyncErrors] = useState<Set<string>>(new Set());
-  const queueCount = getQueue().length;
-  
-  const syncStatus: SyncStatus = useMemo(() => {
-    if (!isOnline) return "offline";
-    if (syncErrors.size > 0) return "error";
-    if (queueCount > 0) return "queued";
-    return "synced";
-  }, [isOnline, syncErrors.size, queueCount]);
+  // Sync errors derived from entries
+  const syncErrors = useMemo(() => {
+    const errors = new Set<string>();
+    entries.forEach(e => {
+      if (e._syncError) errors.add(e.id);
+    });
+    return errors;
+  }, [entries]);
 
   // Counts for segments
   const counts = useMemo(() => ({
@@ -129,10 +131,7 @@ export default function Journal() {
     return result;
   }, [entries, searchQuery]);
 
-  // Update sync errors on mount
-  useEffect(() => {
-    setSyncErrors(getSyncErrors());
-  }, []);
+  // Note: sync errors are now derived from entries._syncError flag
 
   // Handle URL ?mode= sync on initial load and changes
   useEffect(() => {
@@ -236,12 +235,15 @@ export default function Journal() {
 
   // Handle create entry (diary entry - confirmed by default per spec)
   const handleCreateEntry = useCallback((payload: CreateEntryPayload) => {
+    const now = new Date().toISOString();
     const newEntry: JournalEntryStub = {
       id: `entry-${Date.now()}`,
       side: "BUY", // Diary entries default to BUY
       status: "confirmed", // Diary entries are confirmed by default
-      timestamp: new Date().toISOString(),
+      timestamp: now,
       summary: payload.reasoning || `${payload.feeling} · ${payload.confidence}% confident`,
+      createdAt: now,
+      updatedAt: now,
     };
     setEntries((prev) => [newEntry, ...prev]);
     toast.success("Entry logged");
@@ -493,7 +495,7 @@ export default function Journal() {
                 <JournalSyncBadge
                   status={syncStatus}
                   queueCount={queueCount}
-                  onRetry={() => toast.info("Retrying...")}
+                  onRetry={retrySync}
                 />
 
                 {counts.pending > 0 && (
@@ -559,7 +561,7 @@ export default function Journal() {
                       : timelineEntries
                     }
                     onCardClick={handleTimelineCardClick}
-                    onEdit={(entry) => setConfirmModalEntry(entry)}
+                    onEdit={(entry) => setConfirmModalEntry(entry as JournalEntryStub)}
                     onArchive={(id) => handleArchive(id, "")}
                     onAddReflection={(entry) => {
                       // Open mini reflection for this entry

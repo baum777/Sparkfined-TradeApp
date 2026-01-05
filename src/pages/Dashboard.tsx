@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
 import { PageContainer } from "@/components/layout/PageContainer";
 import { ErrorBanner } from "@/components/layout/PageStates";
-import { useDashboardStub, useJournalStub, useOracleStub, useAlertsStub } from "@/stubs/hooks";
+import { useDashboardStub, useOracleStub, useAlertsStub } from "@/stubs/hooks";
+import { useJournalApi } from "@/services/journal";
 import {
   DashboardHeader,
   DashboardSkeleton,
@@ -17,8 +18,8 @@ export default function Dashboard() {
   // BACKEND HOOK (unchanged)
   const { pageState, hasData } = useDashboardStub();
   
-  // BACKEND HOOK (unchanged) - Journal data
-  const { entries: journalEntries } = useJournalStub();
+  // Real journal data via API
+  const { entries: journalEntries } = useJournalApi();
   
   // BACKEND HOOK (unchanged) - Insights data
   const { insights } = useOracleStub();
