@@ -12,7 +12,8 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useSearchParams, useParams } from "react-router-dom";
 import { PageContainer } from "@/components/layout/PageContainer";
-import { useChartStub, useOracleStub, useJournalStub } from "@/stubs/hooks";
+import { useChartStub, useOracleStub } from "@/stubs/hooks";
+import { useJournalApi } from "@/services/journal";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -88,7 +89,8 @@ export default function Research() {
 
   // BACKEND HOOK (unchanged)
   const { insights: oracleInsights } = useOracleStub();
-  const { entries: journalEntries } = useJournalStub();
+  // Real journal data via API
+  const { entries: journalEntries } = useJournalApi();
 
   // URL state
   const isWatchlistPanelOpen = searchParams.get("panel") === "watchlist";
