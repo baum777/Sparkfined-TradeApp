@@ -74,12 +74,34 @@ export interface MetaResponse {
 export type JournalEntryStatus = "pending" | "confirmed" | "archived";
 export type JournalEntrySide = "BUY" | "SELL";
 
-export interface JournalEntry {
+/**
+ * JournalEntryV1 (API Boundary)
+ *
+ * Notes:
+ * - `status` ist IMMER lowercase an der API-Grenze.
+ * - `timestamp` ist der Trade-Zeitpunkt (wann der Trade passiert ist).
+ * - `createdAt/updatedAt` sind Lifecycle-Zeitstempel der Journal-Entry.
+ * - `confirmedAt/archivedAt` sind State-Transition-Zeitstempel.
+ */
+export interface JournalEntryV1 {
   id: string;
   side: JournalEntrySide;
   status: JournalEntryStatus;
-  timestamp: string; // ISO
+  timestamp: string; // ISO 8601 (Trade-Zeitpunkt)
   summary: string;
+
+  createdAt: string; // ISO 8601
+  updatedAt: string; // ISO 8601
+  confirmedAt?: string; // ISO 8601 (nur wenn status="confirmed")
+  archivedAt?: string;  // ISO 8601 (nur wenn status="archived")
+
+  /**
+   * Frozen Onchain Snapshot (P1.2)
+   * - Wird beim Create best-effort erfasst (nur wenn `symbolOrAddress` mitgegeben wird)
+   * - Fehler/Diagnose NICHT in `onchainContext`, sondern in `onchainContextMeta`
+   */
+  onchainContext?: OnchainContextV1;
+  onchainContextMeta?: OnchainContextMetaV1;
 }
 
 export interface JournalConfirmPayload {
@@ -91,9 +113,62 @@ export interface JournalConfirmPayload {
 export interface JournalCreateRequest {
   side: JournalEntrySide;
   summary: string;
-  timestamp?: string; // optional; server sets now if missing
+  timestamp?: string; // optional; server sets now if missing (ISO 8601)
+  /**
+   * Optional: Solana Mint Address (Base58, 32–44 chars)
+   * (Aktuell strikt als Solana-Adresse validiert; kein Ticker-Fallback am API-Boundary.)
+   */
+  symbolOrAddress?: string;
+}
+
+export interface OnchainContextV1 {
+  capturedAt: string; // ISO 8601
+  priceUsd: number;
+  liquidityUsd: number;
+  volume24h: number;
+  marketCap: number;
+  ageMinutes: number;
+  holders: number;
+  transfers24h: number;
+  dexId?: string;
+}
+
+export type OnchainContextProvider = "dexpaprika" | "moralis" | "internal";
+export type OnchainContextErrorCode =
+  | "MISSING_MARKET_KEY"
+  | "MISSING_API_KEY"
+  | "TIMEOUT"
+  | "HTTP_ERROR"
+  | "PARSE_ERROR"
+  | "MISSING_FIELD"
+  | "APPROXIMATE_COUNT"
+  | "UNKNOWN_ERROR";
+
+export interface OnchainContextErrorV1 {
+  provider: OnchainContextProvider;
+  code: OnchainContextErrorCode;
+  message: string;
+  at: string; // ISO 8601
+  requestId: string;
+  httpStatus?: number;
+}
+
+export interface OnchainContextMetaV1 {
+  capturedAt: string; // ISO 8601 (redundant for ease of access)
+  errors: OnchainContextErrorV1[];
 }
 ```
+
+### Idempotency (Write Operations)
+
+- **Header**: `Idempotency-Key: <string>`
+- **Scope**: `(userId, operation = POST /api/journal, key)`
+- **Semantik**:
+  - Server generiert die Entry-ID.
+  - Key wird auf die generierte Entry-ID gemappt (TTL **24h**).
+  - Replay (gleicher Key + gleicher Body) liefert **dieselbe Entry** zurück.
+  - Conflict (gleicher Key + anderer Body) liefert einen **Error** (siehe ErrorResponse).
+- **Purpose**: sichere Retries (Offline-Queue, Netzwerk-Flakiness)
 
 ### `GET /api/journal`
 - **Auth/Guards**: optional bearer (v1); in Test/Dev darf anon, aber `userId = "anon"` dann.
@@ -115,7 +190,7 @@ export interface JournalListQuery {
 
 ```ts
 export interface JournalListResponse {
-  items: JournalEntry[];
+  items: JournalEntryV1[];
   nextCursor?: string;
 }
 ```
@@ -132,7 +207,7 @@ export interface JournalListResponse {
 - **Auth/Guards**: optional bearer (v1)
 - **Params**:
   - `id: string`
-- **Response 200**: `JournalEntry`
+- **Response 200**: `JournalEntryV1`
 - **Errors**:
   - 404 `JOURNAL_NOT_FOUND`
 - **Caching**: `Cache-Control: no-store`
@@ -141,7 +216,7 @@ export interface JournalListResponse {
 - **Auth/Guards**: optional bearer (v1)
 - **Idempotency**: supported
 - **Request body**: `JournalCreateRequest`
-- **Response 201**: `JournalEntry`
+- **Response 201**: `JournalEntryV1`
 - **Errors**:
   - 400 `VALIDATION_FAILED` (missing summary/side)
 - **Caching**: `Cache-Control: no-store`
@@ -149,7 +224,7 @@ export interface JournalListResponse {
 ### `POST /api/journal/:id/confirm`
 - **Auth/Guards**: optional bearer (v1)
 - **Request body**: `JournalConfirmPayload`
-- **Response 200**: `JournalEntry` (mit `status="confirmed"`)
+- **Response 200**: `JournalEntryV1` (mit `status="confirmed"`, `confirmedAt` gesetzt)
 - **Edge cases**:
   - Confirm auf `archived` → 409 `JOURNAL_INVALID_STATE`
   - Confirm auf `confirmed` → 200 idempotent (keine Änderung)
@@ -165,7 +240,7 @@ export interface JournalArchiveRequest {
 }
 ```
 
-- **Response 200**: `JournalEntry` (mit `status="archived"`)
+- **Response 200**: `JournalEntryV1` (mit `status="archived"`, `archivedAt` gesetzt)
 - **Edge cases**:
   - Archive auf `archived` → 200 idempotent
 - **Errors**: 404 `JOURNAL_NOT_FOUND`
@@ -173,7 +248,7 @@ export interface JournalArchiveRequest {
 ### `POST /api/journal/:id/restore`
 - **Auth/Guards**: optional bearer (v1)
 - **Request body**: none
-- **Response 200**: `JournalEntry` (mit `status="pending"`)
+- **Response 200**: `JournalEntryV1` (mit `status="pending"`)
 - **Edge cases**:
   - Restore auf `pending` → 200 idempotent
 
@@ -181,6 +256,21 @@ export interface JournalArchiveRequest {
 - **Auth/Guards**: optional bearer (v1)
 - **Response 204**: no body
 - **Errors**: 404 `JOURNAL_NOT_FOUND`
+
+### Status & Timestamp Semantik (Journal)
+
+- **Status casing**:
+  - Interne Domain-Modelle/KV-Keys können uppercase (`PENDING/CONFIRMED/ARCHIVED`) nutzen.
+  - API Responses nutzen **immer lowercase**: `"pending" | "confirmed" | "archived"`.
+- **Timestamps**:
+  - `timestamp`: Trade-Zeitpunkt (wann der Trade passiert ist)
+  - `createdAt` / `updatedAt`: Lifecycle der Journal-Entry
+  - `confirmedAt` / `archivedAt`: State-Transitions
+
+### Compatibility Notes
+
+- Der frühere generische Zeitstempel-Use von `timestamp` ist **deprecated** für Lifecycle/Transitions.
+- Clients sollen für Lifecycle/Transitions auf `createdAt`, `updatedAt`, `confirmedAt`, `archivedAt` setzen.
 
 > // BACKEND_TODO: `GET /api/journal/stats`, `GET /api/journal/export/csv` (existiert bereits als Frontend-Service-API-Idee, aber UI nutzt es noch nicht).
 

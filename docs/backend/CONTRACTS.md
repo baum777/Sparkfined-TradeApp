@@ -163,20 +163,39 @@ export interface ErrorResponse {
 }
 ```
 
-### 2.2 Journal (UI-kompatible minimale Entry-Shape)
+### 2.2 Journal (API Contract v1)
 
-**Wichtig: UI nutzt aktuell** `JournalEntryStub`:
+> Legacy-Hinweis: Ältere Docs/UI-Stubs nutzten nur `{ id, side, status, timestamp, summary }`.  
+> Der implementierte v1 API-Contract ist additiv und enthält explizite Lifecycle-/Transition-Timestamps sowie optionalen Frozen Onchain Snapshot.
 
 ```ts
-export type JournalEntryStatus = "pending" | "confirmed" | "archived";
+export type JournalEntryStatus = "pending" | "confirmed" | "archived"; // API boundary: lowercase
 export type JournalEntrySide = "BUY" | "SELL";
 
-export interface JournalEntry {
+export interface JournalEntryV1 {
   id: string;
   side: JournalEntrySide;
   status: JournalEntryStatus;
-  timestamp: string; // ISO string
+
+  timestamp: string; // ISO 8601 (Trade-Zeitpunkt)
   summary: string;
+
+  createdAt: string; // ISO 8601
+  updatedAt: string; // ISO 8601
+  confirmedAt?: string; // ISO 8601 (nur wenn status="confirmed")
+  archivedAt?: string;  // ISO 8601 (nur wenn status="archived")
+
+  // Frozen Onchain Snapshot (P1.2, best-effort)
+  onchainContext?: OnchainContextV1;
+  onchainContextMeta?: OnchainContextMetaV1;
+}
+
+export interface JournalCreateRequest {
+  side: JournalEntrySide;
+  summary: string;
+  timestamp?: string; // ISO 8601; defaults to now if missing
+  // Optional: Solana mint address (Base58, 32–44 chars). Aktuell strikt als Adresse validiert.
+  symbolOrAddress?: string;
 }
 
 export interface JournalConfirmPayload {
@@ -184,9 +203,68 @@ export interface JournalConfirmPayload {
   note: string;
   tags: string[];
 }
+
+export interface JournalArchiveRequest {
+  reason: string;
+}
+
+export interface OnchainContextV1 {
+  capturedAt: string; // ISO 8601
+  priceUsd: number;
+  liquidityUsd: number;
+  volume24h: number;
+  marketCap: number;
+  ageMinutes: number;
+  holders: number;
+  transfers24h: number;
+  dexId?: string;
+}
+
+export type OnchainContextProvider = "dexpaprika" | "moralis" | "internal";
+export type OnchainContextErrorCode =
+  | "MISSING_MARKET_KEY"
+  | "MISSING_API_KEY"
+  | "TIMEOUT"
+  | "HTTP_ERROR"
+  | "PARSE_ERROR"
+  | "MISSING_FIELD"
+  | "APPROXIMATE_COUNT"
+  | "UNKNOWN_ERROR";
+
+export interface OnchainContextErrorV1 {
+  provider: OnchainContextProvider;
+  code: OnchainContextErrorCode;
+  message: string;
+  at: string; // ISO 8601
+  requestId: string;
+  httpStatus?: number;
+}
+
+export interface OnchainContextMetaV1 {
+  capturedAt: string; // ISO 8601
+  errors: OnchainContextErrorV1[]; // leer wenn alles ok
+}
 ```
 
-**Erweiterungen (future)**: siehe `// BACKEND_TODO` in `BACKEND_MASTER_CHECKLIST.md` (z.B. PnL, Screenshots).
+**Frozen Onchain Snapshot Semantik**:
+- `onchainContext` ist ein **frozen** Snapshot, erfasst beim Create (best-effort) und danach nicht mutiert.
+- Fehler/Diagnose **dürfen nicht** in `onchainContext` eingebettet werden, sondern gehören in `onchainContextMeta.errors`.
+- “Partial” kann client-seitig über `onchainContextMeta.errors.length > 0` abgeleitet werden.
+
+**Idempotency (POST /api/journal)**:
+- **Header**: `Idempotency-Key: <string>`
+- **Scope**: `(userId, operation = POST /api/journal, key)`
+- **TTL**: 24h
+- **Replay**: gleicher Key + gleicher Body → gleiche Entry wird zurückgegeben.
+- **Conflict**: gleicher Key + anderer Body → Error.
+
+**Status & Timestamp Semantik**:
+- Interne Domain/KV-Modelle können uppercase Status führen; API Responses sind **immer lowercase**.
+- `createdAt/updatedAt` sind Lifecycle, `confirmedAt/archivedAt` sind Transition-Timestamps.
+- `timestamp` ist der Trade-Zeitpunkt und nicht als generischer Lifecycle-Timestamp zu interpretieren.
+
+**Compatibility**:
+- Clients sollen für Lifecycle/Transitions die expliziten Felder (`createdAt/updatedAt/confirmedAt/archivedAt`) nutzen.
 
 ### 2.3 Alerts (UI-Contract aus `src/components/alerts/types.ts`)
 
