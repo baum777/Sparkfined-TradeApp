@@ -97,10 +97,8 @@ export type JournalQueueOperation =
 export interface JournalQueueItem {
   id: string;
   operation: JournalQueueOperation;
-  /** For CREATE: this is the local clientId. For others: this is the server entryId */
+  /** For CREATE: this is the local clientId (local-*). For others: this is the server entryId */
   entryId: string;
-  /** P0.3: For CREATE, store the server-assigned ID after sync */
-  serverId?: string;
   /** Required for CREATE - stable idempotency key */
   idempotencyKey?: string;
   /** Payload only for CREATE */

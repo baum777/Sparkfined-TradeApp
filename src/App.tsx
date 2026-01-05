@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -16,6 +17,9 @@ import SettingsPage from "@/pages/SettingsPage";
 // Secondary pages
 import JournalEntry from "@/pages/JournalEntry";
 import NotFound from "@/pages/NotFound";
+
+// Journal queue sync runner
+import { startJournalQueueSync } from "@/services/journal/queueStore";
 
 const queryClient = new QueryClient();
 
@@ -94,13 +98,19 @@ function AssetRedirectWrapper() {
   return null;
 }
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
+const App = () => {
+  // Start journal queue sync runner exactly once at root
+  useEffect(() => {
+    startJournalQueueSync();
+  }, []);
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
           <Route element={<AppShell />}>
             {/* Redirects (Root) */}
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -153,12 +163,13 @@ const App = () => (
             <Route path="/settings/privacy" element={<SettingsPrivacyRedirect />} />
           </Route>
 
-          {/* 404 outside AppShell */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+            {/* 404 outside AppShell */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
