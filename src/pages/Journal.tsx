@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { PageContainer } from "@/components/layout/PageContainer";
-import { useJournalApi, type ConfirmPayload } from "@/services/journal";
+import { useJournalApi } from "@/services/journal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -249,8 +249,8 @@ export default function Journal() {
     toast.success("Entry logged");
   }, [setEntries]);
   // Handlers
-  const handleConfirm = (id: string, payload: ConfirmPayload) => {
-    confirmEntry(id, payload);
+  const handleConfirm = (id: string) => {
+    confirmEntry(id);
     toast.success("Confirmed");
 
     const entryParam = searchParams.get("entry");
@@ -261,8 +261,8 @@ export default function Journal() {
     }
   };
 
-  const handleArchive = (id: string, reason: string) => {
-    archiveEntry(id, reason);
+  const handleArchive = (id: string) => {
+    archiveEntry(id);
     toast.success("Archived", {
       action: {
         label: "Undo",
@@ -324,12 +324,12 @@ export default function Journal() {
   }, []);
 
   const handleReviewConfirm = useCallback((id: string) => {
-    confirmEntry(id, { mood: "", note: "", tags: [] });
+    confirmEntry(id);
     toast.success("Confirmed");
   }, [confirmEntry]);
 
   const handleReviewArchive = useCallback((id: string) => {
-    archiveEntry(id, "");
+    archiveEntry(id);
     toast.success("Archived", {
       action: {
         label: "Undo",
@@ -357,12 +357,12 @@ export default function Journal() {
 
   // Inbox handlers
   const handleInboxConfirm = useCallback((id: string) => {
-    confirmEntry(id, { mood: "", note: "", tags: [] });
+    confirmEntry(id);
     toast.success("Confirmed");
   }, [confirmEntry]);
 
   const handleInboxArchive = useCallback((id: string) => {
-    archiveEntry(id, "");
+    archiveEntry(id);
     toast.success("Archived", {
       action: {
         label: "Undo",
@@ -376,8 +376,9 @@ export default function Journal() {
     toast.success("Note saved");
   }, []);
 
-  const handleInboxConfirmWithNote = useCallback((id: string, reflection: ReflectionData) => {
-    confirmEntry(id, { mood: reflection.feeling, note: reflection.reasoning, tags: [] });
+  const handleInboxConfirmWithNote = useCallback((id: string, _reflection: ReflectionData) => {
+    // P0.1: confirm takes NO payload per CONTRACTS.md
+    confirmEntry(id);
     toast.success("Confirmed with note");
   }, [confirmEntry]);
 
@@ -562,7 +563,7 @@ export default function Journal() {
                     }
                     onCardClick={handleTimelineCardClick}
                     onEdit={(entry) => setConfirmModalEntry(entry as JournalEntryStub)}
-                    onArchive={(id) => handleArchive(id, "")}
+                    onArchive={(id) => handleArchive(id)}
                     onAddReflection={(entry) => {
                       // Open mini reflection for this entry
                       const idx = pendingEntries.findIndex((e) => e.id === entry.id);

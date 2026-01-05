@@ -3,6 +3,9 @@
  * 
  * Zustand store for managing journal offline queue state.
  * Persists to IndexedDB and processes queue when online.
+ * 
+ * P0.2: Per-item backoff with nextAttemptAt
+ * P0.3: clientId/serverId reconciliation for CREATE
  */
 
 import { create } from 'zustand';
@@ -20,8 +23,6 @@ import type {
   JournalQueueItem,
   JournalQueueOperation,
   JournalCreateRequest,
-  JournalConfirmPayload,
-  JournalArchiveRequest,
   JournalEntryV1,
   SyncState,
 } from './types';
@@ -38,6 +39,12 @@ const SYNC_INTERVAL = 30000; // 30s periodic sync
 // Store State
 // ─────────────────────────────────────────────────────────────
 
+interface CreateReconcileResult {
+  clientId: string;
+  serverId: string;
+  entry: JournalEntryV1;
+}
+
 interface JournalQueueStore {
   // State
   queue: JournalQueueItem[];
@@ -45,12 +52,15 @@ interface JournalQueueStore {
   lastError: string | null;
   lastSyncAt: number | null;
   
+  // P0.3: Track reconciled CREATE entries
+  reconciledEntries: CreateReconcileResult[];
+  
   // Actions
   loadQueue: () => Promise<void>;
   enqueue: (
     operation: JournalQueueOperation,
     entryId: string,
-    payload?: JournalCreateRequest | JournalConfirmPayload | JournalArchiveRequest,
+    payload?: JournalCreateRequest,
     idempotencyKey?: string
   ) => Promise<JournalQueueItem>;
   dequeue: (id: string) => Promise<void>;
@@ -58,6 +68,8 @@ interface JournalQueueStore {
   getQueueItem: (entryId: string) => JournalQueueItem | undefined;
   getSyncState: () => SyncState;
   clearError: () => void;
+  getReconciledEntries: () => CreateReconcileResult[];
+  clearReconciledEntries: () => void;
 }
 
 function generateQueueId(): string {
@@ -68,11 +80,18 @@ function generateIdempotencyKey(): string {
   return `idem-${crypto.randomUUID()}`;
 }
 
+// P0.2: Calculate next attempt time based on retry count
+function calculateNextAttemptAt(retryCount: number): number {
+  const delay = RETRY_DELAYS[Math.min(retryCount, RETRY_DELAYS.length - 1)];
+  return Date.now() + delay;
+}
+
 export const useJournalQueueStore = create<JournalQueueStore>((set, get) => ({
   queue: [],
   isSyncing: false,
   lastError: null,
   lastSyncAt: null,
+  reconciledEntries: [],
 
   loadQueue: async () => {
     try {
@@ -88,23 +107,20 @@ export const useJournalQueueStore = create<JournalQueueStore>((set, get) => ({
       id: generateQueueId(),
       operation,
       entryId,
-      payload,
+      payload: operation === 'CREATE' ? payload : undefined,
       idempotencyKey: operation === 'CREATE' 
         ? (idempotencyKey || generateIdempotencyKey()) 
         : undefined,
       createdAt: Date.now(),
       retryCount: 0,
+      nextAttemptAt: Date.now(), // Ready to process immediately
     };
 
     await dbService.addJournalQueueItem(item);
     set(state => ({ queue: [...state.queue, item] }));
 
-    // Try immediate sync if online
-    if (!isOffline()) {
-      // Fire and forget - don't await to avoid blocking UI
-      setTimeout(() => get().processQueue(), 100);
-    }
-
+    // P0.2: Trigger processing via the periodic runner, not setTimeout
+    // The runner will pick it up on next tick
     return item;
   },
 
@@ -122,16 +138,32 @@ export const useJournalQueueStore = create<JournalQueueStore>((set, get) => ({
 
     set({ isSyncing: true, lastError: null });
     const processedEntries: JournalEntryV1[] = [];
+    const reconciled: CreateReconcileResult[] = [];
+    const now = Date.now();
 
     try {
       // Sort by creation time to preserve order
       const sorted = [...queue].sort((a, b) => a.createdAt - b.createdAt);
 
       for (const item of sorted) {
+        // P0.2: Skip items that are not ready for retry yet
+        if (item.nextAttemptAt && item.nextAttemptAt > now) {
+          continue;
+        }
+
         try {
           const result = await processQueueItem(item);
           if (result) {
             processedEntries.push(result);
+            
+            // P0.3: Track CREATE reconciliation
+            if (item.operation === 'CREATE') {
+              reconciled.push({
+                clientId: item.entryId,
+                serverId: result.id,
+                entry: result,
+              });
+            }
           }
           
           // Success - remove from queue
@@ -141,12 +173,14 @@ export const useJournalQueueStore = create<JournalQueueStore>((set, get) => ({
           
           // Check if retryable
           if (isNetworkError(error) && item.retryCount < MAX_RETRIES) {
-            // Update retry count
+            // P0.2: Update with nextAttemptAt for backoff
+            const newRetryCount = item.retryCount + 1;
             const updatedItem: JournalQueueItem = {
               ...item,
-              retryCount: item.retryCount + 1,
+              retryCount: newRetryCount,
               lastError: errorMessage,
-              lastAttemptAt: Date.now(),
+              lastAttemptAt: now,
+              nextAttemptAt: calculateNextAttemptAt(newRetryCount),
             };
             await dbService.updateJournalQueueItem(updatedItem);
             set(state => ({
@@ -158,7 +192,9 @@ export const useJournalQueueStore = create<JournalQueueStore>((set, get) => ({
             const updatedItem: JournalQueueItem = {
               ...item,
               lastError: errorMessage,
-              lastAttemptAt: Date.now(),
+              lastAttemptAt: now,
+              // Set far future nextAttemptAt to stop auto-retry
+              nextAttemptAt: now + 86400000, // 24 hours
             };
             await dbService.updateJournalQueueItem(updatedItem);
             set(state => ({
@@ -167,6 +203,13 @@ export const useJournalQueueStore = create<JournalQueueStore>((set, get) => ({
             }));
           }
         }
+      }
+
+      // P0.3: Store reconciled entries for hook consumption
+      if (reconciled.length > 0) {
+        set(state => ({
+          reconciledEntries: [...state.reconciledEntries, ...reconciled],
+        }));
       }
 
       set({ lastSyncAt: Date.now() });
@@ -194,10 +237,19 @@ export const useJournalQueueStore = create<JournalQueueStore>((set, get) => ({
   clearError: () => {
     set({ lastError: null });
   },
+
+  getReconciledEntries: () => {
+    return get().reconciledEntries;
+  },
+
+  clearReconciledEntries: () => {
+    set({ reconciledEntries: [] });
+  },
 }));
 
 // ─────────────────────────────────────────────────────────────
 // Queue Item Processor
+// P0.1: confirm/archive send NO body
 // ─────────────────────────────────────────────────────────────
 
 async function processQueueItem(item: JournalQueueItem): Promise<JournalEntryV1 | null> {
@@ -207,23 +259,19 @@ async function processQueueItem(item: JournalQueueItem): Promise<JournalEntryV1 
         throw new Error('CREATE requires payload and idempotencyKey');
       }
       return await createJournalEntry(
-        item.payload as JournalCreateRequest,
+        item.payload,
         item.idempotencyKey
       );
     }
     
     case 'CONFIRM': {
-      return await confirmJournalEntry(
-        item.entryId,
-        (item.payload as JournalConfirmPayload) || { mood: '', note: '', tags: [] }
-      );
+      // P0.1: NO payload
+      return await confirmJournalEntry(item.entryId);
     }
     
     case 'ARCHIVE': {
-      return await archiveJournalEntry(
-        item.entryId,
-        (item.payload as JournalArchiveRequest) || { reason: '' }
-      );
+      // P0.1: NO payload
+      return await archiveJournalEntry(item.entryId);
     }
     
     case 'RESTORE': {
@@ -242,6 +290,7 @@ async function processQueueItem(item: JournalQueueItem): Promise<JournalEntryV1 
 
 // ─────────────────────────────────────────────────────────────
 // Sync Runner (periodic + online listener)
+// P0.2: Single periodic runner, no busy-loop
 // ─────────────────────────────────────────────────────────────
 
 let syncIntervalId: ReturnType<typeof setInterval> | null = null;
@@ -252,12 +301,18 @@ export function startJournalQueueSync(): void {
   // Load queue on start
   useJournalQueueStore.getState().loadQueue();
 
-  // Periodic sync
+  // Periodic sync - runs every SYNC_INTERVAL
+  // processQueue internally checks nextAttemptAt to avoid busy-loop
   syncIntervalId = setInterval(() => {
     if (!isOffline()) {
       useJournalQueueStore.getState().processQueue();
     }
   }, SYNC_INTERVAL);
+
+  // Also process immediately on start if online
+  if (!isOffline()) {
+    useJournalQueueStore.getState().processQueue();
+  }
 
   // Online listener
   window.addEventListener('online', handleOnline);

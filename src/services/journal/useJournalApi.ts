@@ -3,6 +3,9 @@
  * 
  * Replaces useJournalStub with real API integration.
  * Provides offline-first behavior with caching and queue support.
+ * 
+ * P0.3: Proper clientId/serverId reconciliation for CREATE
+ * P1.1: Client-side filtering only (no query params)
  */
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
@@ -10,15 +13,12 @@ import { dbService } from '@/services/db/db';
 import { useJournalQueueStore, startJournalQueueSync } from './queueStore';
 import {
   listJournalEntries,
-  isNetworkError,
   isOffline,
 } from './api';
 import type {
   JournalEntryV1,
   JournalEntryLocal,
   JournalCreateRequest,
-  JournalConfirmPayload,
-  JournalArchiveRequest,
   SyncState,
 } from './types';
 import type { SyncStatus } from '@/components/journal/JournalSyncBadge';
@@ -26,12 +26,6 @@ import type { SyncStatus } from '@/components/journal/JournalSyncBadge';
 // ─────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────
-
-export interface ConfirmPayload {
-  mood: string;
-  note: string;
-  tags: string[];
-}
 
 export interface UseJournalApiReturn {
   // Page state (matches useJournalStub interface)
@@ -48,10 +42,10 @@ export interface UseJournalApiReturn {
   entries: JournalEntryLocal[];
   setEntries: React.Dispatch<React.SetStateAction<JournalEntryLocal[]>>;
   
-  // Mutations
+  // Mutations - P0.1: confirm/archive take no payload
   createEntry: (side: 'BUY' | 'SELL', summary: string, symbolOrAddress?: string) => Promise<JournalEntryLocal>;
-  confirmEntry: (id: string, payload: ConfirmPayload) => void;
-  archiveEntry: (id: string, reason: string) => void;
+  confirmEntry: (id: string) => void;
+  archiveEntry: (id: string) => void;
   deleteEntry: (id: string) => void;
   restoreEntry: (id: string) => void;
   
@@ -91,6 +85,8 @@ export function useJournalApi(): UseJournalApiReturn {
     processQueue,
     getSyncState,
     loadQueue,
+    getReconciledEntries,
+    clearReconciledEntries,
   } = useJournalQueueStore();
 
   // ─────────────────────────────────────────────────────────────
@@ -128,6 +124,7 @@ export function useJournalApi(): UseJournalApiReturn {
 
   // ─────────────────────────────────────────────────────────────
   // Fetch from API
+  // P1.1: No query params, filter client-side
   // ─────────────────────────────────────────────────────────────
 
   const fetchEntries = useCallback(async () => {
@@ -177,6 +174,7 @@ export function useJournalApi(): UseJournalApiReturn {
 
   // ─────────────────────────────────────────────────────────────
   // Merge API entries with queued optimistic entries
+  // P0.3: Handle clientId/serverId reconciliation
   // ─────────────────────────────────────────────────────────────
 
   function mergeWithQueue(
@@ -194,11 +192,13 @@ export function useJournalApi(): UseJournalApiReturn {
     });
 
     // Add CREATE queue items as optimistic entries
+    // Only add if not already in API results (by entryId or serverId)
     for (const item of queueItems) {
       if (item.operation === 'CREATE') {
         const payload = item.payload as JournalCreateRequest;
-        // Check if already in results (might have synced)
-        if (!result.find(e => e.id === item.entryId)) {
+        // Check if this local entry already synced (appears in API results)
+        const alreadySynced = result.find(e => e.id === item.entryId || e.id === item.serverId);
+        if (!alreadySynced) {
           result.unshift({
             id: item.entryId,
             side: payload?.side || 'BUY',
@@ -210,6 +210,7 @@ export function useJournalApi(): UseJournalApiReturn {
             _isQueued: true,
             _queueId: item.id,
             _syncError: !!item.lastError,
+            _clientId: item.entryId,
           });
         }
       }
@@ -217,6 +218,41 @@ export function useJournalApi(): UseJournalApiReturn {
 
     return result;
   }
+
+  // ─────────────────────────────────────────────────────────────
+  // P0.3: Handle reconciliation when CREATE succeeds
+  // ─────────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    const reconciled = getReconciledEntries();
+    if (reconciled.length === 0) return;
+
+    // Replace local entries with server entries
+    setEntries(prev => {
+      let updated = [...prev];
+      for (const { clientId, entry } of reconciled) {
+        // Remove the local optimistic entry
+        updated = updated.filter(e => e.id !== clientId && e._clientId !== clientId);
+        // Add the server entry (if not already present)
+        if (!updated.find(e => e.id === entry.id)) {
+          updated.unshift({
+            ...entry,
+            _isQueued: false,
+          });
+        }
+      }
+      return updated;
+    });
+
+    // Update cache with server entries
+    (async () => {
+      for (const { entry } of reconciled) {
+        await dbService.saveJournalCacheEntry(entry);
+      }
+    })();
+
+    clearReconciledEntries();
+  }, [getReconciledEntries, clearReconciledEntries]);
 
   // ─────────────────────────────────────────────────────────────
   // Update entries when queue changes
@@ -235,6 +271,7 @@ export function useJournalApi(): UseJournalApiReturn {
 
   // ─────────────────────────────────────────────────────────────
   // Mutations
+  // P0.1: confirm/archive NO payload
   // ─────────────────────────────────────────────────────────────
 
   const createEntry = useCallback(async (
@@ -264,13 +301,20 @@ export function useJournalApi(): UseJournalApiReturn {
       updatedAt: new Date().toISOString(),
       _isQueued: true,
       _queueId: queueItem.id,
+      _clientId: localId,
     };
 
     setEntries(prev => [optimisticEntry, ...prev]);
     return optimisticEntry;
   }, [enqueue]);
 
-  const confirmEntry = useCallback((id: string, payload: ConfirmPayload) => {
+  const confirmEntry = useCallback((id: string) => {
+    // Don't allow confirming local-only entries
+    if (id.startsWith('local-')) {
+      console.warn('[useJournalApi] Cannot confirm local-only entry');
+      return;
+    }
+
     // Optimistic update
     setEntries(prev =>
       prev.map(entry =>
@@ -285,15 +329,17 @@ export function useJournalApi(): UseJournalApiReturn {
       )
     );
 
-    // Enqueue
-    enqueue('CONFIRM', id, {
-      mood: payload.mood,
-      note: payload.note,
-      tags: payload.tags,
-    } as JournalConfirmPayload);
+    // Enqueue - P0.1: NO payload
+    enqueue('CONFIRM', id);
   }, [enqueue]);
 
-  const archiveEntry = useCallback((id: string, reason: string) => {
+  const archiveEntry = useCallback((id: string) => {
+    // Don't allow archiving local-only entries
+    if (id.startsWith('local-')) {
+      console.warn('[useJournalApi] Cannot archive local-only entry');
+      return;
+    }
+
     // Optimistic update
     setEntries(prev =>
       prev.map(entry =>
@@ -308,8 +354,8 @@ export function useJournalApi(): UseJournalApiReturn {
       )
     );
 
-    // Enqueue
-    enqueue('ARCHIVE', id, { reason } as JournalArchiveRequest);
+    // Enqueue - P0.1: NO payload
+    enqueue('ARCHIVE', id);
   }, [enqueue]);
 
   const deleteEntry = useCallback((id: string) => {
@@ -330,6 +376,12 @@ export function useJournalApi(): UseJournalApiReturn {
   }, [enqueue, queue]);
 
   const restoreEntry = useCallback((id: string) => {
+    // Don't allow restoring local-only entries
+    if (id.startsWith('local-')) {
+      console.warn('[useJournalApi] Cannot restore local-only entry');
+      return;
+    }
+
     // Optimistic update
     setEntries(prev =>
       prev.map(entry =>

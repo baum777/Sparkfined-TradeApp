@@ -9,10 +9,7 @@ import { apiClient, type ApiError } from '@/services/api/client';
 import type {
   JournalEntryV1,
   JournalCreateRequest,
-  JournalConfirmPayload,
-  JournalArchiveRequest,
   JournalListResponse,
-  JournalEntryStatus,
 } from './types';
 
 const BASE_PATH = '/journal';
@@ -46,13 +43,11 @@ export function isOffline(): boolean {
 
 /**
  * List journal entries
+ * P1.1: Do NOT use query params - fetch all and filter client-side
  */
-export async function listJournalEntries(
-  status?: JournalEntryStatus
-): Promise<JournalEntryV1[]> {
-  const query = status ? `?status=${status}` : '';
+export async function listJournalEntries(): Promise<JournalEntryV1[]> {
   const response = await apiClient.get<JournalListResponse | JournalEntryV1[]>(
-    `${BASE_PATH}${query}`
+    BASE_PATH
   );
   
   // Handle both array response and envelope response
@@ -88,28 +83,22 @@ export async function createJournalEntry(
 
 /**
  * Confirm a pending journal entry
+ * P0.1: NO request body per CONTRACTS.md
  */
-export async function confirmJournalEntry(
-  id: string,
-  payload: JournalConfirmPayload
-): Promise<JournalEntryV1> {
+export async function confirmJournalEntry(id: string): Promise<JournalEntryV1> {
   const response = await apiClient.post<JournalEntryV1>(
-    `${BASE_PATH}/${id}/confirm`,
-    payload
+    `${BASE_PATH}/${id}/confirm`
   );
   return response.data;
 }
 
 /**
  * Archive a journal entry
+ * P0.1: NO request body per CONTRACTS.md
  */
-export async function archiveJournalEntry(
-  id: string,
-  payload: JournalArchiveRequest
-): Promise<JournalEntryV1> {
+export async function archiveJournalEntry(id: string): Promise<JournalEntryV1> {
   const response = await apiClient.post<JournalEntryV1>(
-    `${BASE_PATH}/${id}/archive`,
-    payload
+    `${BASE_PATH}/${id}/archive`
   );
   return response.data;
 }
