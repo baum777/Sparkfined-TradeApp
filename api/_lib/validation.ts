@@ -74,7 +74,9 @@ export function normalizeSymbolOrAddress(value: string): string {
 // JOURNAL SCHEMAS
 // ─────────────────────────────────────────────────────────────
 
-export const journalEntrySideSchema = z.enum(['BUY', 'SELL']);
+export const journalEntrySideSchema = z.string()
+  .transform(val => val.trim().toUpperCase())
+  .pipe(z.enum(['BUY', 'SELL']));
 export const journalEntryStatusSchema = z.enum(['pending', 'confirmed', 'archived']);
 
 export const journalCreateRequestSchema = z.object({

@@ -74,6 +74,7 @@ describe('Journal API Integration', () => {
       });
       const res1 = createMockResponse();
       await journalHandler(req1, res1);
+      expect(res1.status).toHaveBeenCalledWith(201);
       const entry1 = getJson(res1).data;
 
       // Second Request (Replay)
@@ -84,6 +85,7 @@ describe('Journal API Integration', () => {
       });
       const res2 = createMockResponse();
       await journalHandler(req2, res2);
+      expect(res2.status).toHaveBeenCalledWith(200);
       const entry2 = getJson(res2).data;
 
       expect(entry1.id).toBe(entry2.id);

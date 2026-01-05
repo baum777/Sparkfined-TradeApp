@@ -23,6 +23,26 @@ describe('Validation Schemas', () => {
       expect(result.success).toBe(true);
     });
 
+    it('normalizes lowercase side to uppercase', () => {
+      const result = journalCreateRequestSchema.safeParse({
+        side: 'buy',
+        summary: 'Test trade',
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.side).toBe('BUY');
+      }
+
+      const result2 = journalCreateRequestSchema.safeParse({
+        side: 'sell',
+        summary: 'Test trade',
+      });
+      expect(result2.success).toBe(true);
+      if (result2.success) {
+        expect(result2.data.side).toBe('SELL');
+      }
+    });
+
     it('rejects missing summary', () => {
       const result = journalCreateRequestSchema.safeParse({
         side: 'BUY',
