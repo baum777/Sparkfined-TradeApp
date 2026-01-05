@@ -6,7 +6,7 @@
 import { createHandler, getQueryParams, getIdempotencyKey } from '../_lib/handler';
 import { sendJson, sendCreated, setCacheHeaders } from '../_lib/response';
 import { validateBody, validateQuery, journalListQuerySchema, journalCreateRequestSchema } from '../_lib/validation';
-import { journalList, journalCreate, journalRepoKV } from '../_lib/domain/journal/repo';
+import { journalList, journalCreateWithMeta, journalRepoKV } from '../_lib/domain/journal/repo';
 import { toApiJournalEntryV1, JournalEntryV1 } from '../_lib/domain/journal/mapper';
 import { checkRateLimit } from '../_lib/rate-limit';
 import { buildOnchainContextSnapshot } from '../_lib/domain/journal/onchain/snapshot';
@@ -45,7 +45,7 @@ export default createHandler({
     const idempotencyKey = getIdempotencyKey(req);
     
     // userId is now REQUIRED for all journal operations (multitenancy)
-    const entry = await journalCreate(userId, body, idempotencyKey);
+    const { event: entry, isReplay } = await journalCreateWithMeta(userId, body, idempotencyKey);
     
     // P1.2 Frozen Onchain Snapshot (best-effort, non-blocking)
     // Only capture if user provided a symbol/address AND we don't have one yet (idempotency replay)
@@ -71,6 +71,10 @@ export default createHandler({
     }
 
     setCacheHeaders(res, { noStore: true });
-    sendCreated(res, toApiJournalEntryV1(entry));
+    if (isReplay) {
+      sendJson(res, toApiJournalEntryV1(entry), 200);
+    } else {
+      sendCreated(res, toApiJournalEntryV1(entry));
+    }
   },
 });

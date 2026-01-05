@@ -95,11 +95,11 @@ export const journalRepoKV = new JournalRepoKV();
 // All require userId as FIRST parameter
 // ─────────────────────────────────────────────────────────────
 
-export async function journalCreate(
+export async function journalCreateWithMeta(
   userId: string,
   request: JournalCreateRequest,
   idempotencyKey?: string
-): Promise<JournalEvent> {
+): Promise<{ event: JournalEvent; isReplay: boolean }> {
   assertUserId(userId);
   
   // Check idempotency mapping first
@@ -108,14 +108,14 @@ export async function journalCreate(
     const cached = await kv.get<{ id: string; hash: string }>(idemKey);
 
     if (cached) {
-      const currentHash = sha256Hex(stableStringify(request));
+      const currentHash = sha256Hex(stableStringify(request as unknown as import('../../reasoning/types').JsonObject));
       if (cached.hash !== currentHash) {
         throw new Error('Idempotency conflict: key reused with different payload');
       }
 
       const existing = await journalRepoKV.getEvent(userId, cached.id);
       if (existing) {
-        return existing;
+        return { event: existing, isReplay: true };
       }
       // If mapped entry is gone, we proceed to create a new one (safer behavior)
     }
@@ -144,7 +144,7 @@ export async function journalCreate(
   // Save idempotency mapping
   if (idempotencyKey) {
     const idemKey = kvKeys.idempotency(userId, `journal:create:${idempotencyKey}`);
-    const hash = sha256Hex(stableStringify(request));
+    const hash = sha256Hex(stableStringify(request as unknown as import('../../reasoning/types').JsonObject));
     await kv.set(idemKey, { id, hash }, kvTTL.idempotency);
   }
   
@@ -157,6 +157,15 @@ export async function journalCreate(
   // Update timestamp
   await journalRepoKV.setUpdatedAt(userId, now);
   
+  return { event, isReplay: false };
+}
+
+export async function journalCreate(
+  userId: string,
+  request: JournalCreateRequest,
+  idempotencyKey?: string
+): Promise<JournalEvent> {
+  const { event } = await journalCreateWithMeta(userId, request, idempotencyKey);
   return event;
 }
 
