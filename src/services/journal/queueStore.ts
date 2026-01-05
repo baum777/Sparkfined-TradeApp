@@ -39,12 +39,6 @@ const SYNC_INTERVAL = 30000; // 30s periodic sync
 // Store State
 // ─────────────────────────────────────────────────────────────
 
-interface CreateReconcileResult {
-  clientId: string;
-  serverId: string;
-  entry: JournalEntryV1;
-}
-
 interface JournalQueueStore {
   // State
   queue: JournalQueueItem[];
@@ -52,8 +46,8 @@ interface JournalQueueStore {
   lastError: string | null;
   lastSyncAt: number | null;
   
-  // P0.3: Track reconciled CREATE entries
-  reconciledEntries: CreateReconcileResult[];
+  // Track clientIds of CREATE items that completed sync (for reconciliation via refetch)
+  completedCreateClientIds: string[];
   
   // Actions
   loadQueue: () => Promise<void>;
@@ -64,12 +58,12 @@ interface JournalQueueStore {
     idempotencyKey?: string
   ) => Promise<JournalQueueItem>;
   dequeue: (id: string) => Promise<void>;
-  processQueue: () => Promise<JournalEntryV1[]>;
+  processQueue: () => Promise<{ syncedCount: number; needsRefetch: boolean }>;
   getQueueItem: (entryId: string) => JournalQueueItem | undefined;
   getSyncState: () => SyncState;
   clearError: () => void;
-  getReconciledEntries: () => CreateReconcileResult[];
-  clearReconciledEntries: () => void;
+  getCompletedCreateClientIds: () => string[];
+  clearCompletedCreateClientIds: () => void;
 }
 
 function generateQueueId(): string {
@@ -91,7 +85,7 @@ export const useJournalQueueStore = create<JournalQueueStore>((set, get) => ({
   isSyncing: false,
   lastError: null,
   lastSyncAt: null,
-  reconciledEntries: [],
+  completedCreateClientIds: [],
 
   loadQueue: async () => {
     try {
@@ -119,8 +113,6 @@ export const useJournalQueueStore = create<JournalQueueStore>((set, get) => ({
     await dbService.addJournalQueueItem(item);
     set(state => ({ queue: [...state.queue, item] }));
 
-    // P0.2: Trigger processing via the periodic runner, not setTimeout
-    // The runner will pick it up on next tick
     return item;
   },
 
@@ -133,12 +125,12 @@ export const useJournalQueueStore = create<JournalQueueStore>((set, get) => ({
     const { queue, isSyncing } = get();
     
     if (isSyncing || isOffline() || queue.length === 0) {
-      return [];
+      return { syncedCount: 0, needsRefetch: false };
     }
 
     set({ isSyncing: true, lastError: null });
-    const processedEntries: JournalEntryV1[] = [];
-    const reconciled: CreateReconcileResult[] = [];
+    let syncedCount = 0;
+    const completedClientIds: string[] = [];
     const now = Date.now();
 
     try {
@@ -152,18 +144,12 @@ export const useJournalQueueStore = create<JournalQueueStore>((set, get) => ({
         }
 
         try {
-          const result = await processQueueItem(item);
-          if (result) {
-            processedEntries.push(result);
-            
-            // P0.3: Track CREATE reconciliation
-            if (item.operation === 'CREATE') {
-              reconciled.push({
-                clientId: item.entryId,
-                serverId: result.id,
-                entry: result,
-              });
-            }
+          await processQueueItem(item);
+          syncedCount++;
+          
+          // Track completed CREATE clientIds for reconciliation
+          if (item.operation === 'CREATE') {
+            completedClientIds.push(item.entryId);
           }
           
           // Success - remove from queue
@@ -205,10 +191,10 @@ export const useJournalQueueStore = create<JournalQueueStore>((set, get) => ({
         }
       }
 
-      // P0.3: Store reconciled entries for hook consumption
-      if (reconciled.length > 0) {
+      // Store completed CREATE clientIds for reconciliation via refetch
+      if (completedClientIds.length > 0) {
         set(state => ({
-          reconciledEntries: [...state.reconciledEntries, ...reconciled],
+          completedCreateClientIds: [...state.completedCreateClientIds, ...completedClientIds],
         }));
       }
 
@@ -217,7 +203,7 @@ export const useJournalQueueStore = create<JournalQueueStore>((set, get) => ({
       set({ isSyncing: false });
     }
 
-    return processedEntries;
+    return { syncedCount, needsRefetch: completedClientIds.length > 0 };
   },
 
   getQueueItem: (entryId: string) => {
@@ -238,12 +224,12 @@ export const useJournalQueueStore = create<JournalQueueStore>((set, get) => ({
     set({ lastError: null });
   },
 
-  getReconciledEntries: () => {
-    return get().reconciledEntries;
+  getCompletedCreateClientIds: () => {
+    return get().completedCreateClientIds;
   },
 
-  clearReconciledEntries: () => {
-    set({ reconciledEntries: [] });
+  clearCompletedCreateClientIds: () => {
+    set({ completedCreateClientIds: [] });
   },
 }));
 
@@ -293,16 +279,26 @@ async function processQueueItem(item: JournalQueueItem): Promise<JournalEntryV1 
 // P0.2: Single periodic runner, no busy-loop
 // ─────────────────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────────
+// Sync Runner (single root location)
+// Module-level guard ensures exactly one runner
+// ─────────────────────────────────────────────────────────────
+
 let syncIntervalId: ReturnType<typeof setInterval> | null = null;
+let runnerStarted = false;
 
 export function startJournalQueueSync(): void {
-  if (syncIntervalId) return;
+  // Module-level guard: only start once
+  if (runnerStarted) {
+    console.log('[JournalQueue] Runner already started, skipping');
+    return;
+  }
+  runnerStarted = true;
 
   // Load queue on start
   useJournalQueueStore.getState().loadQueue();
 
   // Periodic sync - runs every SYNC_INTERVAL
-  // processQueue internally checks nextAttemptAt to avoid busy-loop
   syncIntervalId = setInterval(() => {
     if (!isOffline()) {
       useJournalQueueStore.getState().processQueue();
@@ -316,6 +312,8 @@ export function startJournalQueueSync(): void {
 
   // Online listener
   window.addEventListener('online', handleOnline);
+  
+  console.log('[JournalQueue] Sync runner started at root');
 }
 
 export function stopJournalQueueSync(): void {
@@ -324,6 +322,7 @@ export function stopJournalQueueSync(): void {
     syncIntervalId = null;
   }
   window.removeEventListener('online', handleOnline);
+  runnerStarted = false;
 }
 
 function handleOnline(): void {

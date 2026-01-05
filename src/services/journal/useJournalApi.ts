@@ -4,13 +4,13 @@
  * Replaces useJournalStub with real API integration.
  * Provides offline-first behavior with caching and queue support.
  * 
- * P0.3: Proper clientId/serverId reconciliation for CREATE
- * P1.1: Client-side filtering only (no query params)
+ * Reconciliation strategy: remove local-* entries → refetch from API
+ * (No serverId tracking on queue items)
  */
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { dbService } from '@/services/db/db';
-import { useJournalQueueStore, startJournalQueueSync } from './queueStore';
+import { useJournalQueueStore } from './queueStore';
 import {
   listJournalEntries,
   isOffline,
@@ -85,8 +85,8 @@ export function useJournalApi(): UseJournalApiReturn {
     processQueue,
     getSyncState,
     loadQueue,
-    getReconciledEntries,
-    clearReconciledEntries,
+    getCompletedCreateClientIds,
+    clearCompletedCreateClientIds,
   } = useJournalQueueStore();
 
   // ─────────────────────────────────────────────────────────────
@@ -98,8 +98,7 @@ export function useJournalApi(): UseJournalApiReturn {
     initRef.current = true;
 
     async function init() {
-      // Start queue sync
-      startJournalQueueSync();
+      // NOTE: Runner is started once at App root, not here
       
       // Load queue first
       await loadQueue();
@@ -174,7 +173,7 @@ export function useJournalApi(): UseJournalApiReturn {
 
   // ─────────────────────────────────────────────────────────────
   // Merge API entries with queued optimistic entries
-  // P0.3: Handle clientId/serverId reconciliation
+  // No serverId dependency - only check queue for pending CREATE items
   // ─────────────────────────────────────────────────────────────
 
   function mergeWithQueue(
@@ -182,7 +181,8 @@ export function useJournalApi(): UseJournalApiReturn {
     queueItems: typeof queue
   ): JournalEntryLocal[] {
     const result: JournalEntryLocal[] = apiEntries.map(entry => {
-      const queueItem = queueItems.find(q => q.entryId === entry.id);
+      // For non-CREATE operations, check if entry is queued
+      const queueItem = queueItems.find(q => q.entryId === entry.id && q.operation !== 'CREATE');
       return {
         ...entry,
         _isQueued: !!queueItem,
@@ -192,27 +192,24 @@ export function useJournalApi(): UseJournalApiReturn {
     });
 
     // Add CREATE queue items as optimistic entries
-    // Only add if not already in API results (by entryId or serverId)
+    // Only add items still in queue (not yet synced)
     for (const item of queueItems) {
       if (item.operation === 'CREATE') {
         const payload = item.payload as JournalCreateRequest;
-        // Check if this local entry already synced (appears in API results)
-        const alreadySynced = result.find(e => e.id === item.entryId || e.id === item.serverId);
-        if (!alreadySynced) {
-          result.unshift({
-            id: item.entryId,
-            side: payload?.side || 'BUY',
-            status: 'pending',
-            summary: payload?.summary || '',
-            timestamp: payload?.timestamp || new Date().toISOString(),
-            createdAt: new Date(item.createdAt).toISOString(),
-            updatedAt: new Date(item.createdAt).toISOString(),
-            _isQueued: true,
-            _queueId: item.id,
-            _syncError: !!item.lastError,
-            _clientId: item.entryId,
-          });
-        }
+        // Only add if this local-* entry is still pending in queue
+        result.unshift({
+          id: item.entryId,
+          side: payload?.side || 'BUY',
+          status: 'pending',
+          summary: payload?.summary || '',
+          timestamp: payload?.timestamp || new Date().toISOString(),
+          createdAt: new Date(item.createdAt).toISOString(),
+          updatedAt: new Date(item.createdAt).toISOString(),
+          _isQueued: true,
+          _queueId: item.id,
+          _syncError: !!item.lastError,
+          _clientId: item.entryId,
+        });
       }
     }
 
@@ -220,39 +217,22 @@ export function useJournalApi(): UseJournalApiReturn {
   }
 
   // ─────────────────────────────────────────────────────────────
-  // P0.3: Handle reconciliation when CREATE succeeds
+  // Reconciliation: when CREATE succeeds, remove local-* entries and refetch
   // ─────────────────────────────────────────────────────────────
 
   useEffect(() => {
-    const reconciled = getReconciledEntries();
-    if (reconciled.length === 0) return;
+    const completedClientIds = getCompletedCreateClientIds();
+    if (completedClientIds.length === 0) return;
 
-    // Replace local entries with server entries
-    setEntries(prev => {
-      let updated = [...prev];
-      for (const { clientId, entry } of reconciled) {
-        // Remove the local optimistic entry
-        updated = updated.filter(e => e.id !== clientId && e._clientId !== clientId);
-        // Add the server entry (if not already present)
-        if (!updated.find(e => e.id === entry.id)) {
-          updated.unshift({
-            ...entry,
-            _isQueued: false,
-          });
-        }
-      }
-      return updated;
-    });
+    // Remove the local-* optimistic entries
+    setEntries(prev => prev.filter(e => !completedClientIds.includes(e.id)));
 
-    // Update cache with server entries
-    (async () => {
-      for (const { entry } of reconciled) {
-        await dbService.saveJournalCacheEntry(entry);
-      }
-    })();
+    // Clear the completed list
+    clearCompletedCreateClientIds();
 
-    clearReconciledEntries();
-  }, [getReconciledEntries, clearReconciledEntries]);
+    // Refetch from API to get the real server entries
+    fetchEntries();
+  }, [getCompletedCreateClientIds, clearCompletedCreateClientIds, fetchEntries]);
 
   // ─────────────────────────────────────────────────────────────
   // Update entries when queue changes
@@ -405,8 +385,8 @@ export function useJournalApi(): UseJournalApiReturn {
   // ─────────────────────────────────────────────────────────────
 
   const retrySync = useCallback(async () => {
-    const synced = await processQueue();
-    if (synced.length > 0) {
+    const { syncedCount, needsRefetch } = await processQueue();
+    if (syncedCount > 0 || needsRefetch) {
       // Refetch to get updated entries
       await fetchEntries();
     }

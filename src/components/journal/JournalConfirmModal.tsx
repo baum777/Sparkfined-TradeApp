@@ -24,6 +24,9 @@ import { useOffline } from "@/components/offline/OfflineContext";
 import type { JournalEntryStub } from "@/stubs/contracts";
 import type { ConfirmPayload } from "@/stubs/hooks";
 
+// NOTE: Mood, note, and tags are local-only by contract.
+// POST /api/journal/:id/confirm sends NO request body per CONTRACTS.md.
+// These fields are collected for potential future use or local analytics only.
 const MOOD_OPTIONS = [
   { value: "confident", label: "Confident" },
   { value: "neutral", label: "Neutral" },
