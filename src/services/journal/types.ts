@@ -75,22 +75,8 @@ export interface JournalCreateRequest {
   symbolOrAddress?: string;
 }
 
-export interface JournalConfirmPayload {
-  mood: string;
-  note: string;
-  tags: string[];
-}
-
-export interface JournalArchiveRequest {
-  reason: string;
-}
-
-export interface JournalListQuery {
-  view?: JournalEntryStatus;
-  status?: JournalEntryStatus;
-  limit?: number;
-  cursor?: string;
-}
+// P0.1: confirm and archive have NO request body per CONTRACTS.md
+// Removed JournalConfirmPayload and JournalArchiveRequest
 
 export interface JournalListResponse {
   items: JournalEntryV1[];
@@ -111,13 +97,20 @@ export type JournalQueueOperation =
 export interface JournalQueueItem {
   id: string;
   operation: JournalQueueOperation;
-  entryId: string; // For CREATE, this is the optimistic local ID
-  idempotencyKey?: string; // Required for CREATE
-  payload?: JournalCreateRequest | JournalConfirmPayload | JournalArchiveRequest;
+  /** For CREATE: this is the local clientId. For others: this is the server entryId */
+  entryId: string;
+  /** P0.3: For CREATE, store the server-assigned ID after sync */
+  serverId?: string;
+  /** Required for CREATE - stable idempotency key */
+  idempotencyKey?: string;
+  /** Payload only for CREATE */
+  payload?: JournalCreateRequest;
   createdAt: number;
   retryCount: number;
   lastError?: string;
   lastAttemptAt?: number;
+  /** P0.2: Next attempt timestamp for per-item backoff */
+  nextAttemptAt?: number;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -131,6 +124,8 @@ export interface JournalEntryLocal extends JournalEntryV1 {
   _queueId?: string;
   /** True if last sync attempt failed */
   _syncError?: boolean;
+  /** P0.3: Local client ID for CREATE entries (before server assigns real ID) */
+  _clientId?: string;
 }
 
 // ─────────────────────────────────────────────────────────────
