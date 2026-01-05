@@ -3,7 +3,7 @@ export { JournalHeader } from './JournalHeader';
 export { JournalSegmentedControl, type JournalView } from './JournalSegmentedControl';
 export { JournalSearchBar } from './JournalSearchBar';
 export { JournalEntryRow } from './JournalEntryRow';
-export { JournalConfirmModal } from './JournalConfirmModal';
+export { JournalConfirmModal, type ConfirmPayload } from './JournalConfirmModal';
 export { JournalCreateDialog, type CreateEntryPayload } from './JournalCreateDialog';
 export { JournalArchiveDialog } from './JournalArchiveDialog';
 export { JournalDeleteDialog } from './JournalDeleteDialog';

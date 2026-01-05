@@ -35,9 +35,6 @@ import {
 } from "@/components/journal";
 import type { JournalEntryLocal } from "@/services/journal/types";
 
-// Alias for backward compatibility with JournalEntryStub interface
-type JournalEntryStub = JournalEntryLocal;
-
 // localStorage key for view mode persistence (legacy)
 const VIEW_MODE_KEY = "journalViewMode";
 
@@ -78,9 +75,9 @@ export default function Journal() {
 
   // Dialog states
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [confirmModalEntry, setConfirmModalEntry] = useState<JournalEntryStub | null>(null);
-  const [archiveDialogEntry, setArchiveDialogEntry] = useState<JournalEntryStub | null>(null);
-  const [deleteDialogEntry, setDeleteDialogEntry] = useState<JournalEntryStub | null>(null);
+  const [confirmModalEntry, setConfirmModalEntry] = useState<JournalEntryLocal | null>(null);
+  const [archiveDialogEntry, setArchiveDialogEntry] = useState<JournalEntryLocal | null>(null);
+  const [deleteDialogEntry, setDeleteDialogEntry] = useState<JournalEntryLocal | null>(null);
 
   // Review overlay state
   const [isReviewOverlayOpen, setIsReviewOverlayOpen] = useState(false);
@@ -236,7 +233,7 @@ export default function Journal() {
   // Handle create entry (diary entry - confirmed by default per spec)
   const handleCreateEntry = useCallback((payload: CreateEntryPayload) => {
     const now = new Date().toISOString();
-    const newEntry: JournalEntryStub = {
+    const newEntry: JournalEntryLocal = {
       id: `entry-${Date.now()}`,
       side: "BUY", // Diary entries default to BUY
       status: "confirmed", // Diary entries are confirmed by default
@@ -338,13 +335,13 @@ export default function Journal() {
     });
   }, [archiveEntry]);
 
-  const handleReviewEdit = useCallback((entry: JournalEntryStub) => {
+  const handleReviewEdit = useCallback((entry: JournalEntryLocal) => {
     setIsReviewOverlayOpen(false);
     setConfirmModalEntry(entry);
   }, []);
 
   // Timeline card click handler
-  const handleTimelineCardClick = useCallback((entry: JournalEntryStub, index: number) => {
+  const handleTimelineCardClick = useCallback((entry: JournalEntryLocal, index: number) => {
     if (entry.status === "pending") {
       const pendingIndex = pendingEntries.findIndex((e) => e.id === entry.id);
       if (pendingIndex !== -1) {
@@ -562,7 +559,7 @@ export default function Journal() {
                       : timelineEntries
                     }
                     onCardClick={handleTimelineCardClick}
-                    onEdit={(entry) => setConfirmModalEntry(entry as JournalEntryStub)}
+                    onEdit={(entry) => setConfirmModalEntry(entry)}
                     onArchive={(id) => handleArchive(id)}
                     onAddReflection={(entry) => {
                       // Open mini reflection for this entry

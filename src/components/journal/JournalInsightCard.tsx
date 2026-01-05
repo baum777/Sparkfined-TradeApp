@@ -18,7 +18,7 @@ import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useSettingsStore } from "@/components/settings/useSettingsStore";
-import type { JournalEntryStub } from "@/stubs/contracts";
+import type { JournalEntryLocal } from "@/services/journal/types";
 import type { JournalInsightV1, InsightCardState } from "@/services/journal/insights/types";
 import {
   getCachedInsight,
@@ -33,7 +33,7 @@ import {
 import { generateLocalInsight } from "@/services/journal/insights/localInsightEngine";
 
 interface JournalInsightCardProps {
-  entry: JournalEntryStub;
+  entry: JournalEntryLocal;
 }
 
 export function JournalInsightCard({ entry }: JournalInsightCardProps) {

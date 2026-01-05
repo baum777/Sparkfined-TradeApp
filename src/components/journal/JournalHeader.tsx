@@ -1,11 +1,11 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Plus, Download } from "lucide-react";
-import type { JournalEntryStub } from "@/stubs/contracts";
+import type { JournalEntryLocal } from "@/services/journal/types";
 import { JournalViewToggle, type JournalViewMode } from "./JournalViewToggle";
 
 interface JournalHeaderProps {
-  entries: JournalEntryStub[];
+  entries: JournalEntryLocal[];
   onLogEntry: () => void;
   viewMode?: JournalViewMode;
   onViewModeChange?: (mode: JournalViewMode) => void;

@@ -10,11 +10,11 @@ import {
   Zap,
   AlertTriangle,
 } from "lucide-react";
-import type { JournalEntryStub } from "@/stubs/contracts";
+import type { JournalEntryLocal } from "@/services/journal/types";
 import { cn } from "@/lib/utils";
 
 interface JournalDiaryCardProps {
-  entry: JournalEntryStub;
+  entry: JournalEntryLocal;
   onEdit?: () => void;
   onArchive?: () => void;
 }
