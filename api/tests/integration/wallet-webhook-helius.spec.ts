@@ -14,6 +14,7 @@ vi.mock('../../_lib/env', async () => {
     getEnv: () => ({
       ...actual.getEnv(),
       AUTO_CAPTURE_ENABLED: true,
+      AUTO_CAPTURE_INTELLIGENCE_ENABLED: true,
       HELIUS_WEBHOOK_SECRET: 'test-secret',
     }),
   };

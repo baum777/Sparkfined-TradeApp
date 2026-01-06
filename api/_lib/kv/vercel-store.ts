@@ -115,4 +115,25 @@ export const vercelKVStore: KVStore = {
       throw error;
     }
   },
+
+  async rpush(key: string, ...values: string[]): Promise<number> {
+    try {
+      const client = await getKVClient();
+      return await client.rpush(key, ...values) as number;
+    } catch (error) {
+      logger.error('KV rpush failed', { key, error: String(error) });
+      throw error;
+    }
+  },
+
+  async lpop(key: string): Promise<string | null> {
+    try {
+      const client = await getKVClient();
+      return await client.lpop(key) as string | null;
+    } catch (error) {
+      logger.error('KV lpop failed', { key, error: String(error) });
+      return null;
+    }
+  },
 };
+

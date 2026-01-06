@@ -55,6 +55,10 @@ const envSchema = z.object({
 
   // Phase B: Auto Trade Capture
   AUTO_CAPTURE_ENABLED: z.string().transform(v => v === 'true').default('false'),
+  // Phase C: Intelligence
+  AUTO_CAPTURE_INTELLIGENCE_ENABLED: z.string().transform(v => v === 'true').default('false'),
+  SYMBOL_RESOLUTION_ENABLED: z.string().transform(v => v === 'true').default('false'),
+
   HELIUS_WEBHOOK_SECRET: z.string().optional(),
   HELIUS_API_KEY: z.string().optional(),
   HELIUS_WEBHOOK_ID: z.string().optional(),

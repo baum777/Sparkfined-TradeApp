@@ -99,7 +99,53 @@ export const memoryKVStore: KVStore = {
     
     return value;
   },
+
+  async rpush(key: string, ...values: string[]): Promise<number> {
+    maybeCleanup();
+    const entry = memoryStore.get(key);
+    let list: string[] = [];
+    
+    if (entry && !isExpired(entry)) {
+      if (Array.isArray(entry.value)) {
+        list = entry.value as string[];
+      } else {
+        // Key exists but not a list - Vercel KV would throw, here we reset or throw
+        throw new Error('Key holds non-list value');
+      }
+    }
+    
+    list.push(...values);
+    // Lists don't expire by default unless set? Vercel KV behavior.
+    // We keep expiry if set, or null.
+    memoryStore.set(key, { value: list, expiresAt: entry?.expiresAt || null });
+    
+    return list.length;
+  },
+
+  async lpop(key: string): Promise<string | null> {
+    maybeCleanup();
+    const entry = memoryStore.get(key);
+    
+    if (!entry || isExpired(entry)) {
+      if (entry) memoryStore.delete(key);
+      return null;
+    }
+    
+    if (!Array.isArray(entry.value)) {
+      throw new Error('Key holds non-list value');
+    }
+    
+    const list = entry.value as string[];
+    if (list.length === 0) return null;
+    
+    const item = list.shift();
+    // Update store
+    memoryStore.set(key, { value: list, expiresAt: entry.expiresAt });
+    
+    return item || null;
+  },
 };
+
 
 // Export for testing
 export function clearMemoryStore(): void {
