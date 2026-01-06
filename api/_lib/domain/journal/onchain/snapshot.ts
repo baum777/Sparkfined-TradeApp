@@ -1,6 +1,6 @@
 import { getEnv } from '../../../env';
-import { DexPaprikaAdapter, type DexPaprikaResult } from './dexpaprika';
-import { MoralisAdapter, type MoralisResult } from './moralis';
+import { DexPaprikaAdapter } from './dexpaprika';
+import { MoralisAdapter } from './moralis';
 import type { 
   OnchainContextV1, 
   OnchainContextMetaV1, 
@@ -53,20 +53,18 @@ export async function buildOnchainContextSnapshot(
 
   // 2. Setup adapters & config
   // Use env vars or defaults (Plan says defaults: 1200ms provider, 2000ms budget)
-  // We'll hardcode defaults here if env vars are missing, or assume getEnv provides them (we need to update env schema later)
-  // Casting as any for now since we haven't updated env schema yet
-  const envAny = env as any;
-  const PROVIDER_TIMEOUT = parseInt(envAny.ONCHAIN_CONTEXT_PROVIDER_TIMEOUT_MS || '1200', 10);
+  
+  const PROVIDER_TIMEOUT = env.ONCHAIN_CONTEXT_PROVIDER_TIMEOUT_MS;
   // Total budget is implicitly handled by parallel execution with timeouts.
   // Ideally we substract elapsed time, but with Promise.all and fixed timeouts it's easier.
   
   const dexAdapter = new DexPaprikaAdapter(
-    envAny.DEXPAPRIKA_BASE_URL, // optional default in Adapter
+    env.DEXPAPRIKA_BASE_URL, // optional default in Adapter
     env.DEXPAPRIKA_API_KEY
   );
   
   const moralisAdapter = new MoralisAdapter(
-    envAny.MORALIS_BASE_URL, // optional default in Adapter
+    env.MORALIS_BASE_URL, // optional default in Adapter
     env.MORALIS_API_KEY
   );
 
