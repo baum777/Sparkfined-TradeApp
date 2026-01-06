@@ -73,6 +73,12 @@ export const kvKeys = {
   pulseLatest: (query: string) => `${KV_PREFIX}pulse:latest:${query}`,
   pulseHistory: (query: string) => `${KV_PREFIX}pulse:history:${query}`,
   pulseLock: (query: string) => `${KV_PREFIX}pulse:lock:${query}`,
+
+  // Phase B: Auto Trade Capture
+  profileV1: (userId: string) => `${KV_PREFIX}profile:${userId}:v1`,
+  walletIndexV1: (walletAddress: string) => `${KV_PREFIX}walletIndex:${walletAddress}:v1`,
+  walletSigDedupe: (walletAddress: string, signature: string) => `${KV_PREFIX}dedupe:wallet:${walletAddress}:sig:${signature}`,
+  heliusWebhookLock: () => `${KV_PREFIX}lock:helius:webhook:update`,
 } as const;
 
 // TTL constants in seconds
@@ -102,6 +108,10 @@ export const kvTTL = {
   pulseLatest: 24 * 60 * 60, // 24h cache for latest
   pulseHistory: 7 * 24 * 60 * 60, // 7 days for history
   pulseLock: 60, // 1 min lock
+  
+  // Phase B: Auto Trade Capture
+  walletSigDedupe: 90 * 24 * 60 * 60, // 90 days
+  heliusWebhookLock: 30, // 30 seconds
 } as const;
 
 // KV Store Interface

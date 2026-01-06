@@ -36,6 +36,11 @@ export const ErrorCodes = {
   
   // Oracle
   ORACLE_NOT_FOUND: 'ORACLE_NOT_FOUND',
+
+  // Phase B: Webhook / Profile
+  WEBHOOK_UNAUTHORIZED: 'WEBHOOK_UNAUTHORIZED',
+  PROFILE_WALLET_IN_USE: 'PROFILE_WALLET_IN_USE',
+  HELIUS_WEBHOOK_UPDATE_FAILED: 'HELIUS_WEBHOOK_UPDATE_FAILED',
 } as const;
 
 export type ErrorCode = typeof ErrorCodes[keyof typeof ErrorCodes];
