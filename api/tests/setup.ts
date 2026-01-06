@@ -5,6 +5,7 @@
 
 import { beforeAll, afterAll, beforeEach } from 'vitest';
 import { resetEnvCache } from '../_lib/env';
+import { clearMemoryStore } from '../_lib/kv';
 
 // Set test environment
 process.env.NODE_ENV = 'test';
@@ -21,6 +22,8 @@ beforeAll(() => {
 beforeEach(() => {
   // Reset Env Cache to ensure tests pick up any process.env overrides
   resetEnvCache();
+  // Ensure fresh memory store for each test to prevent state leaks
+  clearMemoryStore();
 });
 
 afterAll(() => {
