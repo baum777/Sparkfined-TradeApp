@@ -14,6 +14,7 @@ import {
   CacheOfflineSection,
   PushAlertsSection,
   PrivacyDiagnosticsSection,
+  TradingWalletSection,
 } from "@/components/settings";
 import {
   Accordion,
@@ -462,6 +463,11 @@ export default function Settings() {
                 onCopyDiagnostics={handleCopyDiagnostics}
               />
 
+              {/* Trading Wallet */}
+              <SettingsSectionCard title="Trading Wallet" description="Your Solana wallet for trade detection">
+                <TradingWalletSection />
+              </SettingsSectionCard>
+
               {/* Connection */}
               <SettingsSectionCard title="Connection" description="Wallet connection status">
                 <ConnectionSection />
@@ -550,6 +556,19 @@ export default function Settings() {
                   onResetCounters={() => setResetCountersDialogOpen(true)}
                   onCopyDiagnostics={handleCopyDiagnostics}
                 />
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* Trading Wallet */}
+            <AccordionItem value="trading-wallet" className="border rounded-lg px-4">
+              <AccordionTrigger className="hover:no-underline">
+                <div className="text-left">
+                  <div className="font-medium">Trading Wallet</div>
+                  <div className="text-xs text-muted-foreground">Solana wallet for trade detection</div>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="pt-2 pb-4">
+                <TradingWalletSection />
               </AccordionContent>
             </AccordionItem>
 
