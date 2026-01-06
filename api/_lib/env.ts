@@ -52,6 +52,13 @@ const envSchema = z.object({
   GROK_PULSE_REFRESH_SECRET: z.string().optional(),
 
   OPUS_MODEL: z.string().optional(),
+
+  // Phase B: Auto Trade Capture
+  AUTO_CAPTURE_ENABLED: z.string().transform(v => v === 'true').default('false'),
+  HELIUS_WEBHOOK_SECRET: z.string().optional(),
+  HELIUS_API_KEY: z.string().optional(),
+  HELIUS_WEBHOOK_ID: z.string().optional(),
+  HELIUS_SOURCE_LABEL: z.string().default('helius'),
 });
 
 export type BackendEnv = z.infer<typeof envSchema>;
@@ -96,6 +103,19 @@ export function getEnv(): BackendEnv {
   // Additional Prod Guards
   if (isProd && !result.data.CRON_SECRET) {
      throw new Error('CRON_SECRET is required in production');
+  }
+
+  // Phase B Guard: Auto Capture requires Helius config
+  if (result.data.AUTO_CAPTURE_ENABLED) {
+    if (!result.data.HELIUS_WEBHOOK_SECRET || !result.data.HELIUS_API_KEY || !result.data.HELIUS_WEBHOOK_ID) {
+       // In Prod this should be fatal, in Dev we warn
+       const msg = 'AUTO_CAPTURE_ENABLED is true but Helius config is missing (WEBHOOK_SECRET, API_KEY, WEBHOOK_ID)';
+       if (isProd) {
+          throw new Error(msg);
+       } else {
+          console.warn(`⚠️ ${msg}`);
+       }
+    }
   }
 
   cachedEnv = result.data;
