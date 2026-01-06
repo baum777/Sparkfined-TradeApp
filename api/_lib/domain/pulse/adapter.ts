@@ -1,7 +1,7 @@
 import type { PulseSourceAdapter, PulseSourceItem } from './types';
 
 export class StubPulseAdapter implements PulseSourceAdapter {
-  async getItems(query: string): Promise<PulseSourceItem[]> {
+  async getItems(_query: string): Promise<PulseSourceItem[]> {
     // Return empty list to signal "no data" -> engine should return UNKNOWN
     return [];
   }
@@ -18,7 +18,7 @@ export class ManualSeedAdapter implements PulseSourceAdapter {
     return this.items.length > 0;
   }
 
-  async getItems(query: string): Promise<PulseSourceItem[]> {
+  async getItems(_query: string): Promise<PulseSourceItem[]> {
     return this.items;
   }
 }

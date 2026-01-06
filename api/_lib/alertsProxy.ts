@@ -25,7 +25,7 @@ export function buildRailwayUrl(path: string, queryParams?: Record<string, strin
   return url.toString();
 }
 
-export async function proxyJson(req: VercelRequest, res: VercelResponse, path: string, method: string = 'GET', body?: any) {
+export async function proxyJson(_req: VercelRequest, res: VercelResponse, path: string, method: string = 'GET', body?: any) {
   try {
     const apiKey = getEnvOrThrow('ALERTS_API_KEY');
     const url = buildRailwayUrl(path);
@@ -58,7 +58,7 @@ export async function proxyJson(req: VercelRequest, res: VercelResponse, path: s
   }
 }
 
-export function proxyStream(req: VercelRequest, res: VercelResponse, path: string, queryParams: Record<string, string | undefined>) {
+export function proxyStream(_req: VercelRequest, res: VercelResponse, path: string, queryParams: Record<string, string | undefined>) {
   try {
     const apiKey = getEnvOrThrow('ALERTS_API_KEY');
     const urlStr = buildRailwayUrl(path, queryParams);

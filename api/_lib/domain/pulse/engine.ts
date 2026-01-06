@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { routeLLMRequest } from '../../reasoning/llmRouter';
 import { getSourceAdapter } from './adapter';
-import { PulseLabel, type PulseSnapshot, type PulseSourceItem } from './types';
+import { PulseLabel, type PulseSnapshot } from './types';
 import { logger } from '../../logger';
 
 const PulseSchema = z.object({

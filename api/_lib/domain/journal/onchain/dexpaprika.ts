@@ -1,4 +1,4 @@
-import { fetchJsonWithTimeout, OnchainFetchError } from './http';
+import { fetchJsonWithTimeout } from './http';
 
 export interface DexPaprikaTokenResponse {
   symbol: string;

@@ -26,7 +26,7 @@ export default createHandler({
     sendJson(res, { tradingWallet: body.walletAddress });
   },
   
-  DELETE: async ({ req, res, userId }) => {
+  DELETE: async ({ req: _req, res, userId }) => {
     // Get current wallet to remove from Helius
     const profile = await getProfile(userId);
     const walletToRemove = profile?.tradingWallet;

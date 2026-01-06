@@ -40,6 +40,7 @@ export const heliusEnhancedTxSchema = z.object({
       rawTokenAmount: z.object({ tokenAmount: z.string() }),
     })).optional(),
   })).optional(),
+  source: z.string().optional(),
 });
 
 export const heliusWebhookPayloadSchema = z.array(heliusEnhancedTxSchema);

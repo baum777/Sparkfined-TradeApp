@@ -1,6 +1,6 @@
 import { kv } from '../kv';
 import { usageTracker } from '../usage/usageTracker';
-import { AppSettingsV1, BudgetCheckParams, BudgetResult, TIER_LIMITS } from './types';
+import { BudgetCheckParams, BudgetResult, TIER_LIMITS } from './types';
 
 class BudgetGate {
   private static instance: BudgetGate;

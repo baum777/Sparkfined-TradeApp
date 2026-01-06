@@ -8,7 +8,6 @@ import type { TradeEventV1 } from './types';
 import type { HeliusEnhancedTx } from './helius';
 import { analyzeTrade } from './tradeIntelligence';
 import { getEnv } from '../../env';
-import { toApiJournalEntryV1 } from '../journal/mapper'; // for return type if needed
 import { logger } from '../../logger';
 
 // ─────────────────────────────────────────────────────────────

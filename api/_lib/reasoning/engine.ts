@@ -26,7 +26,6 @@ import {
   tradeReviewInsightSchema,
 } from './schemas';
 import { buildCriticPrompt, buildGeneratorPrompt } from './prompts';
-import { deterministicCritic, deterministicGenerate } from './deterministic';
 
 type AnyInsight = TradeReviewInsight | SessionReviewInsight | BoardScenariosInsight;
 
@@ -187,7 +186,6 @@ async function runCritic(input: {
   timeoutMs: number;
   model: string;
 }): Promise<{ report: InsightCriticReport; modelUsed: string }> {
-  const env = getEnv();
   const schemaJson = criticOutputSchemaJson();
 
   // If DeepSeek keys are missing, the router throws MISSING_DEEPSEEK_KEY.

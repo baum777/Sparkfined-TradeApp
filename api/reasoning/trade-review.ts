@@ -26,7 +26,10 @@ export default createHandler({
     // Reasoning responses are user/context specific; avoid CDN caching.
     setCacheHeaders(ctx.res, { noStore: true });
 
-    const result = await runReasoning(ctx, 'trade-review', body);
+    const result = await runReasoning(ctx, 'trade-review', {
+      ...body,
+      version: body.version || REASONING_CONTRACT_VERSION
+    });
 
     sendJson(ctx.res, result);
   },
