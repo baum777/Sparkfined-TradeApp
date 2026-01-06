@@ -28,6 +28,10 @@
     {
       "path": "/api/cron/oracle-daily",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/journal-enrich",
+      "schedule": "*/5 * * * *"
     }
   ],
   "env": {
