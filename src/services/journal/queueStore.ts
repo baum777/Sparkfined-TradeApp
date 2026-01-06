@@ -5,7 +5,7 @@
  * Persists to IndexedDB and processes queue when online.
  * 
  * P0.2: Per-item backoff with nextAttemptAt
- * P0.3: clientId/serverId reconciliation for CREATE
+ * Reconciliation: remove local-* entries → refetch (no serverId dependency)
  */
 
 import { create } from 'zustand';
