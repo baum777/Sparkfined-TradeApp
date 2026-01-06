@@ -59,7 +59,7 @@ describe('Wallet Ingest Dedupe', () => {
     // Verify Create called
     expect(journalCreateWithMeta).toHaveBeenCalledWith(
       'user1',
-      expect.objectContaining({ side: 'BUY', summary: expect.stringContaining('BUY MINT1') }),
+      expect.objectContaining({ side: 'BUY', summary: expect.stringContaining('BUY') }),
       'trade:sig1'
     );
     

@@ -52,6 +52,7 @@ const envSchema = z.object({
   GROK_PULSE_REFRESH_SECRET: z.string().optional(),
 
   OPUS_MODEL: z.string().optional(),
+  REASONING_BACKEND_URL: z.string().optional(),
 
   // Phase B: Auto Trade Capture
   AUTO_CAPTURE_ENABLED: z.string().transform(v => v === 'true').default('false'),
@@ -77,7 +78,6 @@ export function getEnv(): BackendEnv {
   // In dev/test, provide defaults for JWT if missing to simplify local setup
   // but do NOT provide defaults for production secrets
   const isProd = rawEnv.NODE_ENV === 'production';
-  const isTest = rawEnv.NODE_ENV === 'test';
   
   // Safe defaults for dev/test only
   const defaults = !isProd ? {
@@ -143,3 +143,4 @@ export function hasVercelKV() {
   const env = getEnv();
   return !!(env.KV_REST_API_URL && env.KV_REST_API_TOKEN);
 }
+

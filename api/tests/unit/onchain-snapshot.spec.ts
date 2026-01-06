@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { buildOnchainContextSnapshot } from '../../_lib/domain/journal/onchain/snapshot';
 import { DexPaprikaAdapter } from '../../_lib/domain/journal/onchain/dexpaprika';
 import { MoralisAdapter } from '../../_lib/domain/journal/onchain/moralis';

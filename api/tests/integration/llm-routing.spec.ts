@@ -59,7 +59,7 @@ describe('LLM Router Integration', () => {
       }),
     });
 
-    const result = await routeLLMRequest('reasoning', {
+    await routeLLMRequest('reasoning', {
       prompt: 'think hard',
       timeoutMs: 1000,
       jsonOnly: true,
