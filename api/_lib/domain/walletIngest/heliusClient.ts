@@ -63,7 +63,7 @@ export async function updateWebhookAddresses(addresses: string[]): Promise<Heliu
      throw internalError(`Helius Webhook Update Failed: ${response.status}`);
   }
 
-  return response.json();
+  return response.json() as Promise<HeliusWebhookConfig>;
 }
 
 // Updated signature to support full replacement (safer)
@@ -81,6 +81,6 @@ export async function putWebhookConfig(config: HeliusWebhookConfig): Promise<Hel
      throw internalError(`Helius Webhook Update Failed: ${response.status} ${await response.text()}`);
   }
   
-  return response.json();
+  return response.json() as Promise<HeliusWebhookConfig>;
 }
 

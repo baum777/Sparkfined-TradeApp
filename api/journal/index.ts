@@ -7,6 +7,7 @@ import { createHandler, getQueryParams, getIdempotencyKey } from '../_lib/handle
 import { sendJson, sendCreated, setCacheHeaders } from '../_lib/response';
 import { validateBody, validateQuery, journalListQuerySchema, journalCreateRequestSchema } from '../_lib/validation';
 import { journalList, journalCreateWithMeta, journalRepoKV } from '../_lib/domain/journal/repo';
+import { JournalCreateRequest } from '../_lib/domain/journal/types';
 import { toApiJournalEntryV1, JournalEntryV1 } from '../_lib/domain/journal/mapper';
 import { checkRateLimit } from '../_lib/rate-limit';
 import { buildOnchainContextSnapshot } from '../_lib/domain/journal/onchain/snapshot';
@@ -41,7 +42,7 @@ export default createHandler({
   POST: async ({ req, res, userId, requestId }) => {
     await checkRateLimit('journal', userId);
     
-    const body = validateBody(journalCreateRequestSchema, req.body);
+    const body = validateBody(journalCreateRequestSchema, req.body) as JournalCreateRequest;
     const idempotencyKey = getIdempotencyKey(req);
     
     // userId is now REQUIRED for all journal operations (multitenancy)
@@ -63,10 +64,10 @@ export default createHandler({
         
         // Persist update (safe because we are the creator/owner)
         await journalRepoKV.putEvent(userId, entry);
-      } catch (err) {
+      } catch (_err) {
         // Safeguard: logic in builder should catch all provider errors, 
         // but if something unexpected throws, we log and proceed (do not fail the write).
-        console.error('Snapshot capture failed fatally', { requestId, error: err });
+        console.error('Snapshot capture failed fatally', { requestId, error: _err });
       }
     }
 

@@ -26,7 +26,10 @@ export default createHandler({
 
     setCacheHeaders(ctx.res, { noStore: true });
 
-    const result = await runInsightCritic(ctx, body);
+    const result = await runInsightCritic(ctx, {
+      ...body,
+      version: body.version || REASONING_CONTRACT_VERSION
+    });
 
     sendJson(ctx.res, result);
   },

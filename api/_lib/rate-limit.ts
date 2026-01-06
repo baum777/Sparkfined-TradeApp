@@ -73,12 +73,10 @@ export interface RateLimitResult {
 export async function checkGlobalRateLimit(ip?: string, userId?: string): Promise<RateLimitResult> {
   const now = Date.now();
   const windowKey = Math.floor(now / WINDOW_MS);
-  const bucket = windowKey.toString();
 
   // 1. Check IP Limit
   if (ip) {
     const ipHash = crypto.createHash('sha256').update(ip).digest('hex');
-    const key = kvKeys.rateLimit('v1:ip', ipHash, bucket); // Use generic rateLimit key builder or custom? 
     // kvKeys.rateLimit returns sf:v1:rl:{resource}:{id}:{bucket}
     // backend uses `rl:v1:ip:{ipHash}:{windowKey}`
     // Let's match backend exactly to share limits if they share KV

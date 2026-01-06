@@ -27,7 +27,7 @@ export function toApiJournalStatus(status: JournalStatus): JournalEntryStatus {
     case 'PENDING': return 'pending';
     case 'CONFIRMED': return 'confirmed';
     case 'ARCHIVED': return 'archived';
-    default: return status.toLowerCase() as JournalEntryStatus;
+    default: return (status as string).toLowerCase() as JournalEntryStatus;
   }
 }
 

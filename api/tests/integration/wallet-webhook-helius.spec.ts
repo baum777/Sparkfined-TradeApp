@@ -4,11 +4,10 @@ import { createMockRequest, createMockResponse } from '../helpers/vercelMock';
 import { clearMemoryStore } from '../../_lib/kv/memory-store';
 import { setTradingWallet } from '../../_lib/domain/profile/repo';
 import { journalList } from '../../_lib/domain/journal/repo';
-import { getEnv } from '../../_lib/env';
 
 // Mock Env to enable auto capture
 vi.mock('../../_lib/env', async () => {
-  const actual = await vi.importActual('../../_lib/env');
+  const actual = await vi.importActual<typeof import('../../_lib/env')>('../../_lib/env');
   return {
     ...actual,
     getEnv: () => ({

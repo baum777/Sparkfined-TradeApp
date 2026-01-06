@@ -9,7 +9,7 @@ import { ErrorCodes } from '../../errors';
  * Uses a KV lock to prevent race conditions during the GET-MODIFY-PUT cycle.
  */
 export async function updateHeliusWebhookSubscription(
-  userId: string, // purely for logging/audit context
+  _userId: string, // purely for logging/audit context
   operation: 'add' | 'remove',
   walletAddress: string
 ): Promise<void> {

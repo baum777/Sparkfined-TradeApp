@@ -4,7 +4,7 @@ import { getProfile } from '../_lib/domain/profile/repo';
 
 export default createHandler({
   auth: 'required',
-  GET: async ({ req, res, userId }) => {
+  GET: async ({ req: _req, res, userId }) => {
     const profile = await getProfile(userId);
     
     setCacheHeaders(res, { noStore: true });

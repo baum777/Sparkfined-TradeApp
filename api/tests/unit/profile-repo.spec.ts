@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { setTradingWallet, getProfile, clearTradingWallet } from '../../_lib/domain/profile/repo';
-import { kv, kvKeys } from '../../_lib/kv';
-import { ErrorCodes } from '../../_lib/errors';
+import { setTradingWallet } from '../../_lib/domain/profile/repo';
+import { kv } from '../../_lib/kv';
 
 // Mock KV
 vi.mock('../../_lib/kv', () => ({
@@ -40,7 +39,7 @@ describe('Profile Repo', () => {
 
     await expect(setTradingWallet('user1', 'addr1'))
       .rejects
-      .toThrow(ErrorCodes.PROFILE_WALLET_IN_USE);
+      .toThrow(/already registered/);
   });
 
   it('removes old index when switching wallet', async () => {
