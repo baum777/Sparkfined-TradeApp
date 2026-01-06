@@ -1,9 +1,14 @@
 import { kv, kvKeys, kvTTL } from '../../kv';
 import { getUserIdByWallet } from '../profile/repo';
-import { journalCreateWithMeta } from '../journal/repo';
+import { journalCreateWithMeta, journalRepoKV } from '../journal/repo';
+import { mergeOnchainContextMeta } from '../journal/onchain/merge';
+import { enqueueEnrichJob } from '../journal/enrich';
+import type { OnchainContextMetaV1 } from '../journal/onchain/types';
 import type { TradeEventV1 } from './types';
 import type { HeliusEnhancedTx } from './helius';
-import { toApiJournalEntryV1 } from '../journal/mapper'; // for return type if needed, but we don't return full entries here
+import { analyzeTrade } from './tradeIntelligence';
+import { getEnv } from '../../env';
+import { toApiJournalEntryV1 } from '../journal/mapper'; // for return type if needed
 import { logger } from '../../logger';
 
 // ─────────────────────────────────────────────────────────────
@@ -161,46 +166,96 @@ export async function ingestHeliusWebhook(
         }
         
         // Map to Event
-        const event = mapHeliusToTradeEvent(tx, walletAddress);
-        
-        // Determine Journal props
+        const env = getEnv();
+        const useIntelligence = env.AUTO_CAPTURE_INTELLIGENCE_ENABLED;
+
         let side: 'BUY' | 'SELL' = 'BUY'; // default
         let summary = `Auto-captured trade: `;
         let symbolOrAddress: string | undefined = undefined;
-        
-        if (event.tokenOutMint) {
-          side = 'BUY';
-          symbolOrAddress = event.tokenOutMint;
-          summary += `BUY ${event.tokenOutMint}`;
-        } else if (event.tokenInMint) {
-          side = 'SELL';
-          symbolOrAddress = event.tokenInMint;
-          summary += `SELL ${event.tokenInMint}`;
+        let metaToAdd: Partial<OnchainContextMetaV1> | undefined;
+        const timestamp = new Date(tx.timestamp * 1000).toISOString();
+
+        if (useIntelligence) {
+          const analysis = analyzeTrade(tx, walletAddress);
+          side = analysis.side;
+          summary = analysis.summary;
+          symbolOrAddress = analysis.symbolOrAddress;
+          
+          metaToAdd = {
+            capturedAt: analysis.meta.capture.parsedAt,
+            errors: [], // Initial state
+            capture: analysis.meta.capture,
+            classification: analysis.meta.classification,
+            display: analysis.meta.display,
+          };
         } else {
-          summary += `${tx.type} (sig=${tx.signature.slice(0, 8)}...)`;
+          // Legacy Logic (Phase B)
+          const event = mapHeliusToTradeEvent(tx, walletAddress);
+          
+          if (event.tokenOutMint) {
+            side = 'BUY';
+            symbolOrAddress = event.tokenOutMint;
+            summary += `BUY ${event.tokenOutMint}`;
+          } else if (event.tokenInMint) {
+            side = 'SELL';
+            symbolOrAddress = event.tokenInMint;
+            summary += `SELL ${event.tokenInMint}`;
+          } else {
+            summary += `${tx.type} (sig=${tx.signature.slice(0, 8)}...)`;
+          }
+          
+          // Add amounts if available
+          if (event.amountIn && event.amountOut) {
+            summary += ` (in=${event.amountIn} out=${event.amountOut})`;
+          }
+          
+          summary += ` [sig=${tx.signature}]`;
         }
-        
-        // Add amounts if available
-        if (event.amountIn && event.amountOut) {
-          summary += ` (in=${event.amountIn} out=${event.amountOut})`;
-        }
-        
-        summary += ` [sig=${tx.signature}]`;
         
         // Create Journal Entry
         // Idempotency key: trade:<signature> (per user)
         const idempotencyKey = `trade:${tx.signature}`;
         
-        await journalCreateWithMeta(userId, {
+        const { event: createdEvent, isReplay } = await journalCreateWithMeta(userId, {
           side,
           summary,
-          timestamp: event.blockTime,
+          timestamp,
           symbolOrAddress,
         }, idempotencyKey);
         
+        // Phase C: If intelligence enabled and new entry, attach meta
+        if (useIntelligence && !isReplay && metaToAdd) {
+          createdEvent.onchainContextMeta = mergeOnchainContextMeta(createdEvent.onchainContextMeta, metaToAdd);
+          await journalRepoKV.putEvent(userId, createdEvent);
+        }
+        
+        // Phase C: Enqueue for enrichment (non-blocking)
+        if (useIntelligence && !isReplay && symbolOrAddress) {
+          // Fire and forget - don't await to keep webhook fast? 
+          // Ideally we await but catch errors so we don't fail the batch.
+          // Since enqueue is just a KV push, it's fast.
+          try {
+            await enqueueEnrichJob({
+              userId,
+              entryId: createdEvent.id,
+              symbolOrAddress,
+              timestamp: createdEvent.createdAt,
+            });
+          } catch (e) {
+            console.error('Failed to enqueue enrich job', { entryId: createdEvent.id, error: e });
+            // Do not fail the ingest
+          }
+        }
+        
         processed++;
         
-        logger.info('Auto-captured trade', { userId, signature: tx.signature, side });
+        logger.info('Auto-captured trade', { 
+          userId, 
+          signature: tx.signature, 
+          side,
+          intelligence: useIntelligence,
+          isReplay
+        });
       }
 
     } catch (err) {

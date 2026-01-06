@@ -79,6 +79,10 @@ export const kvKeys = {
   walletIndexV1: (walletAddress: string) => `${KV_PREFIX}walletIndex:${walletAddress}:v1`,
   walletSigDedupe: (walletAddress: string, signature: string) => `${KV_PREFIX}dedupe:wallet:${walletAddress}:sig:${signature}`,
   heliusWebhookLock: () => `${KV_PREFIX}lock:helius:webhook:update`,
+
+  // Phase C: Intelligence
+  journalEnrichQueue: () => `${KV_PREFIX}queue:journal:enrich`,
+  tokenMeta: (mint: string) => `${KV_PREFIX}meta:token:${mint}`,
 } as const;
 
 // TTL constants in seconds
@@ -112,6 +116,9 @@ export const kvTTL = {
   // Phase B: Auto Trade Capture
   walletSigDedupe: 90 * 24 * 60 * 60, // 90 days
   heliusWebhookLock: 30, // 30 seconds
+
+  // Phase C: Intelligence
+  tokenMeta: 7 * 24 * 60 * 60, // 7 days
 } as const;
 
 // KV Store Interface
@@ -121,6 +128,9 @@ export interface KVStore {
   delete(key: string): Promise<boolean>;
   getByPrefix<T>(prefix: string): Promise<Array<{ key: string; value: T }>>;
   exists(key: string): Promise<boolean>;
-  // Updated to support increment amount
   incr(key: string, amount?: number, ttlSeconds?: number): Promise<number>;
+  
+  // List operations for queues
+  rpush(key: string, ...values: string[]): Promise<number>;
+  lpop(key: string): Promise<string | null>;
 }

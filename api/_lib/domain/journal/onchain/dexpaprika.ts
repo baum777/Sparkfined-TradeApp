@@ -23,6 +23,8 @@ export interface DexPaprikaResult {
   marketCap: number;
   ageMinutes: number;
   dexId?: string;
+  symbol?: string;
+  name?: string;
 }
 
 export class DexPaprikaAdapter {
@@ -61,6 +63,8 @@ export class DexPaprikaAdapter {
       marketCap: data.summary?.fdv ?? 0,
       ageMinutes,
       dexId: data.dex_id,
+      symbol: data.symbol,
+      name: data.name,
     };
   }
 }

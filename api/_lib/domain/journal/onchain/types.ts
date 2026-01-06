@@ -42,7 +42,28 @@ export interface OnchainContextErrorV1 {
 export interface OnchainContextMetaV1 {
   capturedAt: string; // ISO (redundant for ease of access)
   errors: OnchainContextErrorV1[];
-  // Potential for future expansion: source URLs, raw response snippets (debug only)
+  
+  // Phase C: Intelligence Metadata (optional, additive)
+  capture?: {
+    source: string; // e.g. "helius"
+    type: 'swap' | 'transfer' | 'unknown';
+    signature: string;
+    wallet?: string; // optional, subject to logging policy
+    parsedAt: string; // ISO
+  };
+  
+  classification?: {
+    sideConfidence: number; // 0..1
+    assetConfidence: number; // 0..1
+    reasonCodes: string[];
+  };
+  
+  display?: {
+    baseMint?: string;
+    quoteMint?: string;
+    baseSymbol?: string; // from external resolution (optional)
+    quoteSymbol?: string; // from external resolution (optional)
+  };
 }
 
 // Internal result structure for builders
