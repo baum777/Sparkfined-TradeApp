@@ -15,6 +15,7 @@ import {
 } from "@/components/oracle";
 import { GrokPulseLastRunWidget } from "@/components/grokPulse";
 import { UnifiedSignalsView } from "@/components/signals";
+import { TradingWalletHint } from "@/components/common";
 import { toast } from "@/hooks/use-toast";
 import { usePageState } from "@/stubs/pageState";
 import { makeOracle } from "@/stubs/fixtures";
@@ -243,6 +244,9 @@ export default function Oracle() {
           onRefresh={handleRefresh}
           isRefreshing={isRefreshing}
         />
+
+        {/* Trading Wallet Context */}
+        <TradingWalletHint className="mb-2" />
 
         <OracleFilters
           filter={filter}

@@ -15,11 +15,12 @@ import { PageContainer } from "@/components/layout/PageContainer";
 import { useChartStub, useOracleStub } from "@/stubs/hooks";
 import { useJournalApi } from "@/services/journal";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useTradingWallet } from "@/hooks/useTradingWallet";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { AlertCircle, RefreshCw, BarChart3, X, Eye, Play } from "lucide-react";
+import { AlertCircle, RefreshCw, BarChart3, X, Eye, Play, Wallet } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { isValidChartQuery, normalizeChartQuery, isValidSolanaBase58 } from "@/routes/routes";
 import {
@@ -44,6 +45,7 @@ import {
   ResearchToolsPanel,
   ResearchToolsSheet,
 } from "@/components/chart/research-tools";
+import { TradingWalletHint } from "@/components/common";
 import type { WatchItemStub } from "@/stubs/contracts";
 
 const WATCHLIST_STORAGE_KEY = "sparkfined_watchlist_v1";
@@ -310,6 +312,9 @@ export default function Research() {
   return (
     <PageContainer testId="page-research">
       <h1 className="sr-only">Research</h1>
+      
+      {/* Trading Wallet Context */}
+      <TradingWalletHint className="mb-2" />
 
       <div className="space-y-4">
         {queryError && (
