@@ -224,30 +224,20 @@ export const apiClient = {
   },
 };
 
-// services/trading/journal.service.ts
-export class JournalService {
-  async getEntries(filters?: JournalFilters) {
-    // API Call Implementation
-  }
-  
-  async createEntry(data: JournalEntryInput) {
-    // Create Implementation
-  }
-  
-  async updateEntry(id: string, data: Partial<JournalEntryInput>) {
-    // Update Implementation
-  }
-  
-  async deleteEntry(id: string) {
-    // Delete Implementation
-  }
-}
+// services/journal/api.ts
+// Journal v1: Diary/Reflection (no trading fields)
+export async function listJournalEntries() {}
+export async function createJournalEntry() {}
+export async function confirmJournalEntry() {}
+export async function archiveJournalEntry() {}
+export async function restoreJournalEntry() {}
+export async function deleteJournalEntry() {}
 ```
 
 ### Service-Kategorien
 
-1. **Trading Services** (`services/trading/`)
-   - Journal-Service
+1. **Journal Services** (`services/journal/`)
+   - Journal API + offline queue
    - Chart-Data-Service
    - Watchlist-Service
 

@@ -32,36 +32,35 @@ const HANDBOOK_SECTIONS: HandbookSection[] = [
     title: "Getting Started",
     description: "Essential setup and first steps",
     items: [
-      { id: "intro", title: "Introduction to Trading", completed: true },
+      { id: "intro", title: "Introduction to Journaling", completed: true },
       { id: "setup", title: "Account Setup", completed: true },
-      { id: "first-trade", title: "Your First Trade", completed: false },
+      { id: "first-entry", title: "Your First Entry", completed: false },
     ],
   },
   {
-    id: "risk-management",
-    title: "Risk Management",
-    description: "Protect your capital",
+    id: "review-routines",
+    title: "Review Routines",
+    description: "Build a sustainable reflection habit",
     items: [
-      { id: "position-sizing", title: "Position Sizing", completed: false },
-      { id: "stop-loss", title: "Stop Loss Strategies", completed: false },
-      { id: "risk-reward", title: "Risk-Reward Ratios", completed: false },
+      { id: "daily-review", title: "Daily review (3 minutes)", completed: false },
+      { id: "weekly-review", title: "Weekly review", completed: false },
+      { id: "archive-policy", title: "When to archive entries", completed: false },
     ],
   },
   {
-    id: "technical-analysis",
-    title: "Technical Analysis",
-    description: "Chart patterns and indicators",
+    id: "learning",
+    title: "Learning",
+    description: "Turn notes into improvements",
     items: [
-      { id: "support-resistance", title: "Support & Resistance", completed: false },
-      { id: "trend-lines", title: "Trend Lines", completed: false },
-      { id: "indicators", title: "Key Indicators", completed: false },
-      { id: "candlesticks", title: "Candlestick Patterns", completed: false },
+      { id: "patterns", title: "Spot recurring patterns", completed: false },
+      { id: "experiments", title: "Run small experiments", completed: false },
+      { id: "retrospectives", title: "Retrospectives", completed: false },
     ],
   },
   {
-    id: "psychology",
-    title: "Trading Psychology",
-    description: "Master your emotions",
+    id: "mindset",
+    title: "Mindset",
+    description: "Notice emotions and reduce noise",
     items: [
       { id: "discipline", title: "Discipline & Patience", completed: false },
       { id: "fomo", title: "Avoiding FOMO", completed: false },
@@ -102,7 +101,7 @@ function PlaybookEmptyState({ onRefresh }: { onRefresh: () => void }) {
           No playbook content
         </h3>
         <p className="mb-4 max-w-sm text-sm text-muted-foreground">
-          Your trading playbook is empty. Content will appear here once available.
+          Your journal playbook is empty. Content will appear here once available.
         </p>
         <Button onClick={onRefresh}>Refresh</Button>
         {/* BACKEND HOOK (unchanged): Fetch user handbook entries and strategies */}

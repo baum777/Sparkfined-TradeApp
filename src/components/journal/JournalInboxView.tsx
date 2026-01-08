@@ -9,7 +9,6 @@ import type { JournalEntryLocal } from "@/services/journal/types";
 interface JournalInboxViewProps {
   pendingEntries: JournalEntryLocal[];
   onConfirm: (id: string) => void;
-  onArchive: (id: string) => void;
   onSaveNote: (id: string, reflection: ReflectionData) => void;
   onConfirmWithNote: (id: string, reflection: ReflectionData) => void;
   onGoToTimeline: () => void;
@@ -24,7 +23,6 @@ interface DayGroup {
 export function JournalInboxView({
   pendingEntries,
   onConfirm,
-  onArchive,
   onSaveNote,
   onConfirmWithNote,
   onGoToTimeline,
@@ -82,7 +80,7 @@ export function JournalInboxView({
     [dayGroups]
   );
 
-  // Keyboard shortcuts: J/K nav, C confirm, A archive, N add note
+  // Keyboard shortcuts: J/K nav, C confirm, N add note
   useEffect(() => {
     if (flatEntries.length === 0 || reflectionEntry) return;
 
@@ -120,15 +118,6 @@ export function JournalInboxView({
             setFocusedIndex((prev) => prev - 1);
           }
           break;
-        case "a":
-          // Archive focused
-          e.preventDefault();
-          onArchive(focusedEntry.id);
-          // Move focus if needed
-          if (focusedIndex >= flatEntries.length - 1 && focusedIndex > 0) {
-            setFocusedIndex((prev) => prev - 1);
-          }
-          break;
         case "n":
           // Add note
           e.preventDefault();
@@ -142,7 +131,7 @@ export function JournalInboxView({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [flatEntries, focusedIndex, reflectionEntry, onConfirm, onArchive]);
+  }, [flatEntries, focusedIndex, reflectionEntry, onConfirm]);
 
   // Reset focus when entries change
   useEffect(() => {
@@ -161,7 +150,7 @@ export function JournalInboxView({
         </div>
         <div className="space-y-1">
           <h3 className="text-lg font-medium text-foreground">All caught up!</h3>
-          <p className="text-sm text-muted-foreground">No pending trades to review</p>
+          <p className="text-sm text-muted-foreground">No pending entries to review</p>
         </div>
         <Button variant="outline" onClick={onGoToTimeline}>
           <LayoutList className="h-4 w-4 mr-2" />
@@ -194,7 +183,7 @@ export function JournalInboxView({
 
         {/* Keyboard hint (desktop only) */}
         <p className="hidden md:block text-xs text-muted-foreground">
-          <kbd className="px-1 py-0.5 rounded bg-muted text-muted-foreground">J</kbd>/<kbd className="px-1 py-0.5 rounded bg-muted text-muted-foreground">K</kbd> navigate · <kbd className="px-1 py-0.5 rounded bg-muted text-muted-foreground">C</kbd> confirm · <kbd className="px-1 py-0.5 rounded bg-muted text-muted-foreground">A</kbd> archive · <kbd className="px-1 py-0.5 rounded bg-muted text-muted-foreground">N</kbd> note
+          <kbd className="px-1 py-0.5 rounded bg-muted text-muted-foreground">J</kbd>/<kbd className="px-1 py-0.5 rounded bg-muted text-muted-foreground">K</kbd> navigate · <kbd className="px-1 py-0.5 rounded bg-muted text-muted-foreground">C</kbd> confirm · <kbd className="px-1 py-0.5 rounded bg-muted text-muted-foreground">N</kbd> note
         </p>
 
         {dayGroups.map((group) => (
@@ -210,7 +199,6 @@ export function JournalInboxView({
                     key={entry.id}
                     entry={entry}
                     onConfirm={() => onConfirm(entry.id)}
-                    onArchive={() => onArchive(entry.id)}
                     onAddNote={() => handleAddNote(entry)}
                     isFocused={globalIdx === focusedIndex}
                     hasSyncError={syncErrors.has(entry.id)}

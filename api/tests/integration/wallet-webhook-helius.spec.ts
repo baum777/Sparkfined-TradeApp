@@ -29,7 +29,7 @@ describe('Webhook Ingestion Integration', () => {
     await setTradingWallet(TEST_USER, WALLET);
   });
 
-  it('ingests trade and creates journal entry', async () => {
+  it('ingests webhook but does not create journal entries (Journal v1 disabled for trade capture)', async () => {
     const payload = [{
       signature: 'sig-integration-test',
       timestamp: 1700000000,
@@ -56,13 +56,12 @@ describe('Webhook Ingestion Integration', () => {
 
     expect(res.status).toHaveBeenCalledWith(200);
     const body = (res.json as any).mock.calls[0][0];
-    expect(body.data.processed).toBe(1);
+    expect(body.data.processed).toBe(0);
+    expect(body.data.skipped).toBe(1);
 
-    // Verify Journal Entry
+    // Verify Journal remains unchanged
     const { items } = await journalList(TEST_USER, 'PENDING');
-    expect(items).toHaveLength(1);
-    expect(items[0].summary).toContain('BUY BONK');
-    expect(items[0].status).toBe('PENDING');
+    expect(items).toHaveLength(0);
   });
 
   it('rejects invalid secret with 401', async () => {

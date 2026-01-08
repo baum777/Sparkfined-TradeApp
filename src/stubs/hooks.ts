@@ -23,7 +23,6 @@ import {
   makeKpiTiles,
   makeRecentActivity,
 } from './fixtures';
-import { dbService } from '@/services/db/db';
 
 // User stub hook
 export interface UseUserStubReturn {
@@ -123,18 +122,12 @@ export function useAlertsStub(): UseAlertsStubReturn {
 }
 
 // Journal stub hook
-export interface ConfirmPayload {
-  mood: string;
-  note: string;
-  tags: string[];
-}
-
 export interface UseJournalStubReturn {
   pageState: UsePageStateReturn;
   entries: JournalEntryStub[];
   setEntries: React.Dispatch<React.SetStateAction<JournalEntryStub[]>>;
-  confirmEntry: (id: string, payload: ConfirmPayload) => void;
-  archiveEntry: (id: string, reason: string) => void;
+  confirmEntry: (id: string) => void;
+  archiveEntry: (id: string) => void;
   deleteEntry: (id: string) => void;
   restoreEntry: (id: string) => void;
 }
@@ -142,50 +135,35 @@ export interface UseJournalStubReturn {
 export function useJournalStub(): UseJournalStubReturn {
   const pageState = usePageState('ready');
   const [entries, setEntries] = useState<JournalEntryStub[]>([]);
-  const [isInitialized, setIsInitialized] = useState(false);
 
-  // Load from DB
+  // Stub: initialize with sample entries
   useEffect(() => {
     async function load() {
       try {
-        const stored = await dbService.getAllJournalEntries();
-        if (stored.length > 0) {
-          // Cast stored entries to JournalEntryStub for now since they are compatible
-          setEntries(stored as unknown as JournalEntryStub[]);
-        } else {
-          // Init with stubs
-          const stubs = makeJournalEntries(8);
-          setEntries(stubs);
-          await Promise.all(stubs.map(e => dbService.saveJournalEntry(e as any)));
-        }
+        const stubs = makeJournalEntries(8);
+        setEntries(stubs);
       } catch (err) {
         console.error('Failed to load journal from DB:', err);
-      } finally {
-        setIsInitialized(true);
       }
     }
     load();
   }, []);
 
-  const confirmEntry = (id: string, payload: ConfirmPayload) => {
+  const confirmEntry = (id: string) => {
     setEntries((prev) =>
       prev.map((entry) => {
         if (entry.id !== id) return entry;
         const updated = { ...entry, status: 'confirmed' as const };
-        // Persist
-        dbService.saveJournalEntry(updated as any).catch(console.error);
         return updated;
       })
     );
   };
 
-  const archiveEntry = (id: string, reason: string) => {
+  const archiveEntry = (id: string) => {
     setEntries((prev) =>
       prev.map((entry) => {
         if (entry.id !== id) return entry;
         const updated = { ...entry, status: 'archived' as const };
-        // Persist
-        dbService.saveJournalEntry(updated as any).catch(console.error);
         return updated;
       })
     );
@@ -203,8 +181,6 @@ export function useJournalStub(): UseJournalStubReturn {
       prev.map((entry) => {
         if (entry.id !== id) return entry;
         const updated = { ...entry, status: 'pending' as const };
-        // Persist
-        dbService.saveJournalEntry(updated as any).catch(console.error);
         return updated;
       })
     );

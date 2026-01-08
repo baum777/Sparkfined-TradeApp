@@ -72,10 +72,10 @@ export const JournalEntryRow = forwardRef<HTMLDivElement, JournalEntryRowProps>(
               >
                 <div className="flex items-center gap-2 mb-1">
                   <Badge
-                    variant={entry.side === "BUY" ? "default" : "secondary"}
+                    variant="secondary"
                     className="text-xs"
                   >
-                    {entry.side}
+                    {entry.status}
                   </Badge>
                   {entry.status === "pending" && (
                     <Badge variant="outline" className="text-xs">
@@ -162,7 +162,7 @@ export const JournalEntryRow = forwardRef<HTMLDivElement, JournalEntryRowProps>(
                 </p>
                 {entry.status === "archived" && (
                   <p className="text-sm text-muted-foreground mt-1">
-                    Archived reason: Market conditions changed
+                    Archived reason: (local-only)
                   </p>
                 )}
               </div>

@@ -21,8 +21,6 @@ export {
   isValidSolanaAddress,
   normalizeSymbolOrAddress,
   journalCreateRequestSchema,
-  journalConfirmPayloadSchema,
-  journalArchiveRequestSchema,
   journalListQuerySchema,
   createAlertRequestSchema,
   updateAlertRequestSchema,

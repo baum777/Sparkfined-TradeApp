@@ -1,18 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ingestHeliusWebhook } from '../../_lib/domain/walletIngest/ingest';
 import { kv } from '../../_lib/kv';
-import { journalCreateWithMeta, journalRepoKV } from '../../_lib/domain/journal/repo';
 
 // Mock KV and Journal Repo
 vi.mock('../../_lib/kv');
-vi.mock('../../_lib/domain/journal/repo');
-
-// Mock Env to enable Intelligence
-vi.mock('../../_lib/env', () => ({
-  getEnv: vi.fn().mockReturnValue({ 
-    AUTO_CAPTURE_INTELLIGENCE_ENABLED: true 
-  }),
-}));
 
 // Mock Profile Repo (getUserIdByWallet)
 vi.mock('../../_lib/domain/profile/repo', () => ({
@@ -35,16 +26,6 @@ const SAMPLE_TX = {
 describe('Wallet Ingest Dedupe', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    
-    // Setup default mock returns
-    vi.mocked(journalCreateWithMeta).mockResolvedValue({ 
-      event: { 
-        id: 'entry1', 
-        createdAt: '2023-01-01T00:00:00Z',
-        onchainContextMeta: { errors: [], capturedAt: '2023-01-01T00:00:00Z' } 
-      } as any, 
-      isReplay: false 
-    });
   });
 
   it('ingests new transaction', async () => {
@@ -53,18 +34,9 @@ describe('Wallet Ingest Dedupe', () => {
 
     const result = await ingestHeliusWebhook([SAMPLE_TX]);
 
-    expect(result.processed).toBe(1);
-    expect(result.skipped).toBe(0);
-    
-    // Verify Create called
-    expect(journalCreateWithMeta).toHaveBeenCalledWith(
-      'user1',
-      expect.objectContaining({ side: 'BUY', summary: expect.stringContaining('BUY') }),
-      'trade:sig1'
-    );
-    
-    // Verify Meta Update called (Phase C)
-    expect(journalRepoKV.putEvent).toHaveBeenCalled();
+    // Journal v1 is Diary/Reflection only; wallet ingest must not create journal entries.
+    expect(result.processed).toBe(0);
+    expect(result.skipped).toBe(1);
   });
 
   it('skips duplicate transaction', async () => {
@@ -75,8 +47,6 @@ describe('Wallet Ingest Dedupe', () => {
 
     expect(result.processed).toBe(0);
     expect(result.skipped).toBe(1); // Skipped due to dedupe
-    expect(journalCreateWithMeta).not.toHaveBeenCalled();
-    expect(journalRepoKV.putEvent).not.toHaveBeenCalled();
   });
 });
 

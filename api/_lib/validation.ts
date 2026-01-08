@@ -74,26 +74,11 @@ export function normalizeSymbolOrAddress(value: string): string {
 // JOURNAL SCHEMAS
 // ─────────────────────────────────────────────────────────────
 
-export const journalEntrySideSchema = z.string()
-  .transform(val => val.trim().toUpperCase())
-  .pipe(z.enum(['BUY', 'SELL']));
 export const journalEntryStatusSchema = z.enum(['pending', 'confirmed', 'archived']);
 
 export const journalCreateRequestSchema = z.object({
-  side: journalEntrySideSchema,
   summary: z.string().min(1, 'Summary is required').max(1000),
   timestamp: z.string().datetime().optional(),
-  symbolOrAddress: z.string().regex(solanaAddressRegex, 'Must be a valid Solana address').optional(),
-});
-
-export const journalConfirmPayloadSchema = z.object({
-  mood: z.string().min(1, 'Mood is required'),
-  note: z.string(),
-  tags: z.array(z.string()),
-});
-
-export const journalArchiveRequestSchema = z.object({
-  reason: z.string().min(1, 'Reason is required'),
 });
 
 export const journalListQuerySchema = z.object({
@@ -235,11 +220,8 @@ export const taRequestSchema = z.object({
 // TYPE EXPORTS
 // ─────────────────────────────────────────────────────────────
 
-export type JournalEntrySide = z.infer<typeof journalEntrySideSchema>;
 export type JournalEntryStatus = z.infer<typeof journalEntryStatusSchema>;
 export type JournalCreateRequest = z.infer<typeof journalCreateRequestSchema>;
-export type JournalConfirmPayload = z.infer<typeof journalConfirmPayloadSchema>;
-export type JournalArchiveRequest = z.infer<typeof journalArchiveRequestSchema>;
 export type JournalListQuery = z.infer<typeof journalListQuerySchema>;
 
 export type AlertType = z.infer<typeof alertTypeSchema>;

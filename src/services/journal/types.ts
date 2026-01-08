@@ -1,78 +1,26 @@
 /**
  * Journal API Types
- * Source of Truth: docs/backend/API_SPEC.md + docs/backend/CONTRACTS.md
+ * Source of Truth: `src/types/journal.ts` (canonical Journal v1 domain model)
  */
 
 // ─────────────────────────────────────────────────────────────
 // Core Types
 // ─────────────────────────────────────────────────────────────
 
-export type JournalEntryStatus = "pending" | "confirmed" | "archived";
-export type JournalEntrySide = "BUY" | "SELL";
+import type { JournalEntryV1 as CanonicalJournalEntryV1, JournalStatusV1 } from "@/types/journal";
 
-export interface OnchainContextV1 {
-  capturedAt: string;
-  priceUsd: number;
-  liquidityUsd: number;
-  volume24h: number;
-  marketCap: number;
-  ageMinutes: number;
-  holders: number;
-  transfers24h: number;
-  dexId?: string;
-}
+export type JournalEntryStatus = JournalStatusV1;
 
-export type OnchainContextProvider = "dexpaprika" | "moralis" | "internal";
-export type OnchainContextErrorCode =
-  | "MISSING_MARKET_KEY"
-  | "MISSING_API_KEY"
-  | "TIMEOUT"
-  | "HTTP_ERROR"
-  | "PARSE_ERROR"
-  | "MISSING_FIELD"
-  | "APPROXIMATE_COUNT"
-  | "UNKNOWN_ERROR";
-
-export interface OnchainContextErrorV1 {
-  provider: OnchainContextProvider;
-  code: OnchainContextErrorCode;
-  message: string;
-  at: string;
-  requestId: string;
-  httpStatus?: number;
-}
-
-export interface OnchainContextMetaV1 {
-  capturedAt: string;
-  errors: OnchainContextErrorV1[];
-}
-
-/**
- * JournalEntryV1 - API boundary type
- */
-export interface JournalEntryV1 {
-  id: string;
-  side: JournalEntrySide;
-  status: JournalEntryStatus;
-  timestamp: string;
-  summary: string;
-  createdAt: string;
-  updatedAt: string;
-  confirmedAt?: string;
-  archivedAt?: string;
-  onchainContext?: OnchainContextV1;
-  onchainContextMeta?: OnchainContextMetaV1;
-}
+// Canonical JournalEntryV1 is defined in `src/types/journal.ts`.
+export type JournalEntryV1 = CanonicalJournalEntryV1;
 
 // ─────────────────────────────────────────────────────────────
 // Request/Response Types
 // ─────────────────────────────────────────────────────────────
 
 export interface JournalCreateRequest {
-  side: JournalEntrySide;
   summary: string;
   timestamp?: string;
-  symbolOrAddress?: string;
 }
 
 // P0.1: confirm and archive have NO request body per CONTRACTS.md

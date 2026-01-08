@@ -103,7 +103,7 @@ export function JournalMiniReflection({
     >
       {/* Feeling */}
       <div className="space-y-2">
-        <Label className="text-sm font-medium">How do you feel about this trade?</Label>
+        <Label className="text-sm font-medium">How do you feel about this entry?</Label>
         <div
           data-testid="journal-mini-feeling"
           className="flex items-center gap-2"
@@ -160,7 +160,7 @@ export function JournalMiniReflection({
         <Textarea
           data-testid="journal-mini-reasoning"
           id="reasoning"
-          placeholder="Why did you take this trade?"
+          placeholder="What felt important here?"
           value={reasoning}
           onChange={(e) => setReasoning(e.target.value)}
           rows={2}
