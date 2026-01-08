@@ -50,6 +50,11 @@ Wählt passend zur Topologie:
 - **[ ]** `/api/(.*)` → Rewrite zu externer Backend-Base (z.B. `https://api.example.com/api/$1`), **oder**
 - **[ ]** `VITE_API_URL` direkt auf externe Base setzen und zusätzlich sicherstellen, dass der Service Worker ebenfalls korrekt zur API kommt (siehe SW-Punkt).
 
+**Production Safety Rule (P0):**
+- **`/api/*` ist in Production ausschließlich über das Node-Backend zu bedienen** (same-origin via Rewrite).
+- Das Repo-Directory `api/*` (Vercel Functions) ist **nicht-kanonisch** und darf **keine** Produkt-Endpunkte in Production bedienen.
+- CI erzwingt diese Regel (Build schlägt fehl, wenn `vercel.json` `/api/*`-Rewrite-Exceptions einführt).
+
 **Option B (Vercel Functions):**
 - **[ ]** API-Routes als Vercel Functions implementieren (nicht im Scope dieses Audits).
 

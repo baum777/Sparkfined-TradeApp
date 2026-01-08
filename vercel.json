@@ -6,18 +6,6 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
-      "source": "/api/wallet/webhook/:path*",
-      "destination": "/api/wallet/webhook/:path*"
-    },
-    {
-      "source": "/api/alerts/push/:path*",
-      "destination": "/api/alerts/push/:path*"
-    },
-    {
-      "source": "/api/alerts/stream",
-      "destination": "/api/alerts/stream"
-    },
-    {
       "source": "/api/:path*",
       "destination": "https://{env:VERCEL_BACKEND_URL}/api/:path*"
     },
