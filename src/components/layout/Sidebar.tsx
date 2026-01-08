@@ -1,20 +1,11 @@
-import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { ChevronLeft, ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   primaryNavItems,
-  sidebarOnlyItems,
-  advancedNavGroup,
   isRouteActive,
-  isDevNavEnabled,
   type NavItem,
 } from "@/config/navigation";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 
 interface SidebarProps {
@@ -24,8 +15,10 @@ interface SidebarProps {
 
 export function Sidebar({ collapsed, onCollapsedChange }: SidebarProps) {
   const location = useLocation();
-  const [advancedOpen, setAdvancedOpen] = useState(true);
-  const showDevNav = isDevNavEnabled();
+
+  // Separate Settings from other nav items (Settings anchored at bottom)
+  const mainNavItems = primaryNavItems.filter((item) => item.path !== "/settings");
+  const settingsItem = primaryNavItems.find((item) => item.path === "/settings");
 
   const renderNavItem = (item: NavItem) => {
     const isActive = isRouteActive(location.pathname, item);
@@ -80,44 +73,17 @@ export function Sidebar({ collapsed, onCollapsedChange }: SidebarProps) {
         </Button>
       </div>
 
-      {/* Navigation */}
+      {/* Main Navigation (5 items) */}
       <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
-        {primaryNavItems.map(renderNavItem)}
-
-        {/* Advanced Nav Group - Always visible with Watchlist + Oracle */}
-        <Collapsible
-          open={advancedOpen}
-          onOpenChange={setAdvancedOpen}
-          className="mt-4"
-        >
-          <CollapsibleTrigger
-            data-testid={advancedNavGroup.triggerTestId}
-            className={cn(
-              "flex items-center gap-3 px-3 py-2.5 w-full rounded-md transition-all duration-200",
-              "text-muted-foreground hover:text-foreground hover:bg-secondary/50",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-            )}
-          >
-            <ChevronDown
-              className={cn(
-                "h-4 w-4 shrink-0 transition-transform duration-200",
-                advancedOpen && "rotate-180"
-              )}
-            />
-            {!collapsed && (
-              <span className="text-sm font-medium">
-                {advancedNavGroup.label}
-              </span>
-            )}
-          </CollapsibleTrigger>
-          <CollapsibleContent className="pl-2 space-y-1 mt-1">
-            {/* Watchlist + Oracle always visible */}
-            {sidebarOnlyItems.map(renderNavItem)}
-            {/* Handbook only when dev nav enabled */}
-            {showDevNav && advancedNavGroup.items.map(renderNavItem)}
-          </CollapsibleContent>
-        </Collapsible>
+        {mainNavItems.map(renderNavItem)}
       </nav>
+
+      {/* Settings (anchored at bottom) */}
+      {settingsItem && (
+        <div className="px-2 py-2 border-t border-sidebar-border">
+          {renderNavItem(settingsItem)}
+        </div>
+      )}
 
       {/* Footer */}
       <div className="p-3 border-t border-sidebar-border">

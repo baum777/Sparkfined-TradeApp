@@ -7,15 +7,12 @@
 import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  LineChart,
-  Play,
+  Search,
   Bell,
-  BookOpen,
+  PenLine,
   LayoutDashboard,
-  Eye,
-  Compass,
+  Lightbulb,
   Settings,
-  GraduationCap,
   X,
 } from 'lucide-react';
 import {
@@ -78,13 +75,8 @@ export function QuickActionsSheet() {
             {/* Primary Actions Grid */}
             <div className="grid grid-cols-4 gap-2 mb-4">
               <ActionButton
-                icon={<LineChart className="h-5 w-5" />}
-                label="Chart"
-                onClick={handleSymbolAction}
-              />
-              <ActionButton
-                icon={<Play className="h-5 w-5" />}
-                label="Replay"
+                icon={<Search className="h-5 w-5" />}
+                label="Research"
                 onClick={handleSymbolAction}
               />
               <ActionButton
@@ -93,9 +85,14 @@ export function QuickActionsSheet() {
                 onClick={() => handleNavigation('/alerts?create=true')}
               />
               <ActionButton
-                icon={<BookOpen className="h-5 w-5" />}
+                icon={<PenLine className="h-5 w-5" />}
                 label="Journal"
                 onClick={() => handleNavigation('/journal?create=true')}
+              />
+              <ActionButton
+                icon={<Settings className="h-5 w-5" />}
+                label="Settings"
+                onClick={() => handleNavigation('/settings')}
               />
             </div>
 
@@ -110,29 +107,24 @@ export function QuickActionsSheet() {
                 onClick={() => handleNavigation('/dashboard')}
               />
               <NavButton
-                icon={<Eye className="h-4 w-4" />}
-                label="Watchlist"
-                onClick={() => handleNavigation('/watchlist')}
+                icon={<Search className="h-4 w-4" />}
+                label="Research"
+                onClick={() => handleNavigation('/research')}
+              />
+              <NavButton
+                icon={<PenLine className="h-4 w-4" />}
+                label="Journal"
+                onClick={() => handleNavigation('/journal')}
+              />
+              <NavButton
+                icon={<Lightbulb className="h-4 w-4" />}
+                label="Insights"
+                onClick={() => handleNavigation('/insights')}
               />
               <NavButton
                 icon={<Bell className="h-4 w-4" />}
                 label="Alerts"
                 onClick={() => handleNavigation('/alerts')}
-              />
-              <NavButton
-                icon={<BookOpen className="h-4 w-4" />}
-                label="Journal"
-                onClick={() => handleNavigation('/journal')}
-              />
-              <NavButton
-                icon={<Compass className="h-4 w-4" />}
-                label="Oracle"
-                onClick={() => handleNavigation('/oracle')}
-              />
-              <NavButton
-                icon={<GraduationCap className="h-4 w-4" />}
-                label="Learn"
-                onClick={() => handleNavigation('/learn')}
               />
               <NavButton
                 icon={<Settings className="h-4 w-4" />}

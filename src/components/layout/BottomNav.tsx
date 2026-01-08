@@ -11,7 +11,7 @@ export function BottomNav() {
       role="navigation"
       aria-label="Main navigation"
     >
-      <div className="flex items-center gap-1 px-1 h-16 overflow-x-auto">
+      <div className="flex items-center justify-around px-2 h-16">
         {mobileNavItems.map((item) => {
           const isActive = isRouteActive(location.pathname, item);
           const Icon = item.icon;

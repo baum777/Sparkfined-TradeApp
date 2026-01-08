@@ -136,7 +136,7 @@ export function MarketsBanner({
               variant="ghost"
               size="sm"
               className="text-xs h-7"
-              onClick={() => navigate("/watchlist")}
+              onClick={() => navigate("/research?panel=watchlist")}
             >
               Open Watchlist
               <ExternalLink className="h-3 w-3 ml-1" />
@@ -199,7 +199,7 @@ export function MarketsBanner({
             variant="outline"
             size="sm"
             className="w-full"
-            onClick={() => navigate("/watchlist")}
+            onClick={() => navigate("/research?panel=watchlist")}
           >
             Add to Watchlist
           </Button>

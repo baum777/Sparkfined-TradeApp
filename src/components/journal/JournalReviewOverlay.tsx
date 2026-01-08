@@ -29,18 +29,18 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { format } from "date-fns";
-import type { JournalEntryStub } from "@/stubs/contracts";
+import type { JournalEntryLocal } from "@/services/journal/types";
 import { cn } from "@/lib/utils";
 import { JournalInsightCard } from "./JournalInsightCard";
 
 interface JournalReviewOverlayProps {
   isOpen: boolean;
   onClose: () => void;
-  pendingEntries: JournalEntryStub[];
+  pendingEntries: JournalEntryLocal[];
   initialIndex?: number;
   onConfirm: (id: string) => void;
   onArchive: (id: string) => void;
-  onEdit: (entry: JournalEntryStub) => void;
+  onEdit: (entry: JournalEntryLocal) => void;
 }
 
 interface ChecklistItem {

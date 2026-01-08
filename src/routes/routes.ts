@@ -1,13 +1,9 @@
 export type PrimaryTabKey =
   | "dashboard"
+  | "research"
   | "journal"
-  | "chart"
-  | "replay"
+  | "insights"
   | "alerts"
-  | "watchlist"
-  | "oracle"
-  | "learn"
-  | "handbook"
   | "settings";
 
 export interface PrimaryTab {
@@ -19,6 +15,8 @@ export interface PrimaryTab {
   tabTestId: `tab-${PrimaryTabKey}`;
   /** data-testid for the page root */
   pageTestId: string;
+  /** Whether to show in mobile bottom nav */
+  showInMobileNav?: boolean;
 }
 
 export interface SecondaryRoute {
@@ -53,7 +51,7 @@ export function normalizeChartQuery(value: string): string {
   return v;
 }
 
-// ---- Primary tabs (frozen) ----
+// ---- Primary tabs (consolidated navigation) ----
 
 export const primaryTabs: PrimaryTab[] = [
   {
@@ -62,6 +60,15 @@ export const primaryTabs: PrimaryTab[] = [
     route: "/dashboard",
     tabTestId: "tab-dashboard",
     pageTestId: "page-dashboard",
+    showInMobileNav: true,
+  },
+  {
+    key: "research",
+    label: "Research",
+    route: "/research",
+    tabTestId: "tab-research",
+    pageTestId: "page-research",
+    showInMobileNav: true,
   },
   {
     key: "journal",
@@ -69,20 +76,15 @@ export const primaryTabs: PrimaryTab[] = [
     route: "/journal",
     tabTestId: "tab-journal",
     pageTestId: "page-journal",
+    showInMobileNav: true,
   },
   {
-    key: "chart",
-    label: "Chart",
-    route: "/chart",
-    tabTestId: "tab-chart",
-    pageTestId: "page-chart",
-  },
-  {
-    key: "replay",
-    label: "Replay",
-    route: "/replay",
-    tabTestId: "tab-replay",
-    pageTestId: "page-replay",
+    key: "insights",
+    label: "Insights",
+    route: "/insights",
+    tabTestId: "tab-insights",
+    pageTestId: "page-insights",
+    showInMobileNav: true,
   },
   {
     key: "alerts",
@@ -90,34 +92,7 @@ export const primaryTabs: PrimaryTab[] = [
     route: "/alerts",
     tabTestId: "tab-alerts",
     pageTestId: "page-alerts",
-  },
-  {
-    key: "watchlist",
-    label: "Watchlist",
-    route: "/watchlist",
-    tabTestId: "tab-watchlist",
-    pageTestId: "page-watchlist",
-  },
-  {
-    key: "oracle",
-    label: "Oracle",
-    route: "/oracle",
-    tabTestId: "tab-oracle",
-    pageTestId: "page-oracle",
-  },
-  {
-    key: "learn",
-    label: "Learn",
-    route: "/learn",
-    tabTestId: "tab-learn",
-    pageTestId: "page-learn",
-  },
-  {
-    key: "handbook",
-    label: "Handbook",
-    route: "/handbook",
-    tabTestId: "tab-handbook",
-    pageTestId: "page-handbook",
+    showInMobileNav: true,
   },
   {
     key: "settings",
@@ -125,30 +100,21 @@ export const primaryTabs: PrimaryTab[] = [
     route: "/settings",
     tabTestId: "tab-settings",
     pageTestId: "page-settings",
+    showInMobileNav: false, // Settings not in mobile bottom nav
   },
 ];
 
-// ---- Secondary routes (frozen additions) ----
+// ---- Secondary routes ----
 
 export const secondaryRoutes: SecondaryRoute[] = [
-  // Journal deep-links
+  // Journal deep-links (mode via URL params)
   { route: "/journal/:entryId", pageTestId: "page-journal-entry" },
-  { route: "/journal/review", pageTestId: "page-journal-review" },
-  { route: "/journal/insights", pageTestId: "page-journal-insights" },
 
-  // Oracle deep-links
-  { route: "/oracle/inbox", pageTestId: "page-oracle-inbox" },
-  { route: "/oracle/:insightId", pageTestId: "page-oracle-insight" },
-  { route: "/oracle/status", pageTestId: "page-oracle-status" },
+  // Insights deep-links
+  { route: "/insights/:insightId", pageTestId: "page-insights-detail" },
 
-  // Settings segmentation
-  { route: "/settings/providers", pageTestId: "page-settings-providers" },
-  { route: "/settings/data", pageTestId: "page-settings-data" },
-  { route: "/settings/experiments", pageTestId: "page-settings-experiments" },
-  { route: "/settings/privacy", pageTestId: "page-settings-privacy" },
-
-  // Asset hub (recommended)
-  { route: "/asset/:assetId", pageTestId: "page-asset" },
+  // Research workspace with asset
+  { route: "/research/:assetId", pageTestId: "page-research-asset" },
 ];
 
 // ---- URL builders ----
@@ -159,36 +125,59 @@ function encodePathSegment(value: string): string {
 
 export const routeHelpers = {
   dashboard: () => "/dashboard",
-  journal: () => "/journal",
-  chart: (opts?: { q?: string }) => {
-    const q = opts?.q?.trim();
-    if (!q) return "/chart";
+  
+  // Research workspace (consolidated from chart, watchlist, replay, asset)
+  research: (opts?: { q?: string; panel?: string; replay?: boolean }) => {
     const sp = new URLSearchParams();
-    sp.set("q", q);
-    return `/chart?${sp.toString()}`;
+    if (opts?.q?.trim()) sp.set("q", opts.q.trim());
+    if (opts?.panel) sp.set("panel", opts.panel);
+    if (opts?.replay) sp.set("replay", "true");
+    const qs = sp.toString();
+    return qs ? `/research?${qs}` : "/research";
   },
-  replay: () => "/replay",
-  alerts: () => "/alerts",
-  watchlist: () => "/watchlist",
-  oracle: () => "/oracle",
-  learn: () => "/learn",
-  handbook: () => "/handbook",
-  settings: () => "/settings",
-
-  // Secondary
+  researchAsset: (assetId: string) => `/research/${encodePathSegment(assetId)}`,
+  
+  // Journal with mode params
+  journal: (opts?: { mode?: "timeline" | "inbox" | "learn" | "playbook"; entry?: string }) => {
+    const sp = new URLSearchParams();
+    if (opts?.mode && opts.mode !== "timeline") sp.set("mode", opts.mode);
+    if (opts?.entry) sp.set("entry", opts.entry);
+    const qs = sp.toString();
+    return qs ? `/journal?${qs}` : "/journal";
+  },
   journalEntry: (entryId: string) => `/journal/${encodePathSegment(entryId)}`,
-  journalReview: () => "/journal/review",
-  journalInsights: () => "/journal/insights",
+  
+  // Insights (consolidated from oracle)
+  insights: (opts?: { filter?: string; mode?: string }) => {
+    const sp = new URLSearchParams();
+    if (opts?.filter) sp.set("filter", opts.filter);
+    if (opts?.mode) sp.set("mode", opts.mode);
+    const qs = sp.toString();
+    return qs ? `/insights?${qs}` : "/insights";
+  },
+  insightDetail: (insightId: string) => `/insights/${encodePathSegment(insightId)}`,
+  
+  alerts: () => "/alerts",
+  
+  // Settings with section params
+  settings: (opts?: { section?: "providers" | "data" | "experiments" | "privacy" }) => {
+    if (opts?.section) {
+      return `/settings?section=${opts.section}`;
+    }
+    return "/settings";
+  },
 
-  oracleInbox: () => "/oracle/inbox",
-  oracleInsight: (insightId: string) => `/oracle/${encodePathSegment(insightId)}`,
-  oracleStatus: () => "/oracle/status",
-
-  settingsProviders: () => "/settings/providers",
-  settingsData: () => "/settings/data",
-  settingsExperiments: () => "/settings/experiments",
-  settingsPrivacy: () => "/settings/privacy",
-
-  asset: (assetId: string) => `/asset/${encodePathSegment(assetId)}`,
+  // Legacy route helpers (for compatibility during migration)
+  /** @deprecated Use routeHelpers.research() */
+  chart: (opts?: { q?: string }) => routeHelpers.research({ q: opts?.q }),
+  /** @deprecated Use routeHelpers.research({ panel: 'watchlist' }) */
+  watchlist: () => routeHelpers.research({ panel: "watchlist" }),
+  /** @deprecated Use routeHelpers.research({ replay: true }) */
+  replay: () => routeHelpers.research({ replay: true }),
+  /** @deprecated Use routeHelpers.insights() */
+  oracle: () => routeHelpers.insights(),
+  /** @deprecated Use routeHelpers.journal({ mode: 'learn' }) */
+  learn: () => routeHelpers.journal({ mode: "learn" }),
+  /** @deprecated Use routeHelpers.journal({ mode: 'playbook' }) */
+  handbook: () => routeHelpers.journal({ mode: "playbook" }),
 };
-

@@ -1,21 +1,21 @@
 import { useMemo } from "react";
 import { format, isToday, isYesterday } from "date-fns";
 import { JournalMomentCard } from "./JournalMomentCard";
-import type { JournalEntryStub } from "@/stubs/contracts";
+import type { JournalEntryLocal } from "@/services/journal/types";
 import type { JournalView } from "./JournalSegmentedControl";
 import { Badge } from "@/components/ui/badge";
 import { Clock, Check } from "lucide-react";
 
 interface JournalDiaryViewProps {
-  entries: JournalEntryStub[];
+  entries: JournalEntryLocal[];
   activeSegment: JournalView;
-  onCardClick: (entry: JournalEntryStub, index: number) => void;
+  onCardClick: (entry: JournalEntryLocal, index: number) => void;
 }
 
 interface DayGroup {
   date: Date;
   dateKey: string;
-  entries: JournalEntryStub[];
+  entries: JournalEntryLocal[];
 }
 
 function formatDayHeader(date: Date): { dateStr: string; weekday: string } {

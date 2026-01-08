@@ -233,10 +233,10 @@ export function SymbolPicker({ onSelect, onBack, showBackButton = true, classNam
     // Default navigation behavior per spec
     switch (action) {
       case 'chart':
-        navigate(`/chart?q=${encodeURIComponent(symbol.symbol)}`);
+        navigate(`/research?q=${encodeURIComponent(symbol.symbol)}`);
         break;
       case 'replay':
-        navigate(`/replay`, { state: { q: symbol.symbol } });
+        navigate(`/research?q=${encodeURIComponent(symbol.symbol)}&replay=true`);
         break;
       case 'alert':
         navigate(`/alerts?symbol=${encodeURIComponent(symbol.symbol)}`);

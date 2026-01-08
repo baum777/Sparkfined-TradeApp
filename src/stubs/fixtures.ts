@@ -158,7 +158,7 @@ export function makeOverviewCards(): OverviewCardStub[] {
       title: 'Today',
       summary: 'Market analysis ready',
       badge: 'New',
-      link: '/oracle',
+      link: '/insights',
     },
     {
       id: 'overview-alerts',
@@ -185,7 +185,7 @@ export function makeNextActions(): NextActionStub[] {
       id: 'action-1',
       title: 'Review pending entries',
       description: 'You have 3 trades awaiting review',
-      link: '/journal?view=pending',
+      link: '/journal?mode=inbox',
       priority: 'high',
     },
     {

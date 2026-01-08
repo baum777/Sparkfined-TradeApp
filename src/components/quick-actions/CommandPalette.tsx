@@ -7,15 +7,12 @@
 import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  LineChart,
-  Play,
+  Search,
   Bell,
-  BookOpen,
-  Compass,
-  Settings,
+  PenLine,
   LayoutDashboard,
-  Eye,
-  GraduationCap,
+  Lightbulb,
+  Settings,
 } from 'lucide-react';
 import {
   CommandDialog,
@@ -60,13 +57,8 @@ export function CommandPalette() {
             {/* Quick Actions */}
             <CommandGroup heading="Quick Actions">
               <CommandItem onSelect={handleSymbolAction}>
-                <LineChart className="mr-2 h-4 w-4" />
-                <span>Open Chart</span>
-                <CommandShortcut>→ Pick Symbol</CommandShortcut>
-              </CommandItem>
-              <CommandItem onSelect={handleSymbolAction}>
-                <Play className="mr-2 h-4 w-4" />
-                <span>Open Replay</span>
+                <Search className="mr-2 h-4 w-4" />
+                <span>Open Research</span>
                 <CommandShortcut>→ Pick Symbol</CommandShortcut>
               </CommandItem>
               <CommandItem onSelect={() => handleNavigation('/alerts?create=true')}>
@@ -74,7 +66,7 @@ export function CommandPalette() {
                 <span>Create Alert</span>
               </CommandItem>
               <CommandItem onSelect={() => handleNavigation('/journal?create=true')}>
-                <BookOpen className="mr-2 h-4 w-4" />
+                <PenLine className="mr-2 h-4 w-4" />
                 <span>New Journal Entry</span>
               </CommandItem>
             </CommandGroup>
@@ -87,29 +79,21 @@ export function CommandPalette() {
                 <LayoutDashboard className="mr-2 h-4 w-4" />
                 <span>Dashboard</span>
               </CommandItem>
-              <CommandItem onSelect={() => handleNavigation('/chart')}>
-                <LineChart className="mr-2 h-4 w-4" />
-                <span>Chart</span>
+              <CommandItem onSelect={() => handleNavigation('/research')}>
+                <Search className="mr-2 h-4 w-4" />
+                <span>Research</span>
               </CommandItem>
-              <CommandItem onSelect={() => handleNavigation('/watchlist')}>
-                <Eye className="mr-2 h-4 w-4" />
-                <span>Watchlist</span>
+              <CommandItem onSelect={() => handleNavigation('/journal')}>
+                <PenLine className="mr-2 h-4 w-4" />
+                <span>Journal</span>
+              </CommandItem>
+              <CommandItem onSelect={() => handleNavigation('/insights')}>
+                <Lightbulb className="mr-2 h-4 w-4" />
+                <span>Insights</span>
               </CommandItem>
               <CommandItem onSelect={() => handleNavigation('/alerts')}>
                 <Bell className="mr-2 h-4 w-4" />
                 <span>Alerts</span>
-              </CommandItem>
-              <CommandItem onSelect={() => handleNavigation('/journal')}>
-                <BookOpen className="mr-2 h-4 w-4" />
-                <span>Journal</span>
-              </CommandItem>
-              <CommandItem onSelect={() => handleNavigation('/oracle')}>
-                <Compass className="mr-2 h-4 w-4" />
-                <span>Oracle</span>
-              </CommandItem>
-              <CommandItem onSelect={() => handleNavigation('/learn')}>
-                <GraduationCap className="mr-2 h-4 w-4" />
-                <span>Learn</span>
               </CommandItem>
               <CommandItem onSelect={() => handleNavigation('/settings')}>
                 <Settings className="mr-2 h-4 w-4" />

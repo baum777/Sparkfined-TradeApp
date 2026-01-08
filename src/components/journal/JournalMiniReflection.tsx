@@ -26,16 +26,19 @@ import {
   Save,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { JournalEntryStub } from "@/stubs/contracts";
+import type { JournalEntryLocal } from "@/services/journal/types";
 
 interface JournalMiniReflectionProps {
   isOpen: boolean;
   onClose: () => void;
-  entry: JournalEntryStub | null;
+  entry: JournalEntryLocal | null;
   onSaveNote: (entryId: string, reflection: ReflectionData) => void;
   onConfirmSave: (entryId: string, reflection: ReflectionData) => void;
 }
 
+// NOTE: ReflectionData (feeling, confidence, reasoning) is local-only by contract.
+// POST /api/journal/:id/confirm sends NO request body per CONTRACTS.md.
+// These fields are collected for potential future use or local analytics only.
 export interface ReflectionData {
   feeling: FeelingType;
   confidence: number;

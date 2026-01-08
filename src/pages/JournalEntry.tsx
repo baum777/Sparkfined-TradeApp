@@ -2,11 +2,11 @@ import { Link, useParams } from "react-router-dom";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useJournalStub } from "@/stubs/hooks";
+import { useJournalApi } from "@/services/journal";
 
 export default function JournalEntry() {
   const { entryId } = useParams<{ entryId: string }>();
-  const { entries } = useJournalStub();
+  const { entries } = useJournalApi();
 
   const id = entryId?.trim() ?? "";
   const entry = id ? entries.find((e) => e.id === id) : undefined;

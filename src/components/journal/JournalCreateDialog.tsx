@@ -27,7 +27,12 @@ import {
   Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { TradingWalletHint } from "@/components/common";
 import type { JournalEntryV1 } from "@/types/journal";
+
+// FUTURE USAGE: When a trading wallet is set, it can be passed as contextual
+// metadata in the journal entry payload (e.g., tradingWallet field) once the
+// API supports it. Currently, the wallet is shown for user awareness only.
 
 type FeelingValue = NonNullable<JournalEntryV1["reflection"]>["feeling"];
 
@@ -124,6 +129,7 @@ export function JournalCreateDialog({
       >
         <DialogHeader>
           <DialogTitle>New Diary Entry</DialogTitle>
+          <TradingWalletHint className="mt-1" />
         </DialogHeader>
 
         <div className="space-y-6 py-4">
