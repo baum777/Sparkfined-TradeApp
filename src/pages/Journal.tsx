@@ -56,6 +56,22 @@ export default function Journal() {
 
   // Journal v3 mode state
   const [mode, setMode] = useState<JournalMode>(getStoredJournalMode);
+  const handleModeChange = useCallback(
+    (value: JournalMode) => {
+      setMode(value);
+      const params = new URLSearchParams(searchParams);
+      params.set("mode", value);
+      setSearchParams(params, { replace: true });
+    },
+    [searchParams, setSearchParams]
+  );
+
+  useEffect(() => {
+    const modeParam = searchParams.get("mode") as JournalMode | null;
+    if (modeParam && modeParam !== mode) {
+      setMode(modeParam);
+    }
+  }, [searchParams, mode]);
   
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
@@ -137,8 +153,12 @@ export default function Journal() {
   const handleViewChange = useCallback((view: JournalView) => {
     setActiveView(view);
     const entryParam = searchParams.get("entry");
+    const modeParam = searchParams.get("mode");
     const newParams = new URLSearchParams();
     newParams.set("view", view);
+    if (modeParam) {
+      newParams.set("mode", modeParam);
+    }
     if (entryParam) newParams.set("entry", entryParam);
     setSearchParams(newParams, { replace: true });
   }, [searchParams, setSearchParams]);
@@ -424,7 +444,7 @@ export default function Journal() {
                 </h1>
                 <JournalModeToggle
                   value={mode}
-                  onChange={setMode}
+                  onChange={handleModeChange}
                   pendingCount={counts.pending}
                 />
               </div>
@@ -543,7 +563,7 @@ export default function Journal() {
                   onArchive={handleInboxArchive}
                   onSaveNote={handleInboxSaveNote}
                   onConfirmWithNote={handleInboxConfirmWithNote}
-                  onGoToTimeline={() => setMode("timeline")}
+                  onGoToTimeline={() => handleModeChange("timeline")}
                   syncErrors={syncErrors}
                 />
               )}
@@ -553,7 +573,7 @@ export default function Journal() {
                   onStartReview={() => handleOpenReviewOverlay(0)}
                   onShowEvidence={(type, index) => {
                     // Switch to timeline with filter
-                    setMode("timeline");
+                    handleModeChange("timeline");
                     toast.info(`Showing ${type} evidence`);
                   }}
                 />

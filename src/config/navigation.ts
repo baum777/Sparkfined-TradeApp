@@ -33,8 +33,7 @@ export interface NavGroup {
 const iconByTab: Record<PrimaryTabKey, LucideIcon> = {
   dashboard: LayoutDashboard,
   journal: PenLine,
-  chart: LineChart,
-  replay: Play,
+  research: LineChart,
   alerts: Bell,
   watchlist: Eye,
   oracle: Sparkles,

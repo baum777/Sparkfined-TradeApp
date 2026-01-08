@@ -7,8 +7,8 @@ import { test, expect } from "@playwright/test";
 test.describe("Secondary Routes", () => {
   test("sollte alle Secondary Routes direkt öffnen können", async ({ page }) => {
     const routes = [
-      { url: "/journal/review", testId: "page-journal-review" },
-      { url: "/journal/insights", testId: "page-journal-insights" },
+      { url: "/journal?mode=inbox&view=pending", testId: "page-journal" },
+      { url: "/journal?mode=learn&view=pending", testId: "page-journal" },
       { url: "/journal/entry-1", testId: "page-journal-entry" },
 
       { url: "/oracle/inbox", testId: "page-oracle-inbox" },
@@ -29,5 +29,17 @@ test.describe("Secondary Routes", () => {
       await expect(page.locator(`[data-testid="${r.testId}"]`)).toBeVisible();
     }
   });
+});
+
+test("legacy /chart redirectet zur canonical research route", async ({ page }) => {
+  await page.goto("/chart?q=SOL");
+  await expect(page).toHaveURL("/research?view=chart&q=SOL");
+  await expect(page.locator('[data-testid="page-research"]')).toBeVisible();
+});
+
+test("legacy /replay redirectet zur canonical research route mit replay flag", async ({ page }) => {
+  await page.goto("/replay");
+  await expect(page).toHaveURL("/research?view=chart&replay=true");
+  await expect(page.locator('[data-testid="page-research"]')).toBeVisible();
 });
 

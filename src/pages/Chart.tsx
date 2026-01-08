@@ -66,13 +66,23 @@ export default function Chart() {
   const [crosshairEnabled, setCrosshairEnabled] = useState(true);
   const [enabledIndicators, setEnabledIndicators] = useState<string[]>(["sma"]);
 
-  // Toggle replay mode via dedicated route (frozen): /replay
+  const isReplayMode = searchParams.get("replay") === "true";
+
   const handleReplayToggle = useCallback(
     (enabled: boolean) => {
       if (!enabled) return;
-      navigate("/replay", selectedSymbol ? { state: { q: selectedSymbol } } : undefined);
+      const params = new URLSearchParams(searchParams);
+      params.set("view", "chart");
+      params.set("replay", "true");
+      if (selectedSymbol) {
+        params.set("q", selectedSymbol);
+      } else {
+        params.delete("q");
+      }
+      const query = params.toString();
+      navigate(`/research${query ? `?${query}` : ""}`);
     },
-    [navigate, selectedSymbol]
+    [navigate, selectedSymbol, searchParams]
   );
 
   const handleToggleIndicator = useCallback((id: string) => {
@@ -102,7 +112,7 @@ export default function Chart() {
   // Loading state
   if (pageState.isLoading) {
     return (
-      <PageContainer testId="page-chart">
+      <PageContainer testId="page-research">
         <h1 className="sr-only">Chart</h1>
         <ChartSkeleton />
       </PageContainer>
@@ -112,7 +122,7 @@ export default function Chart() {
   // Error state
   if (pageState.isError) {
     return (
-      <PageContainer testId="page-chart">
+      <PageContainer testId="page-research">
         <div className="space-y-4">
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
             Chart
@@ -138,7 +148,7 @@ export default function Chart() {
 
   // Ready state
   return (
-    <PageContainer testId="page-chart">
+    <PageContainer testId="page-research">
       <h1 className="sr-only">Chart</h1>
 
       <div className="space-y-4">
@@ -153,7 +163,7 @@ export default function Chart() {
           symbol={selectedSymbol}
           timeframe={selectedTimeframe}
           onTimeframeChange={setSelectedTimeframe}
-          isReplayMode={false}
+          isReplayMode={isReplayMode}
           onReplayToggle={handleReplayToggle}
           onMobileToolsOpen={() => setToolsSheetOpen(true)}
           isMobile={isMobile}

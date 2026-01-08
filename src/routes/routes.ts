@@ -1,8 +1,7 @@
 export type PrimaryTabKey =
   | "dashboard"
   | "journal"
-  | "chart"
-  | "replay"
+  | "research"
   | "alerts"
   | "watchlist"
   | "oracle"
@@ -71,18 +70,11 @@ export const primaryTabs: PrimaryTab[] = [
     pageTestId: "page-journal",
   },
   {
-    key: "chart",
-    label: "Chart",
-    route: "/chart",
-    tabTestId: "tab-chart",
-    pageTestId: "page-chart",
-  },
-  {
-    key: "replay",
-    label: "Replay",
-    route: "/replay",
-    tabTestId: "tab-replay",
-    pageTestId: "page-replay",
+    key: "research",
+    label: "Research",
+    route: "/research",
+    tabTestId: "tab-research",
+    pageTestId: "page-research",
   },
   {
     key: "alerts",
@@ -160,14 +152,19 @@ function encodePathSegment(value: string): string {
 export const routeHelpers = {
   dashboard: () => "/dashboard",
   journal: () => "/journal",
-  chart: (opts?: { q?: string }) => {
-    const q = opts?.q?.trim();
-    if (!q) return "/chart";
-    const sp = new URLSearchParams();
-    sp.set("q", q);
-    return `/chart?${sp.toString()}`;
+  research: (opts?: { q?: string; replay?: boolean }) => {
+    const params = new URLSearchParams();
+    params.set("view", "chart");
+    const query = opts?.q?.trim();
+    if (query) {
+      params.set("q", query);
+    }
+    if (opts?.replay) {
+      params.set("replay", "true");
+    }
+    const qs = params.toString();
+    return qs ? `/research?${qs}` : "/research";
   },
-  replay: () => "/replay",
   alerts: () => "/alerts",
   watchlist: () => "/watchlist",
   oracle: () => "/oracle",
