@@ -187,7 +187,9 @@ export function useJournalApi(): UseJournalApiReturn {
         ...entry,
         _isQueued: !!queueItem,
         _queueId: queueItem?.id,
-        _syncError: !!queueItem?.lastError,
+        _syncError: queueItem?.status === 'failed',
+        _syncRetryCount: queueItem?.status === 'failed' ? queueItem?.retryCount : undefined,
+        _syncLastError: queueItem?.status === 'failed' ? queueItem?.lastError : undefined,
       };
     });
 
@@ -206,7 +208,9 @@ export function useJournalApi(): UseJournalApiReturn {
           updatedAt: new Date(item.createdAt).toISOString(),
           _isQueued: true,
           _queueId: item.id,
-          _syncError: !!item.lastError,
+          _syncError: item.status === 'failed',
+          _syncRetryCount: item.status === 'failed' ? item.retryCount : undefined,
+          _syncLastError: item.status === 'failed' ? item.lastError : undefined,
           _clientId: item.entryId,
         });
       }
@@ -390,7 +394,7 @@ export function useJournalApi(): UseJournalApiReturn {
   // ─────────────────────────────────────────────────────────────
 
   const retrySync = useCallback(async () => {
-    const { syncedCount, needsRefetch } = await processQueue();
+    const { syncedCount, needsRefetch } = await processQueue({ forceNow: true });
     if (syncedCount > 0 || needsRefetch) {
       // Refetch to get updated entries
       await fetchEntries();

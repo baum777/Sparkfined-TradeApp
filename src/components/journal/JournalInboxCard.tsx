@@ -58,6 +58,15 @@ export function JournalInboxCard({
           {entry.summary}
         </p>
 
+        {hasSyncError && (entry._syncLastError || entry._syncRetryCount !== undefined) && (
+          <div className="mb-3 text-xs text-destructive/90">
+            {entry._syncRetryCount !== undefined ? (
+              <span className="font-medium">Retry #{entry._syncRetryCount}:</span>
+            ) : null}{' '}
+            {entry._syncLastError ?? 'Sync failed'}
+          </div>
+        )}
+
         {/* Actions - ALWAYS visible */}
         <div className="flex items-center gap-2">
           <Button
