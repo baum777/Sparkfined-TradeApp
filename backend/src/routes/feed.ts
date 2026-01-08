@@ -30,7 +30,7 @@ export async function handleFeedOracle(req: ParsedRequest, res: ServerResponse):
       createdAt: daily.pinned.createdAt,
       tags: ['daily', 'takeaway'],
     },
-    ...daily.insights.slice(0, 10).map((i) => ({
+    ...daily.insights.slice(0, 10).map<OracleFeedItem>((i) => ({
       id: `oracle:${asset}:${i.id}`,
       asset,
       source: 'oracle',
