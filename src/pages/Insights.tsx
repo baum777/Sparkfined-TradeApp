@@ -25,7 +25,6 @@ import {
   OracleSkeleton,
   type OracleFilter,
 } from "@/components/oracle";
-import { GrokPulseLastRunWidget } from "@/components/grokPulse";
 import { UnifiedSignalsView } from "@/components/signals";
 import { toast } from "@/hooks/use-toast";
 import { usePageState } from "@/stubs/pageState";
@@ -333,10 +332,6 @@ export default function Insights() {
             </h1>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <GrokPulseLastRunWidget />
-          </div>
-
           <Card>
             <CardContent className="py-8 text-center">
               <p className="text-sm text-muted-foreground">
@@ -381,11 +376,6 @@ export default function Insights() {
           <Button variant="outline" size="sm" onClick={handleToggleStatusMode}>
             Status
           </Button>
-        </div>
-
-        {/* Grok Pulse Status Widget */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <GrokPulseLastRunWidget />
         </div>
 
         {/* Unified Signals View */}

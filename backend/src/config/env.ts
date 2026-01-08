@@ -50,6 +50,8 @@ const envSchema = z.object({
   GROK_PULSE_CRON_SECRET: z.string().optional(),
   MAX_DAILY_GROK_CALLS: z.string().transform(Number).default('900'),
   PULSE_TOKEN_ADDRESSES: z.string().default(''), // comma-separated
+  // Optional, best-effort ticker resolution map: "SOL=So111...,USDC=EPjF..."
+  PULSE_TICKER_MAP: z.string().optional(),
   
   // Vercel KV
   KV_REST_API_URL: z.string().optional(),

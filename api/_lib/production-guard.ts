@@ -8,7 +8,6 @@ const CORE_BLOCKLIST = [
   /^\/api\/alerts(\/|$)/,
   /^\/api\/journal(\/|$)/,
   /^\/api\/oracle(\/|$)/,
-  /^\/api\/grok-pulse(\/|$)/,
   /^\/api\/reasoning(\/|$)/,
   /^\/api\/chart(\/|$)/,
   /^\/api\/usage(\/|$)/,

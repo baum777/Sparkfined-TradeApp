@@ -4,7 +4,9 @@ import { sendJson, setCacheHeaders } from '../http/response.js';
 import { validateQuery } from '../validation/validate.js';
 import { feedOracleQuerySchema, feedPulseQuerySchema } from '../validation/schemas.js';
 import { oracleGetDaily } from '../domain/oracle/repo.js';
-import { getPulseSnapshot } from '../domain/grokPulse/kv.js';
+import { notFound, validationError } from '../http/error.js';
+import { classifyPulseAsset, resolvePulseAsset } from '../domain/grokPulse/assetResolver.js';
+import { getPulseFeedSnapshot } from '../domain/grokPulse/grokPulseAdapter.js';
 import type { OracleFeedItem, PulseFeed } from '../domain/feed/types.js';
  
 /**
@@ -49,14 +51,18 @@ export async function handleFeedPulse(req: ParsedRequest, res: ServerResponse): 
   const query = validateQuery(feedPulseQuerySchema, req.query);
   const asset = query.asset;
  
-  const snapshot = await getPulseSnapshot(asset);
- 
-  const payload: PulseFeed = {
-    asset,
-    source: 'pulse',
-    snapshot: snapshot ?? null,
-    updatedAt: new Date().toISOString(),
-  };
+  const classified = classifyPulseAsset(asset);
+  if (!classified) {
+    throw validationError('Invalid asset input. Expected ticker-like symbol or Solana-like address.');
+  }
+
+  const resolved = resolvePulseAsset(asset);
+  if (!resolved) {
+    // Well-formed but not resolvable (ticker)
+    throw notFound('Asset symbol could not be resolved');
+  }
+
+  const payload: PulseFeed = await getPulseFeedSnapshot(resolved);
  
   // Pulse is near-real-time; avoid caching.
   setCacheHeaders(res, { noStore: true });

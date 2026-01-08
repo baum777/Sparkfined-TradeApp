@@ -1,39 +1,37 @@
 /**
- * Grok Pulse API Client
- * Fetches sentiment snapshot, history, and last-run metadata
+ * Pulse Feed API Client (Theme Group 6)
+ *
+ * Canonical endpoint:
+ * - GET /api/feed/pulse?asset=<ticker|address>
+ *
+ * NOTE: History is a stub for now; the response shape is future-proof.
  */
 
-import type {
-  GrokSentimentSnapshot,
-  PulseHistoryPoint,
-  PulseMetaLastRun,
-} from '../../../shared/contracts/grokPulse';
+import type { GrokSentimentSnapshot, PulseHistoryPoint } from '../../../shared/contracts/grokPulse';
 import { apiClient } from '@/services/api/client';
 
-/**
- * Fetch sentiment snapshot for a token address
- */
-export async function fetchGrokSnapshot(address: string): Promise<GrokSentimentSnapshot | null> {
-  const payload = await apiClient.get<{ snapshot: GrokSentimentSnapshot }>(
-    `/grok-pulse/snapshot/${encodeURIComponent(address)}`
-  );
-  return payload.snapshot;
+export interface PulseFeedResponse {
+  assetResolved: {
+    input: string;
+    kind: 'ticker' | 'address';
+    address: string;
+    symbol?: string;
+  };
+  snapshot: GrokSentimentSnapshot | null;
+  history: PulseHistoryPoint[];
+  updatedAt: string;
 }
 
-/**
- * Fetch score history for sparkline visualization
- */
-export async function fetchGrokHistory(address: string): Promise<PulseHistoryPoint[]> {
-  const payload = await apiClient.get<{ history: PulseHistoryPoint[] }>(
-    `/grok-pulse/history/${encodeURIComponent(address)}`
-  );
-  return payload.history;
+export async function fetchPulseFeed(asset: string): Promise<PulseFeedResponse> {
+  return apiClient.get<PulseFeedResponse>(`/feed/pulse?asset=${encodeURIComponent(asset)}`);
 }
 
-/**
- * Fetch last run metadata
- */
-export async function fetchGrokLastRun(): Promise<PulseMetaLastRun | null> {
-  const payload = await apiClient.get<{ lastRun: PulseMetaLastRun | null }>(`/grok-pulse/meta/last-run`);
-  return payload.lastRun;
+export async function fetchGrokSnapshot(asset: string): Promise<GrokSentimentSnapshot | null> {
+  const payload = await fetchPulseFeed(asset);
+  return payload.snapshot ?? null;
+}
+
+export async function fetchGrokHistory(asset: string): Promise<PulseHistoryPoint[]> {
+  const payload = await fetchPulseFeed(asset);
+  return payload.history ?? [];
 }

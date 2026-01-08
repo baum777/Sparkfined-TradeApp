@@ -5,7 +5,6 @@ export * from './health.js';
 export * from './oracle.js';
 export * from './ta.js';
 export * from './reasoning/index.js';
-export * from './grokPulse.js';
 export * from './usage.js';
 export * from './feed.js';
 export * from './signals.js';

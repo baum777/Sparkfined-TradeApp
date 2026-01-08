@@ -43,12 +43,23 @@ beforeAll(() => {
   resetConfigCache();
   resetDatabase();
   
-  // Initialize test database
-  initDatabase(TEST_DB_PATH);
-  runMigrations(join(process.cwd(), 'migrations'));
+  // Initialize test database.
+  // In some CI/sandboxed environments, native bindings (better-sqlite3) may be unavailable.
+  // In that case we skip DB-backed test setup to allow non-DB suites (e.g. routing/contract)
+  // to execute.
+  try {
+    initDatabase(TEST_DB_PATH);
+    runMigrations(join(process.cwd(), 'migrations'));
+    (globalThis as any).__DB_READY__ = true;
+  } catch (err) {
+    (globalThis as any).__DB_READY__ = false;
+    // eslint-disable-next-line no-console
+    console.warn('[tests/setup] DB init skipped (native bindings unavailable):', String(err));
+  }
 });
 
 beforeEach(() => {
+  if (!(globalThis as any).__DB_READY__) return;
   // Clear all tables before each test
   // Order matters for foreign key constraints
   const db = getDatabase();
@@ -71,6 +82,8 @@ beforeEach(() => {
 });
 
 afterAll(() => {
-  closeDatabase();
+  if ((globalThis as any).__DB_READY__) {
+    closeDatabase();
+  }
   cleanupTestDb();
 });

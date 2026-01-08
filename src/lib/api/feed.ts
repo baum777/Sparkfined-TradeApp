@@ -3,6 +3,60 @@ import type { FeedCard, UnifiedSignalsResponse, FeedFilter, FeedSort } from "@/t
 
 const CACHE_PREFIX = "cache:feed:";
 
+function mapPulseImpact(snapshot: any): FeedCard["impact"] {
+  const sev = typeof snapshot?.severity === "string" ? snapshot.severity.toUpperCase() : "";
+  if (sev === "CRITICAL") return "critical";
+  if (sev === "HIGH") return "high";
+  if (sev === "MEDIUM") return "medium";
+  if (sev === "LOW") return "low";
+
+  const score = typeof snapshot?.score === "number" ? snapshot.score : 0;
+  const abs = Math.abs(score);
+  if (abs >= 80) return "critical";
+  if (abs >= 60) return "high";
+  if (abs >= 35) return "medium";
+  return "low";
+}
+
+function mapPulseCard(assetId: string, pulsePayload: any): FeedCard[] {
+  const snapshot = pulsePayload?.snapshot ?? null;
+  if (!snapshot) return [];
+
+  const ts = typeof snapshot.ts === "number" ? snapshot.ts : Date.now();
+  const ageSec = Math.max(0, Math.floor((Date.now() - ts) / 1000));
+
+  const freshness: FeedCard["freshness"] = {
+    status: ageSec < 5 * 60 ? "fresh" : ageSec < 30 * 60 ? "soft_stale" : "hard_stale",
+    ageSec,
+  };
+
+  const titleBase =
+    pulsePayload?.assetResolved?.symbol ||
+    (typeof pulsePayload?.assetResolved?.address === "string"
+      ? pulsePayload.assetResolved.address.slice(0, 6)
+      : assetId);
+
+  return [
+    {
+      id: `pulse:${titleBase}:${ts}`,
+      kind: "pulse",
+      scope: "market",
+      title: `Pulse: ${titleBase}`,
+      why: snapshot.one_liner || snapshot.sentiment_term || "Pulse snapshot",
+      impact: mapPulseImpact(snapshot),
+      asOf: new Date(ts).toISOString(),
+      freshness,
+      confidence: typeof snapshot.confidence === "number" ? snapshot.confidence : 0.5,
+      assetId,
+      facts: [
+        { label: "Score", value: typeof snapshot.score === "number" ? String(snapshot.score) : "—" },
+        { label: "Label", value: snapshot.label ? String(snapshot.label) : "—" },
+        { label: "CTA", value: snapshot.cta ? String(snapshot.cta) : "—" },
+      ],
+    },
+  ];
+}
+
 // Storage wrapper for offline persistence
 function getCache<T>(key: string): T | null {
   try {
@@ -42,7 +96,8 @@ export async function fetchPulseFeed(assetId: string): Promise<FeedCard[]> {
   const cacheKey = `${CACHE_PREFIX}pulse:${assetId}`;
   
   try {
-    const data = await apiClient.get<FeedCard[]>(`/feed/pulse?asset=${encodeURIComponent(assetId)}`);
+    const payload = await apiClient.get<any>(`/feed/pulse?asset=${encodeURIComponent(assetId)}`);
+    const data = mapPulseCard(assetId, payload);
     setCache(cacheKey, data);
     return data;
   } catch (error) {

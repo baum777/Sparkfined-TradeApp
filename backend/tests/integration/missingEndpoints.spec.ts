@@ -51,8 +51,42 @@ describe('Theme Group 5: Missing/Expected Endpoints (Feeds & Signals)', () => {
     expect(res.status).toBe(200);
     expect(body).toHaveProperty('data');
     expect(body).toHaveProperty('status', 200);
-    expect(body.data).toHaveProperty('asset');
-    expect(body.data).toHaveProperty('source', 'pulse');
+    expect(body.data).toHaveProperty('assetResolved');
+    expect(body.data.assetResolved).toHaveProperty('kind', 'address');
+    expect(body.data).toHaveProperty('snapshot');
+    expect(body.data).toHaveProperty('history');
+    expect(Array.isArray(body.data.history)).toBe(true);
+  });
+
+  it('GET /api/feed/pulse resolves ticker-like assets', async () => {
+    const res = await fetch(`${baseUrl}/api/feed/pulse?asset=SOL`);
+    const body = await readJson(res);
+
+    expect(res.status).toBe(200);
+    expect(body).toHaveProperty('data');
+    expect(body).toHaveProperty('status', 200);
+    expect(body.data).toHaveProperty('assetResolved');
+    expect(body.data.assetResolved).toHaveProperty('kind', 'ticker');
+    expect(body.data.assetResolved).toHaveProperty('symbol', 'SOL');
+    expect(typeof body.data.assetResolved.address).toBe('string');
+  });
+
+  it('GET /api/feed/pulse invalid asset returns canonical validation error', async () => {
+    const res = await fetch(`${baseUrl}/api/feed/pulse?asset=not$valid`);
+    const body = await readJson(res);
+
+    expect(res.status).toBe(400);
+    expect(body).toHaveProperty('error');
+    expect(body.error).toHaveProperty('code', 'VALIDATION_ERROR');
+  });
+
+  it('GET /api/feed/pulse unknown ticker returns NOT_FOUND', async () => {
+    const res = await fetch(`${baseUrl}/api/feed/pulse?asset=ZZZZZZ`);
+    const body = await readJson(res);
+
+    expect(res.status).toBe(404);
+    expect(body).toHaveProperty('error');
+    expect(body.error).toHaveProperty('code', 'NOT_FOUND');
   });
  
   it('GET /api/signals/unified exists and returns canonical envelope', async () => {
