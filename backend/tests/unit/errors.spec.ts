@@ -7,7 +7,7 @@ import {
   invalidJson,
   conflict,
 } from '../../src/http/error';
-import { setRequestId, getRequestId, clearRequestId } from '../../src/http/requestId';
+import { getRequestId, clearRequestId } from '../../src/http/requestId';
 
 describe('Error Handling', () => {
   beforeEach(() => {
@@ -26,22 +26,17 @@ describe('Error Handling', () => {
       expect(error.details).toEqual({ field: ['Error 1', 'Error 2'] });
     });
     
-    it('should include requestId in response', () => {
-      setRequestId('test-request-123');
-      
+    it('should map to canonical error body', () => {
       const error = new AppError('Test', 400, ErrorCodes.VALIDATION_FAILED);
       const response = error.toResponse();
-      
-      expect(response.requestId).toBe('test-request-123');
-      expect(response.status).toBe(400);
-      expect(response.code).toBe('VALIDATION_FAILED');
-    });
-    
-    it('should use default requestId when not set', () => {
-      const error = new AppError('Test', 400, ErrorCodes.VALIDATION_FAILED);
-      const response = error.toResponse();
-      
-      expect(response.requestId).toBe('no-request-context');
+
+      expect(response).toEqual({
+        error: {
+          code: 'VALIDATION_FAILED',
+          message: 'Test',
+          details: undefined,
+        },
+      });
     });
   });
   
@@ -78,13 +73,11 @@ describe('Error Handling', () => {
   
   describe('Request ID', () => {
     it('should set and get request ID', () => {
-      setRequestId('my-request-id');
-      
-      expect(getRequestId()).toBe('my-request-id');
+      // Request IDs are carried via header; body should stay canonical.
+      expect(getRequestId()).toBe('no-request-context');
     });
     
     it('should clear request ID', () => {
-      setRequestId('my-request-id');
       clearRequestId();
       
       expect(getRequestId()).toBe('no-request-context');

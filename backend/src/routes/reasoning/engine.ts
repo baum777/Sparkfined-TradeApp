@@ -28,7 +28,6 @@ import {
   tradeReviewInsightSchema,
 } from './schemas.js';
 import { buildCriticPrompt, buildGeneratorPrompt } from './prompts.js';
-import { deterministicCritic, deterministicGenerate } from './deterministic.js';
 
 type AnyInsight = TradeReviewInsight | SessionReviewInsight | BoardScenariosInsight;
 
@@ -178,7 +177,6 @@ async function runCritic(input: {
   model: string;
   userId?: string;
 }): Promise<{ report: InsightCriticReport; modelUsed: string }> {
-  const env = getEnv();
   const schemaJson = criticOutputSchemaJson();
 
   try {

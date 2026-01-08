@@ -29,29 +29,27 @@ export async function handleUsageSummary(req: ParsedRequest, res: ServerResponse
 
   const avgLatencyMs = totalLatencyCount > 0 ? totalLatencySum / totalLatencyCount : 0;
 
+  void req;
   sendJson(res, {
-    status: 'success',
-    data: {
-      today: {
-        openai: {
-            journal: openaiJournal,
-            insights: openaiInsights,
-            charts: openaiCharts
-        },
-        deepseek: {
-            reasoning: deepseekReasoning,
-            reasoning_critic: deepseekCritic
-        },
-        grok: {
-            grok_pulse: grokPulse
-        }
+    today: {
+      openai: {
+        journal: openaiJournal,
+        insights: openaiInsights,
+        charts: openaiCharts,
       },
-      totals: {
-        calls: totalCalls,
-        errors: totalErrors,
-        avgLatencyMs
+      deepseek: {
+        reasoning: deepseekReasoning,
+        reasoning_critic: deepseekCritic,
       },
-      lastError: null
-    }
+      grok: {
+        grok_pulse: grokPulse,
+      },
+    },
+    totals: {
+      calls: totalCalls,
+      errors: totalErrors,
+      avgLatencyMs,
+    },
+    lastError: null,
   });
 }

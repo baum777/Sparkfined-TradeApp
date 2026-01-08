@@ -94,9 +94,10 @@ export function runMigrations(migrationsDir: string): void {
 // CLI entry point
 if (import.meta.url === `file://${process.argv[1]}`) {
   const { initDatabase } = await import('./sqlite.js');
-  const { loadEnv } = await import('../config/env.js');
+  const { loadEnv, getEnv } = await import('../config/env.js');
   
-  const env = loadEnv();
+  loadEnv();
+  const env = getEnv();
   const dbPath = env.DATABASE_URL.replace(/^sqlite:/, '');
   
   initDatabase(dbPath);

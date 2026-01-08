@@ -5,7 +5,7 @@
  * (Aktuell als Stub für zukünftige Implementierung)
  */
 
-import { apiClient, type ApiResponse } from '../api/client';
+import { apiClient } from '../api/client';
 
 export interface User {
   id: string;
@@ -70,33 +70,27 @@ class AuthService {
   /**
    * Registriert einen neuen Benutzer
    */
-  async register(data: RegisterData): Promise<ApiResponse<AuthResponse>> {
-    const response = await apiClient.post<AuthResponse>(
+  async register(data: RegisterData): Promise<AuthResponse> {
+    const authData = await apiClient.post<AuthResponse>(
       `${this.basePath}/register`,
       data
     );
 
-    if (response.data) {
-      this.setSession(response.data);
-    }
-
-    return response;
+    this.setSession(authData);
+    return authData;
   }
 
   /**
    * Meldet einen Benutzer an
    */
-  async login(credentials: LoginCredentials): Promise<ApiResponse<AuthResponse>> {
-    const response = await apiClient.post<AuthResponse>(
+  async login(credentials: LoginCredentials): Promise<AuthResponse> {
+    const authData = await apiClient.post<AuthResponse>(
       `${this.basePath}/login`,
       credentials
     );
 
-    if (response.data) {
-      this.setSession(response.data);
-    }
-
-    return response;
+    this.setSession(authData);
+    return authData;
   }
 
   /**
@@ -113,37 +107,29 @@ class AuthService {
   /**
    * Holt die Daten des aktuell angemeldeten Benutzers
    */
-  async getCurrentUser(): Promise<ApiResponse<User>> {
+  async getCurrentUser(): Promise<User> {
     if (this.currentUser) {
-      return {
-        data: this.currentUser,
-        status: 200,
-      };
+      return this.currentUser;
     }
 
-    const response = await apiClient.get<User>(`${this.basePath}/me`);
+    const user = await apiClient.get<User>(`${this.basePath}/me`);
     
-    if (response.data) {
-      this.currentUser = response.data;
-    }
+    this.currentUser = user;
 
-    return response;
+    return user;
   }
 
   /**
    * Aktualisiert das Benutzerprofil
    */
-  async updateProfile(data: Partial<User>): Promise<ApiResponse<User>> {
-    const response = await apiClient.patch<User>(
+  async updateProfile(data: Partial<User>): Promise<User> {
+    const user = await apiClient.patch<User>(
       `${this.basePath}/profile`,
       data
     );
 
-    if (response.data) {
-      this.currentUser = response.data;
-    }
-
-    return response;
+    this.currentUser = user;
+    return user;
   }
 
   /**
@@ -151,17 +137,14 @@ class AuthService {
    */
   async updatePreferences(
     preferences: Partial<UserPreferences>
-  ): Promise<ApiResponse<User>> {
-    const response = await apiClient.patch<User>(
+  ): Promise<User> {
+    const user = await apiClient.patch<User>(
       `${this.basePath}/preferences`,
       preferences
     );
 
-    if (response.data) {
-      this.currentUser = response.data;
-    }
-
-    return response;
+    this.currentUser = user;
+    return user;
   }
 
   /**
@@ -170,8 +153,8 @@ class AuthService {
   async changePassword(
     currentPassword: string,
     newPassword: string
-  ): Promise<ApiResponse<void>> {
-    return apiClient.post<void>(`${this.basePath}/change-password`, {
+  ): Promise<void> {
+    await apiClient.post<void>(`${this.basePath}/change-password`, {
       currentPassword,
       newPassword,
     });
@@ -180,8 +163,8 @@ class AuthService {
   /**
    * Fordert einen Passwort-Reset an
    */
-  async requestPasswordReset(email: string): Promise<ApiResponse<void>> {
-    return apiClient.post<void>(`${this.basePath}/forgot-password`, { email });
+  async requestPasswordReset(email: string): Promise<void> {
+    await apiClient.post<void>(`${this.basePath}/forgot-password`, { email });
   }
 
   /**
@@ -190,8 +173,8 @@ class AuthService {
   async resetPassword(
     token: string,
     newPassword: string
-  ): Promise<ApiResponse<void>> {
-    return apiClient.post<void>(`${this.basePath}/reset-password`, {
+  ): Promise<void> {
+    await apiClient.post<void>(`${this.basePath}/reset-password`, {
       token,
       newPassword,
     });
@@ -207,17 +190,14 @@ class AuthService {
       throw new Error('No refresh token available');
     }
 
-    const response = await apiClient.post<AuthTokens>(
+    const tokens = await apiClient.post<AuthTokens>(
       `${this.basePath}/refresh`,
       { refreshToken }
     );
 
-    if (response.data) {
-      this.storeTokens(response.data);
-      this.scheduleTokenRefresh(response.data.expiresIn);
-    }
-
-    return response.data;
+    this.storeTokens(tokens);
+    this.scheduleTokenRefresh(tokens.expiresIn);
+    return tokens;
   }
 
   /**

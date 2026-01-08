@@ -34,10 +34,10 @@ export function sendJson<T>(
 }
 
 export function sendNoContent(res: ServerResponse): void {
-  res.writeHead(204, {
-    'x-request-id': getRequestId(),
-  });
-  res.end();
+  // Canonical envelope even for "no content" semantics.
+  // Note: HTTP 204 traditionally has an empty body; we keep status=204 but still return the envelope
+  // to avoid frontend/backend shape drift.
+  sendJson(res, null, 204);
 }
 
 export function sendCreated<T>(res: ServerResponse, data: T, message?: string): void {

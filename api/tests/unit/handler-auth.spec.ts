@@ -48,7 +48,7 @@ describe('Handler Auth Integration', () => {
     
     // Check error code in JSON response
     const jsonCall = (res.json as any).mock.calls[0][0];
-    expect(jsonCall.code).toBe(ErrorCodes.UNAUTHORIZED);
+    expect(jsonCall.error.code).toBe(ErrorCodes.UNAUTHORIZED);
   });
 
   it('allows public access (auth none)', async () => {

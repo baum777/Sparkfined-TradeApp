@@ -26,9 +26,9 @@ export async function fetchOracleFeed(assetId: string): Promise<FeedCard[]> {
   const cacheKey = `${CACHE_PREFIX}oracle:${assetId}`;
   
   try {
-    const response = await apiClient.get<FeedCard[]>(`/feed/oracle?asset=${encodeURIComponent(assetId)}`);
-    setCache(cacheKey, response.data);
-    return response.data;
+    const data = await apiClient.get<FeedCard[]>(`/feed/oracle?asset=${encodeURIComponent(assetId)}`);
+    setCache(cacheKey, data);
+    return data;
   } catch (error) {
     // Try returning cached data on error
     const cached = getCache<FeedCard[]>(cacheKey);
@@ -42,9 +42,9 @@ export async function fetchPulseFeed(assetId: string): Promise<FeedCard[]> {
   const cacheKey = `${CACHE_PREFIX}pulse:${assetId}`;
   
   try {
-    const response = await apiClient.get<FeedCard[]>(`/feed/pulse?asset=${encodeURIComponent(assetId)}`);
-    setCache(cacheKey, response.data);
-    return response.data;
+    const data = await apiClient.get<FeedCard[]>(`/feed/pulse?asset=${encodeURIComponent(assetId)}`);
+    setCache(cacheKey, data);
+    return data;
   } catch (error) {
     const cached = getCache<FeedCard[]>(cacheKey);
     if (cached) return cached;
@@ -58,8 +58,8 @@ export async function fetchDailyBias(): Promise<FeedCard | null> {
   
   try {
     // Support both { card: FeedCard } and direct FeedCard response
-    const response = await apiClient.get<FeedCard | { card: FeedCard; asOf: string }>(`/market/daily-bias`);
-    const data = 'card' in response.data ? response.data.card : response.data;
+    const payload = await apiClient.get<FeedCard | { card: FeedCard; asOf: string }>(`/market/daily-bias`);
+    const data = 'card' in payload ? payload.card : payload;
     setCache(cacheKey, data);
     return data;
   } catch (error) {
@@ -77,11 +77,11 @@ export async function fetchUnifiedSignals(
   const cacheKey = `${CACHE_PREFIX}signals:unified:${filter}:${sort}`;
   
   try {
-    const response = await apiClient.get<UnifiedSignalsResponse>(
+    const data = await apiClient.get<UnifiedSignalsResponse>(
       `/signals/unified?filter=${filter}&sort=${sort}`
     );
-    setCache(cacheKey, response.data);
-    return response.data;
+    setCache(cacheKey, data);
+    return data;
   } catch (error) {
     const cached = getCache<UnifiedSignalsResponse>(cacheKey);
     if (cached) return cached;

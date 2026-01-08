@@ -1,17 +1,19 @@
 import type { ServerResponse } from 'http';
-import { getRequestId } from './requestId.js';
 
 /**
  * Standardized Error Response
- * Matches API_SPEC.md ErrorResponse contract
+ * Canonical contract:
+ *   { error: { code: string, message: string, details?: object } }
+ *
+ * HTTP status code remains authoritative for semantics.
  */
 
-export interface ErrorResponse {
-  status: number;
-  message: string;
-  code: string;
-  requestId: string;
-  details?: Record<string, string[]>;
+export interface ErrorResponseBody {
+  error: {
+    code: string;
+    message: string;
+    details?: Record<string, string[]>;
+  };
 }
 
 // Standard error codes
@@ -19,6 +21,8 @@ export const ErrorCodes = {
   // General
   INTERNAL_ERROR: 'INTERNAL_ERROR',
   NOT_FOUND: 'NOT_FOUND',
+  BAD_REQUEST: 'BAD_REQUEST',
+  UNAUTHORIZED: 'UNAUTHORIZED',
   INVALID_JSON: 'INVALID_JSON',
   VALIDATION_FAILED: 'VALIDATION_FAILED',
   INVALID_QUERY: 'INVALID_QUERY',
@@ -58,13 +62,13 @@ export class AppError extends Error {
     this.details = details;
   }
 
-  toResponse(): ErrorResponse {
+  toResponse(): ErrorResponseBody {
     return {
-      status: this.status,
-      message: this.message,
-      code: this.code,
-      requestId: getRequestId(),
-      details: this.details,
+      error: {
+        code: this.code,
+        message: this.message,
+        details: this.details,
+      },
     };
   }
 }
@@ -74,11 +78,19 @@ export function notFound(message: string, code: ErrorCode = ErrorCodes.NOT_FOUND
   return new AppError(message, 404, code);
 }
 
+export function unauthorized(message = 'Unauthorized'): AppError {
+  return new AppError(message, 401, ErrorCodes.UNAUTHORIZED);
+}
+
 export function badRequest(
   message: string,
   details?: Record<string, string[]>
 ): AppError {
   return new AppError(message, 400, ErrorCodes.VALIDATION_FAILED, details);
+}
+
+export function badRequestCode(message: string, code: ErrorCode, details?: Record<string, string[]>): AppError {
+  return new AppError(message, 400, code, details);
 }
 
 export function invalidJson(): AppError {
@@ -105,7 +117,6 @@ export function sendError(res: ServerResponse, error: AppError): void {
   const body = JSON.stringify(error.toResponse());
   res.writeHead(error.status, {
     'Content-Type': 'application/json',
-    'x-request-id': getRequestId(),
   });
   res.end(body);
 }
