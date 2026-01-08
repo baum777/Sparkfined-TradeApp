@@ -78,10 +78,8 @@ function saveWatchlist(items: WatchItemStub[]) {
 }
 
 export default function Research() {
-  const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const { assetId } = useParams<{ assetId?: string }>();
-  const isMobile = useIsMobile();
 
   // Canonical normalization: ensure view=chart
   const view = searchParams.get("view");
@@ -97,6 +95,17 @@ export default function Research() {
 
     return <Navigate to={`${basePath}?${params.toString()}`} replace />;
   }
+
+  // Render workspace only once canonical URL state is present.
+  // This avoids conditional hook execution across renders (Rules of Hooks).
+  return <ResearchWorkspace />;
+}
+
+function ResearchWorkspace() {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { assetId } = useParams<{ assetId?: string }>();
+  const isMobile = useIsMobile();
   
   const {
     pageState,
