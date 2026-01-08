@@ -8,6 +8,7 @@ import { getRequestIdFromHeader, setCurrentRequestId, clearRequestId } from './r
 import { handleError, methodNotAllowed } from './errors';
 import { logger } from './logger';
 import { verifyJwtFromAuthHeader } from './auth/jwt';
+import { maybeBlockInProduction } from './production-guard';
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
@@ -56,6 +57,11 @@ export function createHandler(config: RouteConfig) {
     // Handle preflight
     if (req.method === 'OPTIONS') {
       res.status(204).end();
+      return;
+    }
+    
+    if (maybeBlockInProduction(req, res)) {
+      clearRequestId();
       return;
     }
     

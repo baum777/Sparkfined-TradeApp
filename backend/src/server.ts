@@ -10,6 +10,7 @@ import { oracleClearOldDaily } from './domain/oracle/repo.js';
 import { taCacheCleanup } from './domain/ta/cacheRepo.js';
 import { createApp } from './app.js';
 import { logger } from './observability/logger.js';
+import { startScheduledJobs } from './jobs/scheduler.js';
 
 /**
  * Backend Server Entry Point
@@ -29,6 +30,9 @@ runMigrations(migrationsDir);
 
 // Create router
 const app = createApp();
+
+// Start scheduled jobs (cron replacements)
+const scheduledJobs = startScheduledJobs();
 
 // Create HTTP server
 const server = createServer((req, res) => {
@@ -78,6 +82,7 @@ function shutdown(): void {
   logger.info('Shutting down server...');
   
   clearInterval(cleanupInterval);
+  scheduledJobs.stop();
   
   server.close(() => {
     closeDatabase();
