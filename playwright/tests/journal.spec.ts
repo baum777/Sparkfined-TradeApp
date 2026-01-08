@@ -12,7 +12,7 @@ test.describe('Journal Page', () => {
   });
 
   test('sollte Journal-Seite korrekt laden', async ({ page }) => {
-    await expect(page).toHaveURL('/journal');
+    await expect(page).toHaveURL(/\/journal/);
     
     // Header sollte vorhanden sein
     const header = page.locator('header');
@@ -40,7 +40,7 @@ test.describe('Journal Navigation', () => {
   test('sollte von Dashboard zu Journal navigieren können', async ({ page }) => {
     await page.goto('/');
     await page.click('[data-testid="tab-journal"]');
-    await expect(page).toHaveURL('/journal');
+    await expect(page).toHaveURL(/\/journal/);
   });
 
   test('sollte aktiven Nav-Status zeigen', async ({ page }) => {

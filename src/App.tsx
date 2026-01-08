@@ -87,6 +87,7 @@ function JournalReviewRedirect() {
   const [searchParams] = useSearchParams();
   const params = new URLSearchParams(searchParams);
   params.set("mode", "inbox");
+  if (!params.has("view")) params.set("view", "pending");
   return <Navigate to={preserveSearchTo("/journal", params)} replace />;
 }
 
@@ -94,6 +95,7 @@ function JournalInsightsRedirect() {
   const [searchParams] = useSearchParams();
   const params = new URLSearchParams(searchParams);
   params.set("mode", "learn");
+  if (!params.has("view")) params.set("view", "pending");
   return <Navigate to={preserveSearchTo("/journal", params)} replace />;
 }
 

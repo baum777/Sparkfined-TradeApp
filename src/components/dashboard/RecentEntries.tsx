@@ -64,7 +64,7 @@ export function RecentEntries({ entries }: RecentEntriesProps) {
             return (
               <button
                 key={entry.id}
-                onClick={() => navigate(`/journal?entry=${entry.id}`)}
+                onClick={() => navigate(`/journal/${encodeURIComponent(entry.id)}`)}
                 className="w-full flex items-center justify-between gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-lg bg-background/50 border border-border/30 hover:bg-background/80 hover:border-border/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-background transition-colors text-left"
                 aria-label={`View entry: ${entry.title}`}
               >
