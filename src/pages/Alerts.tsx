@@ -1,9 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { PageContainer } from "@/components/layout/PageContainer";
+import { ScreenState } from "@/components/layout/ScreenState";
 import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import {
   AlertsHeader,
@@ -112,7 +111,7 @@ export default function Alerts() {
   if (pageState.isLoading) {
     return (
       <PageContainer testId="page-alerts">
-        <AlertsSkeleton />
+        <ScreenState status="loading" loadingVariant={<AlertsSkeleton />} />
       </PageContainer>
     );
   }
@@ -121,27 +120,12 @@ export default function Alerts() {
   if (pageState.isError) {
     return (
       <PageContainer testId="page-alerts">
-        <div className="space-y-6">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">
-              Alerts
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Track levels and signals without noise.
-            </p>
-          </div>
-
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription className="flex items-center justify-between">
-              <span>Failed to load alerts. Please try again.</span>
-              <Button variant="outline" size="sm" onClick={handleRetry}>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Retry
-              </Button>
-            </AlertDescription>
-          </Alert>
-        </div>
+        <ScreenState
+          status="error"
+          onRetry={handleRetry}
+          errorTitle="Failed to load Alerts"
+          errorMessage="Please try again."
+        />
       </PageContainer>
     );
   }

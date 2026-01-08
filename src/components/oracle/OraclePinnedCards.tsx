@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Sparkles, TrendingUp, FileText, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { routeHelpers } from "@/routes/routes";
 
 interface TodayTakeawayCardProps {
   isRead: boolean;
@@ -79,7 +80,7 @@ export function TodayTakeawayCard({ isRead, onMarkRead }: TodayTakeawayCardProps
           {/* Actions */}
           <div className="flex flex-wrap items-center gap-2 pt-1">
             <Button variant="default" size="sm" asChild>
-              <Link to="/research?q=BTC">
+              <Link to={routeHelpers.research({ q: "BTC" })}>
                 <TrendingUp className="mr-2 h-4 w-4" />
                 Open chart
               </Link>

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { PageContainer } from "@/components/layout/PageContainer";
-import { ErrorBanner } from "@/components/layout/PageStates";
+import { ScreenState } from "@/components/layout/ScreenState";
 import {
   SettingsSectionCard,
   SettingsRow,
@@ -390,7 +390,7 @@ export default function Settings() {
   if (pageState.state === "loading") {
     return (
       <PageContainer testId="page-settings">
-        <SettingsSkeleton />
+        <ScreenState status="loading" loadingVariant={<SettingsSkeleton />} />
       </PageContainer>
     );
   }
@@ -399,19 +399,15 @@ export default function Settings() {
   if (pageState.state === "error") {
     return (
       <PageContainer testId="page-settings">
-        <div className="space-y-6">
-          <div className="flex flex-col gap-1">
-            <h1 className="text-2xl font-bold text-foreground">Settings</h1>
-            <p className="text-sm text-muted-foreground">Control Center • Tier • Budgets • Counters</p>
-          </div>
-          <ErrorBanner
-            message="Failed to load settings"
-            onRetry={() => {
-              pageState.setState("loading");
-              setTimeout(() => pageState.setState("ready"), 1000);
-            }}
-          />
-        </div>
+        <ScreenState
+          status="error"
+          errorTitle="Failed to load Settings"
+          errorMessage="Please try again."
+          onRetry={() => {
+            pageState.setState("loading");
+            setTimeout(() => pageState.setState("ready"), 1000);
+          }}
+        />
       </PageContainer>
     );
   }

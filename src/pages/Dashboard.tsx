@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { PageContainer } from "@/components/layout/PageContainer";
-import { ErrorBanner } from "@/components/layout/PageStates";
+import { ScreenState } from "@/components/layout/ScreenState";
 import { useDashboardStub, useOracleStub, useAlertsStub } from "@/stubs/hooks";
 import { useJournalApi } from "@/services/journal";
 import {
@@ -135,7 +135,7 @@ export default function Dashboard() {
   if (pageState.isLoading) {
     return (
       <PageContainer testId="page-dashboard">
-        <DashboardSkeleton />
+        <ScreenState status="loading" loadingVariant={<DashboardSkeleton />} />
       </PageContainer>
     );
   }
@@ -151,9 +151,11 @@ export default function Dashboard() {
             streak="--" 
           />
           <div data-testid="dashboard-error-banner">
-            <ErrorBanner
-              message="Failed to load dashboard. Please check your connection and try again."
+            <ScreenState
+              status="error"
               onRetry={pageState.retry}
+              errorTitle="Failed to load Dashboard"
+              errorMessage="Please check your connection and try again."
             />
           </div>
           {/* Show cached data if available */}

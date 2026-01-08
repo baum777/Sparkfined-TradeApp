@@ -28,15 +28,16 @@ export interface SecondaryRoute {
 
 // Ticker-like input: ^[A-Z0-9._-]{1,15}$ (case-insensitive)
 const TICKER_REGEX = /^[A-Z0-9._-]{1,15}$/i;
-// Solana mint/base58: 32–44 chars and matches base58 alphabet (no 0, O, I, l)
-const SOLANA_BASE58_REGEX = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+// Solana-like: length gate only (32–44). Do NOT over-parse.
+const SOLANA_LIKE_LENGTH_REGEX = /^\S{32,44}$/;
 
 export function isValidTickerLike(value: string): boolean {
   return TICKER_REGEX.test(value.trim());
 }
 
 export function isValidSolanaBase58(value: string): boolean {
-  return SOLANA_BASE58_REGEX.test(value.trim());
+  // Length gate only; avoids alphabet-level validation.
+  return SOLANA_LIKE_LENGTH_REGEX.test(value.trim());
 }
 
 export function isValidChartQuery(value: string): boolean {
@@ -73,7 +74,7 @@ export const primaryTabs: PrimaryTab[] = [
   {
     key: "journal",
     label: "Journal",
-    route: "/journal",
+    route: "/journal?view=pending",
     tabTestId: "tab-journal",
     pageTestId: "page-journal",
     showInMobileNav: true,
@@ -137,13 +138,15 @@ export const routeHelpers = {
   },
   researchAsset: (assetId: string) => `/research/${encodePathSegment(assetId)}`,
   
-  // Journal with mode params
-  journal: (opts?: { mode?: "timeline" | "inbox" | "learn" | "playbook"; entry?: string }) => {
+  // Journal list (canonical: detail is always /journal/:entryId; list state is query-only)
+  journal: (opts?: {
+    view?: "pending" | "confirmed" | "archived";
+    mode?: "timeline" | "inbox" | "learn" | "playbook";
+  }) => {
     const sp = new URLSearchParams();
+    sp.set("view", opts?.view ?? "pending");
     if (opts?.mode && opts.mode !== "timeline") sp.set("mode", opts.mode);
-    if (opts?.entry) sp.set("entry", opts.entry);
-    const qs = sp.toString();
-    return qs ? `/journal?${qs}` : "/journal";
+    return `/journal?${sp.toString()}`;
   },
   journalEntry: (entryId: string) => `/journal/${encodePathSegment(entryId)}`,
   
