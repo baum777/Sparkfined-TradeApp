@@ -61,6 +61,14 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Verify Vercel /api ownership (no rewrite exceptions)
+        run: node scripts/verify-vercel-api-ownership.mjs
+
       - name: Detect forbidden api/* changes
         run: |
           set -euo pipefail
