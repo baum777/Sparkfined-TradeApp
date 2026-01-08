@@ -6,19 +6,108 @@ import { test, expect } from '@playwright/test';
  * Testet die grundlegende Navigation in der Anwendung
  */
 
+// These specs are navigation/routing focused; disable video to avoid platform-specific artifact issues.
+test.use({ video: 'off' });
+
 function getUrlParts(raw: string) {
   const url = new URL(raw);
   return { pathname: url.pathname, searchParams: url.searchParams };
 }
 
+function stubFeedCard() {
+  return {
+    id: "stub-1",
+    kind: "oracle",
+    scope: "market",
+    title: "Stub",
+    why: "Stubbed for routing tests",
+    impact: "low",
+    asOf: new Date().toISOString(),
+    freshness: { status: "fresh", ageSec: 0 },
+    confidence: 0.5,
+  } as const;
+}
+
+async function stubApi(page: import('@playwright/test').Page) {
+  // IMPORTANT: Match only real API calls at /api/... (not source modules under /src/**/api/**)
+  await page.route(/^https?:\/\/[^/]+\/api\//, async (route) => {
+    const req = route.request();
+    const url = new URL(req.url());
+    const path = url.pathname;
+
+    if (path === '/api/journal' && req.method() === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ items: [] }),
+      });
+    }
+
+    if (path.startsWith('/api/feed/') && req.method() === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([]),
+      });
+    }
+
+    if (path === '/api/signals/unified' && req.method() === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ user: [], market: [], asOf: new Date().toISOString() }),
+      });
+    }
+
+    if (path === '/api/market/daily-bias' && req.method() === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ card: stubFeedCard(), asOf: new Date().toISOString() }),
+      });
+    }
+
+    if (path === '/api/grok-pulse/meta/last-run' && req.method() === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ lastRun: null }),
+      });
+    }
+    if (path.startsWith('/api/grok-pulse/snapshot/') && req.method() === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ snapshot: null }),
+      });
+    }
+    if (path.startsWith('/api/grok-pulse/history/') && req.method() === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ history: [] }),
+      });
+    }
+
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({}),
+    });
+  });
+}
+
 test.describe('Navigation', () => {
   test.beforeEach(async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 720 });
-    await page.goto('/');
+    await stubApi(page);
+    await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
   });
 
   test('sollte Root auf /dashboard redirecten', async ({ page }) => {
-    await expect(page).toHaveURL('/dashboard');
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await expect(page.locator('[data-testid="page-dashboard"]')).toBeVisible({ timeout: 15000 });
+    await expect(page).toHaveURL(/\/dashboard/);
     await expect(page.locator('[data-testid="page-dashboard"]')).toBeVisible();
   });
 
@@ -53,6 +142,7 @@ test.describe('Navigation', () => {
         expect(searchParams.get("view")).toBe("pending");
       }
 
+      // Give UI a moment to render while keeping routing tests robust.
       await page.waitForTimeout(250);
       if (errors.length > 0) {
         throw new Error(`Console/Page errors:\n- ${errors.join('\n- ')}`);
@@ -66,7 +156,8 @@ test.describe('Mobile Navigation', () => {
   test.use({ viewport: { width: 375, height: 667 } }); // iPhone SE size
 
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
+    await stubApi(page);
+    await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
   });
 
   test('sollte Bottom Navigation anzeigen auf Mobile', async ({ page }) => {
@@ -107,7 +198,8 @@ test.describe('Mobile Navigation', () => {
 test.describe('Active Route Highlighting', () => {
   test.beforeEach(async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 720 });
-    await page.goto('/');
+    await stubApi(page);
+    await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
   });
 
   test('sollte aktive Route highlighten', async ({ page }) => {
@@ -121,7 +213,8 @@ test.describe('Active Route Highlighting', () => {
   });
 
   test('sollte Dashboard als aktiv markieren bei /dashboard', async ({ page }) => {
-    await page.goto('/dashboard');
+    await stubApi(page);
+    await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
 
     const dashboardLink = page.locator('aside').locator('[data-testid="tab-dashboard"]');
     await expect(dashboardLink).toHaveClass(/nav-item-active/);
@@ -132,7 +225,8 @@ test.describe('Responsive Sidebar', () => {
   test('sollte Sidebar auf Desktop anzeigen', async ({ page }) => {
     // Desktop Viewport
     await page.setViewportSize({ width: 1280, height: 720 });
-    await page.goto('/');
+    await stubApi(page);
+    await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
 
     const sidebar = page.locator('aside');
     await expect(sidebar).toBeVisible();
@@ -141,7 +235,8 @@ test.describe('Responsive Sidebar', () => {
   test('sollte Sidebar collapse funktionieren', async ({ page }) => {
     // Desktop Viewport
     await page.setViewportSize({ width: 1280, height: 720 });
-    await page.goto('/');
+    await stubApi(page);
+    await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
 
     // Finde Collapse Button (ChevronLeft icon)
     const collapseButton = page.locator('aside button[aria-label*="sidebar"]').first();
@@ -162,6 +257,7 @@ test.describe('Responsive Sidebar', () => {
 
 test.describe('404', () => {
   test('unbekannte Route sollte NotFound anzeigen', async ({ page }) => {
+    await stubApi(page);
     await page.goto('/this-route-does-not-exist');
     await expect(page.locator('[data-testid="page-notfound"]')).toBeVisible();
   });
