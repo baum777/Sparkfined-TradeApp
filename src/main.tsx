@@ -32,8 +32,14 @@ async function registerServiceWorker(): Promise<void> {
         console.log('[App] SW Status:', message.status);
         
         if (message.status === 'authRequired') {
-          // BACKEND_TODO: Handle auth required - show login prompt
-          console.warn('[App] SW requires authentication');
+          // Auth is intentionally disabled by default. Only surface auth-required status
+          // if auth is explicitly enabled; otherwise treat as a standard error state.
+          if (import.meta.env.VITE_ENABLE_AUTH === 'true') {
+            // BACKEND_TODO: Handle auth required - show login prompt
+            console.warn('[App] SW requires authentication');
+          } else {
+            console.warn('[App] SW reported authRequired, but auth is disabled');
+          }
         }
       }
       

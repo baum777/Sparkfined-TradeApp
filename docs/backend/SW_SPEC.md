@@ -92,7 +92,10 @@ export interface SwDedupeKeySpec {
 - Bei HTTP 5xx/Network:
   - next = min(max, base * 2^n) + jitter
 - Bei HTTP 401/403:
-  - stoppe Polling, setze SW-Status `authRequired=true` und sende Message an UI.
+  - **nur wenn Auth aktiviert ist** (`VITE_ENABLE_AUTH="true"` *und* ein Token verwendet wurde):
+    - stoppe Polling, setze SW-Status `authRequired=true` und sende Message an UI.
+  - **wenn Auth deaktiviert ist** (default):
+    - behandle 401/403 als normalen Fehlerzustand (kein UI-Block/keine Redirect-Loops).
 - Bei HTTP 429:
   - respektiere `Retry-After` (falls gesetzt), sonst `backoffStep++`.
 

@@ -17,6 +17,7 @@ import { shouldPoll, recordPollSuccess, recordPollFailure, handleRateLimit } fro
 declare const self: ServiceWorkerGlobalScope & typeof globalThis;
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
+const ENABLE_AUTH = import.meta.env.VITE_ENABLE_AUTH === 'true';
 
 /**
  * Get today's date string (YYYY-MM-DD)
@@ -48,7 +49,7 @@ export async function pollOracleDaily(accessToken: string | null): Promise<void>
       'Content-Type': 'application/json',
     };
     
-    if (accessToken) {
+    if (ENABLE_AUTH && accessToken) {
       headers['Authorization'] = `Bearer ${accessToken}`;
     }
     
@@ -61,7 +62,10 @@ export async function pollOracleDaily(accessToken: string | null): Promise<void>
     }
     
     if (response.status === 401 || response.status === 403) {
-      throw new Error('AUTH_REQUIRED');
+      if (ENABLE_AUTH && accessToken) {
+        throw new Error('AUTH_REQUIRED');
+      }
+      throw new Error(`HTTP ${response.status}`);
     }
     
     if (!response.ok) {

@@ -6,6 +6,7 @@
  */
 
 import { apiClient } from '../api/client';
+import { ENABLE_AUTH } from '@/config/features';
 
 export interface User {
   id: string;
@@ -67,10 +68,19 @@ class AuthService {
   private currentUser: User | null = null;
   private tokenRefreshTimer: NodeJS.Timeout | null = null;
 
+  private assertEnabled(): void {
+    if (!ENABLE_AUTH) {
+      // Explicitly block all auth-network usage for this milestone.
+      // AuthService may remain in the codebase, but must not be required for product flows.
+      throw new Error('Auth is disabled (ENABLE_AUTH=false)');
+    }
+  }
+
   /**
    * Registriert einen neuen Benutzer
    */
   async register(data: RegisterData): Promise<AuthResponse> {
+    this.assertEnabled();
     const authData = await apiClient.post<AuthResponse>(
       `${this.basePath}/register`,
       data
@@ -84,6 +94,7 @@ class AuthService {
    * Meldet einen Benutzer an
    */
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
+    this.assertEnabled();
     const authData = await apiClient.post<AuthResponse>(
       `${this.basePath}/login`,
       credentials
@@ -97,6 +108,7 @@ class AuthService {
    * Meldet den aktuellen Benutzer ab
    */
   async logout(): Promise<void> {
+    this.assertEnabled();
     try {
       await apiClient.post(`${this.basePath}/logout`);
     } finally {
@@ -108,6 +120,7 @@ class AuthService {
    * Holt die Daten des aktuell angemeldeten Benutzers
    */
   async getCurrentUser(): Promise<User> {
+    this.assertEnabled();
     if (this.currentUser) {
       return this.currentUser;
     }
@@ -123,6 +136,7 @@ class AuthService {
    * Aktualisiert das Benutzerprofil
    */
   async updateProfile(data: Partial<User>): Promise<User> {
+    this.assertEnabled();
     const user = await apiClient.patch<User>(
       `${this.basePath}/profile`,
       data
@@ -138,6 +152,7 @@ class AuthService {
   async updatePreferences(
     preferences: Partial<UserPreferences>
   ): Promise<User> {
+    this.assertEnabled();
     const user = await apiClient.patch<User>(
       `${this.basePath}/preferences`,
       preferences
@@ -154,6 +169,7 @@ class AuthService {
     currentPassword: string,
     newPassword: string
   ): Promise<void> {
+    this.assertEnabled();
     await apiClient.post<void>(`${this.basePath}/change-password`, {
       currentPassword,
       newPassword,
@@ -164,6 +180,7 @@ class AuthService {
    * Fordert einen Passwort-Reset an
    */
   async requestPasswordReset(email: string): Promise<void> {
+    this.assertEnabled();
     await apiClient.post<void>(`${this.basePath}/forgot-password`, { email });
   }
 
@@ -174,6 +191,7 @@ class AuthService {
     token: string,
     newPassword: string
   ): Promise<void> {
+    this.assertEnabled();
     await apiClient.post<void>(`${this.basePath}/reset-password`, {
       token,
       newPassword,
@@ -184,6 +202,7 @@ class AuthService {
    * Erneuert den Access Token
    */
   async refreshAccessToken(): Promise<AuthTokens> {
+    this.assertEnabled();
     const refreshToken = this.getRefreshToken();
 
     if (!refreshToken) {
@@ -204,6 +223,7 @@ class AuthService {
    * Prüft, ob ein Benutzer angemeldet ist
    */
   isAuthenticated(): boolean {
+    if (!ENABLE_AUTH) return false;
     const token = this.getAccessToken();
     return !!token && !this.isTokenExpired(token);
   }

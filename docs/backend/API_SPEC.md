@@ -29,6 +29,9 @@ export interface ErrorResponse {
 - **Response**: `x-request-id: <uuid>` (immer)
 - **Idempotency**: `Idempotency-Key: <string>` (für Create-Operationen, wenn angegeben)
 
+> **Auth (Status im aktuellen Milestone)**: Auth ist **absichtlich deaktiviert** (Frontend-Default `VITE_ENABLE_AUTH` ist nicht gesetzt → `false`).
+> Alle Produkt-Flows laufen anonym/dev-single-tenant. `/api/auth/*` Endpoints sind aktuell **nicht** Teil des Backends.
+
 ---
 
 ## 0) Foundations

@@ -12,6 +12,8 @@ import type { SwMessage, SwNotificationData, SwStatusMessage } from './sw-contra
 
 declare const self: ServiceWorkerGlobalScope & typeof globalThis;
 
+const ENABLE_AUTH = import.meta.env.VITE_ENABLE_AUTH === 'true';
+
 // Current access token (received from UI)
 let accessToken: string | null = null;
 
@@ -70,7 +72,7 @@ self.addEventListener('message', (event) => {
  * Handle tick - poll for updates
  */
 async function handleTick(): Promise<void> {
-  if (authRequired) {
+  if (ENABLE_AUTH && authRequired) {
     sendStatus('authRequired');
     return;
   }
@@ -78,16 +80,21 @@ async function handleTick(): Promise<void> {
   try {
     await Promise.all([
       pollAlertEvents(accessToken).catch((err) => {
-        if (err.message === 'AUTH_REQUIRED') {
+        if (ENABLE_AUTH && err.message === 'AUTH_REQUIRED') {
           authRequired = true;
           sendStatus('authRequired');
+          return;
         }
+        // When auth is disabled, treat unexpected 401/403 as standard error state.
+        sendStatus('error', err instanceof Error ? err.message : 'Unknown error');
       }),
       pollOracleDaily(accessToken).catch((err) => {
-        if (err.message === 'AUTH_REQUIRED') {
+        if (ENABLE_AUTH && err.message === 'AUTH_REQUIRED') {
           authRequired = true;
           sendStatus('authRequired');
+          return;
         }
+        sendStatus('error', err instanceof Error ? err.message : 'Unknown error');
       }),
     ]);
     

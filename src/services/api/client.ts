@@ -252,6 +252,12 @@ class ApiClient {
   }
 
   setAuthToken(token: string) {
+    // Auth is intentionally disabled for the current milestone.
+    // Keep the method for future readiness, but do not attach headers unless enabled.
+    // This prevents accidental auth coupling / redirect loops when backend runs anon.
+    // Note: when ENABLE_AUTH is true, callers are responsible for ensuring token validity.
+    const enabled = import.meta.env.VITE_ENABLE_AUTH === 'true';
+    if (!enabled) return;
     this.config.headers['Authorization'] = `Bearer ${token}`;
   }
 
