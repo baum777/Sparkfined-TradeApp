@@ -144,6 +144,24 @@ export const oracleBulkReadStateRequestSchema = z.object({
 });
 
 // ─────────────────────────────────────────────────────────────
+// FEEDS & SIGNALS SCHEMAS (Theme Group 5)
+// ─────────────────────────────────────────────────────────────
+
+export const feedOracleQuerySchema = z.object({
+  asset: z.string().min(1, 'asset is required'),
+});
+
+export const feedPulseQuerySchema = z.object({
+  asset: z.string().min(1, 'asset is required'),
+});
+
+export const signalsUnifiedQuerySchema = z.object({
+  asset: z.string().min(1, 'asset is required'),
+  filter: z.string().optional(),
+  sort: z.string().optional(),
+});
+
+// ─────────────────────────────────────────────────────────────
 // CHART TA SCHEMAS
 // ─────────────────────────────────────────────────────────────
 
@@ -170,5 +188,9 @@ export type AlertEventsQuery = z.infer<typeof alertEventsQuerySchema>;
 export type OracleDailyQuery = z.infer<typeof oracleDailyQuerySchema>;
 export type OracleReadStateRequest = z.infer<typeof oracleReadStateRequestSchema>;
 export type OracleBulkReadStateRequest = z.infer<typeof oracleBulkReadStateRequestSchema>;
+
+export type FeedOracleQuery = z.infer<typeof feedOracleQuerySchema>;
+export type FeedPulseQuery = z.infer<typeof feedPulseQuerySchema>;
+export type SignalsUnifiedQuery = z.infer<typeof signalsUnifiedQuerySchema>;
 
 export type TARequest = z.infer<typeof taRequestSchema>;
