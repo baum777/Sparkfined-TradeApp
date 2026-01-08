@@ -15,11 +15,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ChevronDown, ChevronUp, MoreHorizontal, Check, Archive, Trash2, RotateCcw } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import type { JournalEntryStub } from "@/stubs/contracts";
+import type { JournalEntryLocal } from "@/services/journal/types";
 import { cn } from "@/lib/utils";
 
 interface JournalEntryRowProps {
-  entry: JournalEntryStub;
+  entry: JournalEntryLocal;
   isHighlighted?: boolean;
   onConfirm?: () => void;
   onArchive?: () => void;
@@ -28,7 +28,7 @@ interface JournalEntryRowProps {
   onRowClick?: (id: string) => void;
 }
 
-function getStatusText(entry: JournalEntryStub): string {
+function getStatusText(entry: JournalEntryLocal): string {
   // UI-only derived status text
   if (entry.status === "pending") {
     const hour = new Date(entry.timestamp).getHours();

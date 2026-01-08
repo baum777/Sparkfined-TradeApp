@@ -78,7 +78,7 @@ export function InsightCard({ insight, onToggleRead }: InsightCardProps) {
           {/* Actions row */}
           <div className="flex flex-wrap items-center gap-2 pt-1">
             <Button variant="outline" size="sm" asChild>
-              <Link to={symbol ? `/chart?q=${encodeURIComponent(symbol)}` : "/chart"}>
+              <Link to={symbol ? `/research?q=${encodeURIComponent(symbol)}` : "/research"}>
                 <TrendingUp className="mr-1.5 h-3.5 w-3.5" />
                 Open chart
               </Link>

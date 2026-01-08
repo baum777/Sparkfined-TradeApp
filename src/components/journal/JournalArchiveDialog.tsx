@@ -20,8 +20,11 @@ import {
 } from "@/components/ui/select";
 import { WifiOff } from "lucide-react";
 import { useOffline } from "@/components/offline/OfflineContext";
-import type { JournalEntryStub } from "@/stubs/contracts";
+import type { JournalEntryLocal } from "@/services/journal/types";
 
+// NOTE: Archive reason is local-only by contract.
+// POST /api/journal/:id/archive sends NO request body per CONTRACTS.md.
+// The reason is collected for potential future use or local analytics only.
 const ARCHIVE_REASONS = [
   { value: "market_changed", label: "Market conditions changed" },
   { value: "invalid_setup", label: "Invalid setup" },
@@ -31,7 +34,7 @@ const ARCHIVE_REASONS = [
 ];
 
 interface JournalArchiveDialogProps {
-  entry: JournalEntryStub | null;
+  entry: JournalEntryLocal | null;
   isOpen: boolean;
   onClose: () => void;
   onArchive: (id: string, reason: string) => void;

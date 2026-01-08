@@ -1,8 +1,8 @@
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { LayoutList, Inbox, GraduationCap } from "lucide-react";
+import { LayoutList, Inbox, GraduationCap, BookMarked } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type JournalMode = "timeline" | "inbox" | "learn";
+export type JournalMode = "timeline" | "inbox" | "learn" | "playbook";
 
 const JOURNAL_MODE_KEY = "journalModeV3";
 
@@ -14,7 +14,7 @@ interface JournalModeToggleProps {
 
 export function getStoredJournalMode(): JournalMode {
   const stored = localStorage.getItem(JOURNAL_MODE_KEY);
-  if (stored === "timeline" || stored === "inbox" || stored === "learn") {
+  if (stored === "timeline" || stored === "inbox" || stored === "learn" || stored === "playbook") {
     return stored;
   }
   return "timeline";
@@ -30,7 +30,7 @@ export function JournalModeToggle({
   pendingCount = 0,
 }: JournalModeToggleProps) {
   const handleChange = (newValue: string) => {
-    if (newValue && (newValue === "timeline" || newValue === "inbox" || newValue === "learn")) {
+    if (newValue && (newValue === "timeline" || newValue === "inbox" || newValue === "learn" || newValue === "playbook")) {
       onChange(newValue as JournalMode);
       setStoredJournalMode(newValue as JournalMode);
     }
@@ -89,6 +89,20 @@ export function JournalModeToggle({
         >
           <GraduationCap className="h-4 w-4" />
           <span className="hidden sm:inline">Learn</span>
+        </ToggleGroupItem>
+
+        <ToggleGroupItem
+          data-testid="journal-mode-playbook"
+          value="playbook"
+          className={cn(
+            "px-3 py-1.5 text-sm font-medium gap-1.5 rounded-md transition-all",
+            value === "playbook"
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <BookMarked className="h-4 w-4" />
+          <span className="hidden sm:inline">Playbook</span>
         </ToggleGroupItem>
       </ToggleGroup>
     </div>

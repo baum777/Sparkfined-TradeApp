@@ -11,10 +11,10 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { WifiOff } from "lucide-react";
 import { useOffline } from "@/components/offline/OfflineContext";
-import type { JournalEntryStub } from "@/stubs/contracts";
+import type { JournalEntryLocal } from "@/services/journal/types";
 
 interface JournalDeleteDialogProps {
-  entry: JournalEntryStub | null;
+  entry: JournalEntryLocal | null;
   isOpen: boolean;
   onClose: () => void;
   onDelete: (id: string) => void;

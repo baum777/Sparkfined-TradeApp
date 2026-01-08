@@ -5,11 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, ChevronRight, Lightbulb, BookOpen } from "lucide-react";
-import type { OracleStub, JournalEntryStub } from "@/stubs/contracts";
+import type { OracleStub } from "@/stubs/contracts";
+import type { JournalEntryLocal } from "@/services/journal/types";
 
 interface BottomCardsCarouselProps {
   oracleInsights: OracleStub[];
-  journalNotes: JournalEntryStub[];
+  journalNotes: JournalEntryLocal[];
 }
 
 export function BottomCardsCarousel({
@@ -93,7 +94,7 @@ export function BottomCardsCarousel({
     </Card>
   );
 
-  const renderJournalCard = (entry: JournalEntryStub, isActive: boolean) => (
+  const renderJournalCard = (entry: JournalEntryLocal, isActive: boolean) => (
     <Card
       className={`shrink-0 w-[85%] transition-all duration-300 ${
         isActive ? "opacity-100 scale-100" : "opacity-40 scale-95"
@@ -230,7 +231,7 @@ export function BottomCardsCarousel({
               <div key={`${section}-${index}`}>
                 {section === "oracle"
                   ? renderOracleCard(item as OracleStub, isActive)
-                  : renderJournalCard(item as JournalEntryStub, isActive)}
+                  : renderJournalCard(item as JournalEntryLocal, isActive)}
               </div>
             ))}
           </div>

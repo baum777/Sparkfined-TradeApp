@@ -16,6 +16,7 @@ import {
   useAlertsStore,
   type PrefillData,
 } from "@/components/alerts";
+import { TradingWalletHint } from "@/components/common";
 
 export default function Alerts() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -175,6 +176,9 @@ export default function Alerts() {
     <PageContainer testId="page-alerts">
       <div className="space-y-6">
         <AlertsHeader onCreateClick={handleCreateClick} />
+
+        {/* Trading Wallet Context */}
+        <TradingWalletHint className="mb-2" />
 
         <AlertsQuickCreate
           isOpen={isQuickCreateOpen}

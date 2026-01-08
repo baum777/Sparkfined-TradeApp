@@ -11,21 +11,21 @@ import {
 import { JournalMomentCard } from "./JournalMomentCard";
 import { JournalTradeCard } from "./JournalTradeCard";
 import { JournalInsightTimelineCard } from "./JournalInsightTimelineCard";
-import type { JournalEntryStub } from "@/stubs/contracts";
+import type { JournalEntryLocal } from "@/services/journal/types";
 import { cn } from "@/lib/utils";
 
 interface JournalTimelineViewProps {
-  entries: JournalEntryStub[];
-  onCardClick: (entry: JournalEntryStub, index: number) => void;
-  onEdit?: (entry: JournalEntryStub) => void;
+  entries: JournalEntryLocal[];
+  onCardClick: (entry: JournalEntryLocal, index: number) => void;
+  onEdit?: (entry: JournalEntryLocal) => void;
   onArchive?: (id: string) => void;
-  onAddReflection?: (entry: JournalEntryStub) => void;
+  onAddReflection?: (entry: JournalEntryLocal) => void;
 }
 
 interface DayGroup {
   date: Date;
   dateKey: string;
-  entries: JournalEntryStub[];
+  entries: JournalEntryLocal[];
 }
 
 function formatDayHeader(date: Date): { dateStr: string; weekday: string } {

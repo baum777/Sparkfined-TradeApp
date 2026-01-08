@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { PageContainer } from "@/components/layout/PageContainer";
-import { useJournalStub, type ConfirmPayload } from "@/stubs/hooks";
+import { useJournalApi } from "@/services/journal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -25,15 +25,15 @@ import {
   JournalTimelineView,
   JournalInboxView,
   JournalLearnView,
+  JournalPlaybookView,
   getStoredJournalMode,
+  setStoredJournalMode,
   type JournalMode,
   type JournalView,
   type CreateEntryPayload,
   type ReflectionData,
-  type SyncStatus,
 } from "@/components/journal";
-import type { JournalEntryStub } from "@/stubs/contracts";
-import { getQueue, getSyncErrors } from "@/services/journal/journalQueue";
+import type { JournalEntryLocal } from "@/services/journal/types";
 
 // localStorage key for view mode persistence (legacy)
 const VIEW_MODE_KEY = "journalViewMode";
@@ -49,11 +49,15 @@ export default function Journal() {
     archiveEntry,
     deleteEntry,
     restoreEntry,
-  } = useJournalStub();
+    syncStatus,
+    queueCount,
+    retrySync,
+  } = useJournalApi();
 
   // Wallet guard state (stub) - default to true for demo
   const [isWalletConnected, setIsWalletConnected] = useState(true);
 
+<<<<<<< HEAD
   // Journal v3 mode state
   const [mode, setMode] = useState<JournalMode>(getStoredJournalMode);
   const handleModeChange = useCallback(
@@ -72,6 +76,17 @@ export default function Journal() {
       setMode(modeParam);
     }
   }, [searchParams, mode]);
+=======
+  // Journal v3 mode state - URL-driven
+  const urlMode = searchParams.get("mode") as JournalMode | null;
+  const [mode, setMode] = useState<JournalMode>(() => {
+    // URL param takes precedence
+    if (urlMode && ["timeline", "inbox", "learn", "playbook"].includes(urlMode)) {
+      return urlMode;
+    }
+    return getStoredJournalMode();
+  });
+>>>>>>> b029b84c6e75b685db3442e05518aa5e941f68bb
   
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
@@ -81,9 +96,9 @@ export default function Journal() {
 
   // Dialog states
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [confirmModalEntry, setConfirmModalEntry] = useState<JournalEntryStub | null>(null);
-  const [archiveDialogEntry, setArchiveDialogEntry] = useState<JournalEntryStub | null>(null);
-  const [deleteDialogEntry, setDeleteDialogEntry] = useState<JournalEntryStub | null>(null);
+  const [confirmModalEntry, setConfirmModalEntry] = useState<JournalEntryLocal | null>(null);
+  const [archiveDialogEntry, setArchiveDialogEntry] = useState<JournalEntryLocal | null>(null);
+  const [deleteDialogEntry, setDeleteDialogEntry] = useState<JournalEntryLocal | null>(null);
 
   // Review overlay state
   const [isReviewOverlayOpen, setIsReviewOverlayOpen] = useState(false);
@@ -95,16 +110,14 @@ export default function Journal() {
   const entryRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const urlProcessedRef = useRef(false);
 
-  // Sync state
-  const [syncErrors, setSyncErrors] = useState<Set<string>>(new Set());
-  const queueCount = getQueue().length;
-  
-  const syncStatus: SyncStatus = useMemo(() => {
-    if (!isOnline) return "offline";
-    if (syncErrors.size > 0) return "error";
-    if (queueCount > 0) return "queued";
-    return "synced";
-  }, [isOnline, syncErrors.size, queueCount]);
+  // Sync errors derived from entries
+  const syncErrors = useMemo(() => {
+    const errors = new Set<string>();
+    entries.forEach(e => {
+      if (e._syncError) errors.add(e.id);
+    });
+    return errors;
+  }, [entries]);
 
   // Counts for segments
   const counts = useMemo(() => ({
@@ -136,12 +149,36 @@ export default function Journal() {
     return result;
   }, [entries, searchQuery]);
 
-  // Update sync errors on mount
-  useEffect(() => {
-    setSyncErrors(getSyncErrors());
-  }, []);
+  // Note: sync errors are now derived from entries._syncError flag
 
-  // Handle URL ?view= sync on initial load
+  // Handle URL ?mode= sync on initial load and changes
+  useEffect(() => {
+    const modeParam = searchParams.get("mode") as JournalMode | null;
+    if (modeParam && ["timeline", "inbox", "learn", "playbook"].includes(modeParam)) {
+      if (mode !== modeParam) {
+        setMode(modeParam);
+        setStoredJournalMode(modeParam);
+      }
+    }
+  }, [searchParams]);
+
+  // Sync mode to URL when changed via toggle
+  const handleModeChange = useCallback((newMode: JournalMode) => {
+    setMode(newMode);
+    setStoredJournalMode(newMode);
+    const newParams = new URLSearchParams(searchParams);
+    if (newMode !== "timeline") {
+      newParams.set("mode", newMode);
+    } else {
+      newParams.delete("mode");
+    }
+    // Preserve entry param
+    const entryParam = searchParams.get("entry");
+    if (entryParam) newParams.set("entry", entryParam);
+    setSearchParams(newParams, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  // Handle URL ?view= sync on initial load (legacy)
   useEffect(() => {
     const viewParam = searchParams.get("view") as JournalView | null;
     if (viewParam && ["pending", "confirmed", "archived"].includes(viewParam)) {
@@ -220,19 +257,22 @@ export default function Journal() {
 
   // Handle create entry (diary entry - confirmed by default per spec)
   const handleCreateEntry = useCallback((payload: CreateEntryPayload) => {
-    const newEntry: JournalEntryStub = {
+    const now = new Date().toISOString();
+    const newEntry: JournalEntryLocal = {
       id: `entry-${Date.now()}`,
       side: "BUY", // Diary entries default to BUY
       status: "confirmed", // Diary entries are confirmed by default
-      timestamp: new Date().toISOString(),
+      timestamp: now,
       summary: payload.reasoning || `${payload.feeling} · ${payload.confidence}% confident`,
+      createdAt: now,
+      updatedAt: now,
     };
     setEntries((prev) => [newEntry, ...prev]);
     toast.success("Entry logged");
   }, [setEntries]);
   // Handlers
-  const handleConfirm = (id: string, payload: ConfirmPayload) => {
-    confirmEntry(id, payload);
+  const handleConfirm = (id: string) => {
+    confirmEntry(id);
     toast.success("Confirmed");
 
     const entryParam = searchParams.get("entry");
@@ -243,8 +283,8 @@ export default function Journal() {
     }
   };
 
-  const handleArchive = (id: string, reason: string) => {
-    archiveEntry(id, reason);
+  const handleArchive = (id: string) => {
+    archiveEntry(id);
     toast.success("Archived", {
       action: {
         label: "Undo",
@@ -306,12 +346,12 @@ export default function Journal() {
   }, []);
 
   const handleReviewConfirm = useCallback((id: string) => {
-    confirmEntry(id, { mood: "", note: "", tags: [] });
+    confirmEntry(id);
     toast.success("Confirmed");
   }, [confirmEntry]);
 
   const handleReviewArchive = useCallback((id: string) => {
-    archiveEntry(id, "");
+    archiveEntry(id);
     toast.success("Archived", {
       action: {
         label: "Undo",
@@ -320,13 +360,13 @@ export default function Journal() {
     });
   }, [archiveEntry]);
 
-  const handleReviewEdit = useCallback((entry: JournalEntryStub) => {
+  const handleReviewEdit = useCallback((entry: JournalEntryLocal) => {
     setIsReviewOverlayOpen(false);
     setConfirmModalEntry(entry);
   }, []);
 
   // Timeline card click handler
-  const handleTimelineCardClick = useCallback((entry: JournalEntryStub, index: number) => {
+  const handleTimelineCardClick = useCallback((entry: JournalEntryLocal, index: number) => {
     if (entry.status === "pending") {
       const pendingIndex = pendingEntries.findIndex((e) => e.id === entry.id);
       if (pendingIndex !== -1) {
@@ -339,12 +379,12 @@ export default function Journal() {
 
   // Inbox handlers
   const handleInboxConfirm = useCallback((id: string) => {
-    confirmEntry(id, { mood: "", note: "", tags: [] });
+    confirmEntry(id);
     toast.success("Confirmed");
   }, [confirmEntry]);
 
   const handleInboxArchive = useCallback((id: string) => {
-    archiveEntry(id, "");
+    archiveEntry(id);
     toast.success("Archived", {
       action: {
         label: "Undo",
@@ -358,8 +398,9 @@ export default function Journal() {
     toast.success("Note saved");
   }, []);
 
-  const handleInboxConfirmWithNote = useCallback((id: string, reflection: ReflectionData) => {
-    confirmEntry(id, { mood: reflection.feeling, note: reflection.reasoning, tags: [] });
+  const handleInboxConfirmWithNote = useCallback((id: string, _reflection: ReflectionData) => {
+    // P0.1: confirm takes NO payload per CONTRACTS.md
+    confirmEntry(id);
     toast.success("Confirmed with note");
   }, [confirmEntry]);
 
@@ -477,7 +518,7 @@ export default function Journal() {
                 <JournalSyncBadge
                   status={syncStatus}
                   queueCount={queueCount}
-                  onRetry={() => toast.info("Retrying...")}
+                  onRetry={retrySync}
                 />
 
                 {counts.pending > 0 && (
@@ -544,7 +585,7 @@ export default function Journal() {
                     }
                     onCardClick={handleTimelineCardClick}
                     onEdit={(entry) => setConfirmModalEntry(entry)}
-                    onArchive={(id) => handleArchive(id, "")}
+                    onArchive={(id) => handleArchive(id)}
                     onAddReflection={(entry) => {
                       // Open mini reflection for this entry
                       const idx = pendingEntries.findIndex((e) => e.id === entry.id);
@@ -577,6 +618,10 @@ export default function Journal() {
                     toast.info(`Showing ${type} evidence`);
                   }}
                 />
+              )}
+
+              {mode === "playbook" && (
+                <JournalPlaybookView />
               )}
             </>
           )}

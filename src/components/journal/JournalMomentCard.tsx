@@ -2,11 +2,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Paperclip, LineChart, Clock } from "lucide-react";
 import { format } from "date-fns";
-import type { JournalEntryStub } from "@/stubs/contracts";
+import type { JournalEntryLocal, JournalEntryStatus } from "@/services/journal/types";
 import { cn } from "@/lib/utils";
 
 interface JournalMomentCardProps {
-  entry: JournalEntryStub;
+  entry: JournalEntryLocal;
   onClick: () => void;
 }
 
@@ -17,7 +17,7 @@ function getSessionLabel(timestamp: string): string {
   return "NY";
 }
 
-function getSpineColor(status: JournalEntryStub["status"]): string {
+function getSpineColor(status: JournalEntryStatus): string {
   switch (status) {
     case "pending":
       return "bg-muted-foreground/50 border-dashed border-muted-foreground/30";

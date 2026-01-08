@@ -1,7 +1,8 @@
 import { useState, useCallback, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { PageContainer } from "@/components/layout/PageContainer";
-import { useChartStub, useOracleStub, useJournalStub } from "@/stubs/hooks";
+import { useChartStub, useOracleStub } from "@/stubs/hooks";
+import { useJournalApi } from "@/services/journal";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -35,7 +36,7 @@ export default function Chart() {
 
   // Get oracle and journal data for bottom cards
   const { insights: oracleInsights } = useOracleStub();
-  const { entries: journalEntries } = useJournalStub();
+  const { entries: journalEntries } = useJournalApi();
 
   // Chart query param (frozen): /chart?q=<query>
   const [queryError, setQueryError] = useState<string | null>(null);

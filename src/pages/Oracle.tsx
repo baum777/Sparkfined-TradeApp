@@ -15,6 +15,7 @@ import {
 } from "@/components/oracle";
 import { GrokPulseLastRunWidget } from "@/components/grokPulse";
 import { UnifiedSignalsView } from "@/components/signals";
+import { TradingWalletHint } from "@/components/common";
 import { toast } from "@/hooks/use-toast";
 import { usePageState } from "@/stubs/pageState";
 import { makeOracle } from "@/stubs/fixtures";
@@ -78,7 +79,7 @@ export default function Oracle() {
   const counts = useMemo(
     () => ({
       all: insights.length,
-      new: insights.filter((i) => !i.isRead).length + (takeawayRead ? 0 : 1),
+      unread: insights.filter((i) => !i.isRead).length + (takeawayRead ? 0 : 1),
       read: insights.filter((i) => i.isRead).length + (takeawayRead ? 1 : 0),
     }),
     [insights, takeawayRead]
@@ -90,7 +91,7 @@ export default function Oracle() {
 
     // Apply filter
     switch (filter) {
-      case "new":
+      case "unread":
         result = result.filter((i) => !i.isRead);
         break;
       case "read":
@@ -231,18 +232,21 @@ export default function Oracle() {
   // Should show takeaway based on filter
   const showTakeaway =
     filter === "all" ||
-    (filter === "new" && !takeawayRead) ||
+    (filter === "unread" && !takeawayRead) ||
     (filter === "read" && takeawayRead);
 
   return (
     <PageContainer testId="page-oracle">
       <div className="space-y-6">
         <OracleHeader
-          unreadCount={counts.new}
+          unreadCount={counts.unread}
           onMarkAllRead={handleMarkAllRead}
           onRefresh={handleRefresh}
           isRefreshing={isRefreshing}
         />
+
+        {/* Trading Wallet Context */}
+        <TradingWalletHint className="mb-2" />
 
         <OracleFilters
           filter={filter}

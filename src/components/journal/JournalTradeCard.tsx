@@ -15,12 +15,12 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import type { JournalEntryStub } from "@/stubs/contracts";
+import type { JournalEntryLocal } from "@/services/journal/types";
 import type { OnchainContextV1 } from "@/types/journal";
 import { formatTimelineContextLine, formatUsdSize, formatEntryPrice } from "@/types/journal";
 
 // Extended entry type with optional v1 fields
-interface JournalTradeEntry extends JournalEntryStub {
+interface JournalTradeEntry extends JournalEntryLocal {
   symbol?: string;
   sizeUsd?: number;
   entryPrice?: number;

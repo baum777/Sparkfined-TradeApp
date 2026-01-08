@@ -1,14 +1,10 @@
 import {
   LayoutDashboard,
-  BookOpen,
-  LineChart,
-  Play,
+  Search,
+  PenLine,
+  Lightbulb,
   Bell,
   Settings,
-  PenLine,
-  Eye,
-  Sparkles,
-  BookMarked,
   type LucideIcon,
 } from "lucide-react";
 import { primaryTabs, type PrimaryTabKey } from "@/routes/routes";
@@ -32,16 +28,18 @@ export interface NavGroup {
 
 const iconByTab: Record<PrimaryTabKey, LucideIcon> = {
   dashboard: LayoutDashboard,
+  research: Search,
   journal: PenLine,
+<<<<<<< HEAD
   research: LineChart,
+=======
+  insights: Lightbulb,
+>>>>>>> b029b84c6e75b685db3442e05518aa5e941f68bb
   alerts: Bell,
-  watchlist: Eye,
-  oracle: Sparkles,
-  learn: BookOpen,
-  handbook: BookMarked,
   settings: Settings,
 };
 
+// Desktop sidebar nav items (all 6 primary tabs)
 export const primaryNavItems: NavItem[] = primaryTabs.map((tab) => ({
   label: tab.label,
   path: tab.route,
@@ -50,10 +48,34 @@ export const primaryNavItems: NavItem[] = primaryTabs.map((tab) => ({
   activeRoutes:
     tab.key === "dashboard"
       ? ["/dashboard", "/"]
-      : tab.key === "settings"
-        ? ["/settings"]
-        : [tab.route],
+      : tab.key === "research"
+        ? ["/research", "/chart", "/watchlist", "/replay", "/asset"]
+        : tab.key === "insights"
+          ? ["/insights", "/oracle"]
+          : tab.key === "journal"
+            ? ["/journal", "/learn", "/handbook"]
+            : [tab.route],
 }));
+
+// Mobile bottom nav items (5 items - Settings excluded)
+export const mobileNavItems: NavItem[] = primaryTabs
+  .filter((tab) => tab.showInMobileNav !== false)
+  .map((tab) => ({
+    label: tab.label,
+    path: tab.route,
+    icon: iconByTab[tab.key],
+    testId: tab.tabTestId,
+    activeRoutes:
+      tab.key === "dashboard"
+        ? ["/dashboard", "/"]
+        : tab.key === "research"
+          ? ["/research", "/chart", "/watchlist", "/replay", "/asset"]
+          : tab.key === "insights"
+            ? ["/insights", "/oracle"]
+            : tab.key === "journal"
+              ? ["/journal", "/learn", "/handbook"]
+              : [tab.route],
+  }));
 
 // Sidebar-only nav is no longer segmented; keep exports for backward compatibility.
 export const sidebarOnlyItems: NavItem[] = [];
@@ -64,9 +86,6 @@ export const advancedNavGroup: NavGroup = {
   icon: LayoutDashboard,
   items: [],
 };
-
-// Mobile nav should expose all primary tabs (scrollable UI handles overflow)
-export const mobileNavItems: NavItem[] = primaryNavItems;
 
 export function isRouteActive(currentPath: string, navItem: NavItem): boolean {
   if (navItem.activeRoutes) {

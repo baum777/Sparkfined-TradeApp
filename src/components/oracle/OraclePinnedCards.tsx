@@ -79,7 +79,7 @@ export function TodayTakeawayCard({ isRead, onMarkRead }: TodayTakeawayCardProps
           {/* Actions */}
           <div className="flex flex-wrap items-center gap-2 pt-1">
             <Button variant="default" size="sm" asChild>
-              <Link to="/chart?q=BTC">
+              <Link to="/research?q=BTC">
                 <TrendingUp className="mr-2 h-4 w-4" />
                 Open chart
               </Link>

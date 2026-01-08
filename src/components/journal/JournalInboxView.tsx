@@ -4,10 +4,10 @@ import { Button } from "@/components/ui/button";
 import { LayoutList, Check } from "lucide-react";
 import { JournalInboxCard } from "./JournalInboxCard";
 import { JournalMiniReflection, type ReflectionData } from "./JournalMiniReflection";
-import type { JournalEntryStub } from "@/stubs/contracts";
+import type { JournalEntryLocal } from "@/services/journal/types";
 
 interface JournalInboxViewProps {
-  pendingEntries: JournalEntryStub[];
+  pendingEntries: JournalEntryLocal[];
   onConfirm: (id: string) => void;
   onArchive: (id: string) => void;
   onSaveNote: (id: string, reflection: ReflectionData) => void;
@@ -18,7 +18,7 @@ interface JournalInboxViewProps {
 
 interface DayGroup {
   label: string;
-  entries: JournalEntryStub[];
+  entries: JournalEntryLocal[];
 }
 
 export function JournalInboxView({
@@ -30,7 +30,7 @@ export function JournalInboxView({
   onGoToTimeline,
   syncErrors = new Set(),
 }: JournalInboxViewProps) {
-  const [reflectionEntry, setReflectionEntry] = useState<JournalEntryStub | null>(null);
+  const [reflectionEntry, setReflectionEntry] = useState<JournalEntryLocal | null>(null);
   const [focusedIndex, setFocusedIndex] = useState(0);
 
   // Group entries by Today / Yesterday / Older
@@ -62,7 +62,7 @@ export function JournalInboxView({
     return groups.filter((g) => g.entries.length > 0);
   }, [pendingEntries]);
 
-  const handleAddNote = useCallback((entry: JournalEntryStub) => {
+  const handleAddNote = useCallback((entry: JournalEntryLocal) => {
     setReflectionEntry(entry);
   }, []);
 

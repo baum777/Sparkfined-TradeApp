@@ -3,7 +3,7 @@ export { JournalHeader } from './JournalHeader';
 export { JournalSegmentedControl, type JournalView } from './JournalSegmentedControl';
 export { JournalSearchBar } from './JournalSearchBar';
 export { JournalEntryRow } from './JournalEntryRow';
-export { JournalConfirmModal } from './JournalConfirmModal';
+export { JournalConfirmModal, type ConfirmPayload } from './JournalConfirmModal';
 export { JournalCreateDialog, type CreateEntryPayload } from './JournalCreateDialog';
 export { JournalArchiveDialog } from './JournalArchiveDialog';
 export { JournalDeleteDialog } from './JournalDeleteDialog';
@@ -27,3 +27,6 @@ export { JournalTimelineView } from './JournalTimelineView';
 export { JournalTradeCard } from './JournalTradeCard';
 export { JournalDiaryCard } from './JournalDiaryCard';
 export { JournalInsightTimelineCard } from './JournalInsightTimelineCard';
+
+// Playbook view (consolidated from Handbook)
+export { JournalPlaybookView, JournalPlaybookSkeleton } from './JournalPlaybookView';

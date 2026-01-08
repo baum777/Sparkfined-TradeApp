@@ -4,14 +4,14 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type OracleFilter = "all" | "new" | "read";
+export type OracleFilter = "all" | "unread" | "read";
 
 interface OracleFiltersProps {
   filter: OracleFilter;
   onFilterChange: (filter: OracleFilter) => void;
   counts: {
     all: number;
-    new: number;
+    unread: number;
     read: number;
   };
   searchQuery: string;
@@ -27,7 +27,7 @@ export function OracleFilters({
 }: OracleFiltersProps) {
   const filters: { value: OracleFilter; label: string; count: number }[] = [
     { value: "all", label: "All", count: counts.all },
-    { value: "new", label: "New", count: counts.new },
+    { value: "unread", label: "Unread", count: counts.unread },
     { value: "read", label: "Read", count: counts.read },
   ];
 

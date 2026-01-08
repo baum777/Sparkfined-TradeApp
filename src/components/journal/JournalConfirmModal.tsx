@@ -21,9 +21,18 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { WifiOff } from "lucide-react";
 import { useOffline } from "@/components/offline/OfflineContext";
-import type { JournalEntryStub } from "@/stubs/contracts";
-import type { ConfirmPayload } from "@/stubs/hooks";
+import type { JournalEntryLocal } from "@/services/journal/types";
 
+// Local-only payload type for confirm modal (not sent to backend per CONTRACTS.md)
+export interface ConfirmPayload {
+  mood: string;
+  note: string;
+  tags: string[];
+}
+
+// NOTE: Mood, note, and tags are local-only by contract.
+// POST /api/journal/:id/confirm sends NO request body per CONTRACTS.md.
+// These fields are collected for potential future use or local analytics only.
 const MOOD_OPTIONS = [
   { value: "confident", label: "Confident" },
   { value: "neutral", label: "Neutral" },
@@ -33,7 +42,7 @@ const MOOD_OPTIONS = [
 ];
 
 interface JournalConfirmModalProps {
-  entry: JournalEntryStub | null;
+  entry: JournalEntryLocal | null;
   isOpen: boolean;
   onClose: () => void;
   onConfirm: (id: string, payload: ConfirmPayload) => void;
