@@ -13,7 +13,6 @@ import {
   OracleSkeleton,
   type OracleFilter,
 } from "@/components/oracle";
-import { GrokPulseLastRunWidget } from "@/components/grokPulse";
 import { UnifiedSignalsView } from "@/components/signals";
 import { TradingWalletHint } from "@/components/common";
 import { toast } from "@/hooks/use-toast";
@@ -255,11 +254,6 @@ export default function Oracle() {
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
         />
-
-        {/* Grok Pulse Status Widget */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <GrokPulseLastRunWidget />
-        </div>
 
         {/* Unified Signals View */}
         <section aria-label="Unified signals">

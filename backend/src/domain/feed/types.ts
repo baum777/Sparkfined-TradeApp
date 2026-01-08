@@ -17,10 +17,20 @@ export interface OracleFeedItem {
 }
  
 export interface PulseFeed {
-  asset: string;
-  source: 'pulse';
+  /**
+   * Resolution metadata for the requested `asset` input.
+   * This is stable and allows UI to evolve from SNAPSHOT -> HISTORY later.
+   */
+  assetResolved: {
+    input: string;
+    kind: 'ticker' | 'address';
+    address: string;
+    symbol?: string;
+  };
   // If no pulse is available yet, snapshot can be null.
   snapshot: unknown | null;
+  // Stub for future history support (Theme Group 6).
+  history: unknown[];
   updatedAt: string;
 }
 

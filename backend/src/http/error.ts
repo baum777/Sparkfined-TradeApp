@@ -25,6 +25,9 @@ export const ErrorCodes = {
   UNAUTHORIZED: 'UNAUTHORIZED',
   INVALID_JSON: 'INVALID_JSON',
   VALIDATION_FAILED: 'VALIDATION_FAILED',
+  // Preferred validation code for query/body semantics that should be actionable by clients.
+  // Kept alongside VALIDATION_FAILED for backwards-compatibility.
+  VALIDATION_ERROR: 'VALIDATION_ERROR',
   INVALID_QUERY: 'INVALID_QUERY',
   METHOD_NOT_ALLOWED: 'METHOD_NOT_ALLOWED',
   RATE_LIMITED: 'RATE_LIMITED',
@@ -87,6 +90,13 @@ export function badRequest(
   details?: Record<string, string[]>
 ): AppError {
   return new AppError(message, 400, ErrorCodes.VALIDATION_FAILED, details);
+}
+
+export function validationError(
+  message: string,
+  details?: Record<string, string[]>
+): AppError {
+  return new AppError(message, 400, ErrorCodes.VALIDATION_ERROR, details);
 }
 
 export function badRequestCode(message: string, code: ErrorCode, details?: Record<string, string[]>): AppError {

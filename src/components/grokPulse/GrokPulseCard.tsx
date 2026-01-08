@@ -26,7 +26,7 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
-import { fetchGrokSnapshot, fetchGrokHistory } from '@/services/api/grokPulse';
+import { fetchPulseFeed } from '@/services/api/grokPulse';
 import type { GrokSentimentSnapshot, PulseHistoryPoint } from '../../../shared/contracts/grokPulse';
 import { GrokPulseSparkline } from './GrokPulseSparkline';
 import {
@@ -47,6 +47,7 @@ export interface JournalPayload {
 }
 
 interface GrokPulseCardProps {
+  /** ticker-like symbol oder Solana-Adresse */
   address: string;
   symbol?: string;
   onAddToJournal?: (payload: JournalPayload) => void;
@@ -95,31 +96,24 @@ export function GrokPulseCard({
   symbol,
   onAddToJournal,
 }: GrokPulseCardProps) {
-  // Fetch snapshot with offline-first behavior
+  // Fetch snapshot + (stub) history with offline-first behavior
   const {
-    data: snapshot,
+    data: feed,
     isLoading: snapshotLoading,
     isError: snapshotError,
     error: snapshotErrorObj,
   } = useQuery({
-    queryKey: ['grokPulse', 'snapshot', address],
-    queryFn: () => fetchGrokSnapshot(address),
+    queryKey: ['feed', 'pulse', address],
+    queryFn: () => fetchPulseFeed(address),
     staleTime: 60_000, // 1 minute
     retry: 1,
     refetchOnWindowFocus: false,
   });
 
-  // Fetch history for sparkline
-  const {
-    data: history,
-    isLoading: historyLoading,
-  } = useQuery({
-    queryKey: ['grokPulse', 'history', address],
-    queryFn: () => fetchGrokHistory(address),
-    staleTime: 120_000, // 2 minutes
-    retry: 1,
-    refetchOnWindowFocus: false,
-  });
+  const snapshot: GrokSentimentSnapshot | null = feed?.snapshot ?? null;
+  const history: PulseHistoryPoint[] = feed?.history ?? [];
+  const resolvedAddress = feed?.assetResolved?.address ?? address;
+  const historyLoading = snapshotLoading && !feed;
 
   // Loading state
   if (snapshotLoading && !snapshot) {
@@ -157,7 +151,7 @@ export function GrokPulseCard({
     if (!snapshot) return;
 
     const payload: JournalPayload = {
-      address,
+      address: resolvedAddress,
       sentiment_term: snapshot.sentiment_term,
       cta_phrase: snapshot.cta_phrase,
       score: snapshot.score,

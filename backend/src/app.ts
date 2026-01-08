@@ -24,10 +24,6 @@ import {
   handleReasoningSessionReview,
   handleReasoningBoardScenarios,
   handleReasoningInsightCritic,
-  handleGrokPulseSnapshot,
-  handleGrokPulseHistory,
-  handleGrokPulseMeta,
-  handleGrokPulseRun,
   handleUsageSummary,
   handleFeedOracle,
   handleFeedPulse,
@@ -79,12 +75,6 @@ export function createApp(): Router {
   router.post('/reasoning/session-review', handleReasoningSessionReview);
   router.post('/reasoning/board-scenarios', handleReasoningBoardScenarios);
   router.post('/reasoning/insight-critic', handleReasoningInsightCritic);
-
-  // Grok Pulse Routes
-  router.get('/grok-pulse/snapshot/:address', handleGrokPulseSnapshot);
-  router.get('/grok-pulse/history/:address', handleGrokPulseHistory);
-  router.get('/grok-pulse/meta/last-run', handleGrokPulseMeta);
-  router.post('/grok-pulse/run', handleGrokPulseRun);
 
   // Canonical Feeds & Signals (Theme Group 5)
   router.get('/feed/oracle', handleFeedOracle);
