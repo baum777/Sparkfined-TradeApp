@@ -169,8 +169,12 @@ export default function Journal() {
   const handleViewChange = useCallback((view: JournalView) => {
     setActiveView(view);
     const entryParam = searchParams.get("entry");
+    const modeParam = searchParams.get("mode");
     const newParams = new URLSearchParams();
     newParams.set("view", view);
+    if (modeParam) {
+      newParams.set("mode", modeParam);
+    }
     if (entryParam) newParams.set("entry", entryParam);
     setSearchParams(newParams, { replace: true });
   }, [searchParams, setSearchParams]);

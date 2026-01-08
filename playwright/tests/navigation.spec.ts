@@ -27,8 +27,7 @@ test.describe('Navigation', () => {
     const tabs = [
       { tab: 'tab-dashboard', url: '/dashboard', page: 'page-dashboard' },
       { tab: 'tab-journal', url: '/journal', page: 'page-journal' },
-      { tab: 'tab-chart', url: '/chart', page: 'page-chart' },
-      { tab: 'tab-replay', url: '/replay', page: 'page-replay' },
+      { tab: 'tab-research', url: '/research', page: 'page-research' },
       { tab: 'tab-alerts', url: '/alerts', page: 'page-alerts' },
       { tab: 'tab-watchlist', url: '/watchlist', page: 'page-watchlist' },
       { tab: 'tab-oracle', url: '/oracle', page: 'page-oracle' },
@@ -41,7 +40,11 @@ test.describe('Navigation', () => {
 
     for (const t of tabs) {
       await sidebar.locator(`[data-testid="${t.tab}"]`).click();
-      await expect(page).toHaveURL(t.url);
+      if (t.tab === "tab-research") {
+        await expect(page).toHaveURL(/\/research/);
+      } else {
+        await expect(page).toHaveURL(t.url);
+      }
       await page.waitForTimeout(250);
       if (errors.length > 0) {
         throw new Error(`Console/Page errors:\n- ${errors.join('\n- ')}`);

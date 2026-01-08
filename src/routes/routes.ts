@@ -65,7 +65,7 @@ export const primaryTabs: PrimaryTab[] = [
   {
     key: "research",
     label: "Research",
-    route: "/research",
+    route: "/research?view=chart",
     tabTestId: "tab-research",
     pageTestId: "page-research",
     showInMobileNav: true,
@@ -125,15 +125,15 @@ function encodePathSegment(value: string): string {
 
 export const routeHelpers = {
   dashboard: () => "/dashboard",
-  
-  // Research workspace (consolidated from chart, watchlist, replay, asset)
+
+  // Research workspace (canonical: always view=chart)
   research: (opts?: { q?: string; panel?: string; replay?: boolean }) => {
     const sp = new URLSearchParams();
+    sp.set("view", "chart");
     if (opts?.q?.trim()) sp.set("q", opts.q.trim());
     if (opts?.panel) sp.set("panel", opts.panel);
     if (opts?.replay) sp.set("replay", "true");
-    const qs = sp.toString();
-    return qs ? `/research?${qs}` : "/research";
+    return `/research?${sp.toString()}`;
   },
   researchAsset: (assetId: string) => `/research/${encodePathSegment(assetId)}`,
   
