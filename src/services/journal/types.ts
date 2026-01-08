@@ -57,6 +57,9 @@ export interface JournalQueueItem {
   lastAttemptAt?: number;
   /** P0.2: Next attempt timestamp for per-item backoff */
   nextAttemptAt?: number;
+  /** Terminal state: failed items do not auto-retry */
+  status?: 'pending' | 'failed';
+  failedAt?: number;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -70,6 +73,9 @@ export interface JournalEntryLocal extends JournalEntryV1 {
   _queueId?: string;
   /** True if last sync attempt failed */
   _syncError?: boolean;
+  /** Retry metadata for failed items */
+  _syncRetryCount?: number;
+  _syncLastError?: string;
   /** P0.3: Local client ID for CREATE entries (before server assigns real ID) */
   _clientId?: string;
 }
