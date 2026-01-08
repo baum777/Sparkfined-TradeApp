@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { TrendingUp, FileText, Check, Circle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { OracleStub } from "@/stubs/contracts";
+import { routeHelpers } from "@/routes/routes";
 
 interface InsightCardProps {
   insight: OracleStub;
@@ -78,7 +79,7 @@ export function InsightCard({ insight, onToggleRead }: InsightCardProps) {
           {/* Actions row */}
           <div className="flex flex-wrap items-center gap-2 pt-1">
             <Button variant="outline" size="sm" asChild>
-              <Link to={symbol ? `/research?q=${encodeURIComponent(symbol)}` : "/research"}>
+              <Link to={routeHelpers.research({ q: symbol ?? undefined })}>
                 <TrendingUp className="mr-1.5 h-3.5 w-3.5" />
                 Open chart
               </Link>

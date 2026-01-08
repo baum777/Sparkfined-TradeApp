@@ -35,6 +35,8 @@ import type {
   AlertStage,
   DeadTokenStage,
 } from "./types";
+import { routeHelpers } from "@/routes/routes";
+import { parseResearchChartQuery } from "@/utils/researchQuery";
 
 interface AlertCardProps {
   alert: Alert;
@@ -207,7 +209,12 @@ export function AlertCard({
   };
 
   const handleOpenChart = () => {
-    navigate(`/research?q=${encodeURIComponent(alert.symbolOrAddress)}`);
+    const parsed = parseResearchChartQuery(alert.symbolOrAddress);
+    navigate(
+      routeHelpers.research({
+        q: parsed.kind === "invalid" ? parsed.raw : parsed.normalized,
+      })
+    );
   };
 
   const createdAtText = formatDistanceToNow(new Date(alert.createdAt), {

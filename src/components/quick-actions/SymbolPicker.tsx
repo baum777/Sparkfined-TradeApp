@@ -33,6 +33,8 @@ import { makeWatchlist } from '@/stubs/fixtures';
 import { useQuickActions } from './QuickActionsContext';
 import { useOffline } from '@/components/offline';
 import type { SymbolItem } from './types';
+import { routeHelpers } from "@/routes/routes";
+import { parseResearchChartQuery } from "@/utils/researchQuery";
 
 // Local storage key for recent symbols - per spec
 const RECENTS_KEY = 'sparkfined_symbol_recents_v1';
@@ -233,10 +235,21 @@ export function SymbolPicker({ onSelect, onBack, showBackButton = true, classNam
     // Default navigation behavior per spec
     switch (action) {
       case 'chart':
-        navigate(`/research?q=${encodeURIComponent(symbol.symbol)}`);
+        {
+          const parsed = parseResearchChartQuery(symbol.symbol);
+          navigate(routeHelpers.research({ q: parsed.kind === "invalid" ? parsed.raw : parsed.normalized }));
+        }
         break;
       case 'replay':
-        navigate(`/research?q=${encodeURIComponent(symbol.symbol)}&replay=true`);
+        {
+          const parsed = parseResearchChartQuery(symbol.symbol);
+          navigate(
+            routeHelpers.research({
+              q: parsed.kind === "invalid" ? parsed.raw : parsed.normalized,
+              replay: true,
+            })
+          );
+        }
         break;
       case 'alert':
         navigate(`/alerts?symbol=${encodeURIComponent(symbol.symbol)}`);

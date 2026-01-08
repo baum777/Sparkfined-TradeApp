@@ -1,18 +1,17 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { PageContainer } from "@/components/layout/PageContainer";
+import { ScreenState } from "@/components/layout/ScreenState";
 import { useJournalApi } from "@/services/journal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, RefreshCw, X, Plus, Search, Clock } from "lucide-react";
+import { Plus, Search, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { useOffline } from "@/components/offline/OfflineContext";
 import {
   WalletGuard,
   JournalSegmentedControl,
-  JournalEntryRow,
   JournalConfirmModal,
   JournalCreateDialog,
   JournalArchiveDialog,
@@ -39,6 +38,7 @@ import type { JournalEntryLocal } from "@/services/journal/types";
 const VIEW_MODE_KEY = "journalViewMode";
 
 export default function Journal() {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { isOnline } = useOffline();
   const {
@@ -84,10 +84,7 @@ export default function Journal() {
   const [reviewInitialIndex, setReviewInitialIndex] = useState(0);
 
   // Highlight state
-  const [highlightedEntryId, setHighlightedEntryId] = useState<string | null>(null);
-  const [entryNotFound, setEntryNotFound] = useState<string | null>(null);
-  const entryRefs = useRef<Map<string, HTMLDivElement>>(new Map());
-  const urlProcessedRef = useRef(false);
+  // (Legacy UI-only state; detail navigation is via /journal/:entryId)
 
   // Sync errors derived from entries
   const syncErrors = useMemo(() => {
@@ -151,9 +148,6 @@ export default function Journal() {
     } else {
       newParams.delete("mode");
     }
-    // Preserve entry param
-    const entryParam = searchParams.get("entry");
-    if (entryParam) newParams.set("entry", entryParam);
     setSearchParams(newParams, { replace: true });
   }, [searchParams, setSearchParams]);
 
@@ -168,71 +162,20 @@ export default function Journal() {
   // Update URL when view changes
   const handleViewChange = useCallback((view: JournalView) => {
     setActiveView(view);
-    const entryParam = searchParams.get("entry");
     const modeParam = searchParams.get("mode");
     const newParams = new URLSearchParams();
     newParams.set("view", view);
     if (modeParam) {
       newParams.set("mode", modeParam);
     }
-    if (entryParam) newParams.set("entry", entryParam);
     setSearchParams(newParams, { replace: true });
   }, [searchParams, setSearchParams]);
-
-  // Handle URL ?entry=<id> scroll + highlight
-  useEffect(() => {
-    if (urlProcessedRef.current) return;
-
-    const entryId = searchParams.get("entry");
-    if (!entryId) return;
-
-    const entry = entries.find((e) => e.id === entryId);
-    if (!entry) {
-      setEntryNotFound(entryId);
-      return;
-    }
-
-    urlProcessedRef.current = true;
-    setEntryNotFound(null);
-
-    if (entry.status !== activeView) {
-      setActiveView(entry.status);
-      const newParams = new URLSearchParams(searchParams);
-      newParams.set("view", entry.status);
-      setSearchParams(newParams, { replace: true });
-    }
-
-    setTimeout(() => {
-      setHighlightedEntryId(entryId);
-      const ref = entryRefs.current.get(entryId);
-      if (ref) {
-        ref.scrollIntoView({ behavior: "smooth", block: "center" });
-      }
-      setTimeout(() => {
-        setHighlightedEntryId(null);
-      }, 1500);
-    }, 100);
-  }, [entries, searchParams, activeView, setSearchParams]);
 
   // Handle row click
   const handleRowClick = useCallback((id: string) => {
-    const newParams = new URLSearchParams(searchParams);
-    newParams.set("entry", id);
-    setSearchParams(newParams, { replace: true });
-
-    setHighlightedEntryId(id);
-    setTimeout(() => {
-      setHighlightedEntryId(null);
-    }, 1500);
-  }, [searchParams, setSearchParams]);
-
-  // Clear entry not found
-  const handleClearEntryNotFound = useCallback(() => {
-    setEntryNotFound(null);
-    const newParams = new URLSearchParams(searchParams);
-    newParams.delete("entry");
-    setSearchParams(newParams, { replace: true });
-  }, [searchParams, setSearchParams]);
+    // Canonical: navigate to detail route via path; never represent detail via query params.
+    navigate(`/journal/${encodeURIComponent(id)}`);
+  }, [navigate]);
 
   // Handle create entry (diary entry - confirmed by default per spec)
   const handleCreateEntry = useCallback((payload: CreateEntryPayload) => {
@@ -253,13 +196,6 @@ export default function Journal() {
   const handleConfirm = (id: string) => {
     confirmEntry(id);
     toast.success("Confirmed");
-
-    const entryParam = searchParams.get("entry");
-    if (entryParam === id) {
-      const newParams = new URLSearchParams(searchParams);
-      newParams.delete("entry");
-      setSearchParams(newParams, { replace: true });
-    }
   };
 
   const handleArchive = (id: string) => {
@@ -270,25 +206,11 @@ export default function Journal() {
         onClick: () => handleRestore(id),
       },
     });
-
-    const entryParam = searchParams.get("entry");
-    if (entryParam === id) {
-      const newParams = new URLSearchParams(searchParams);
-      newParams.delete("entry");
-      setSearchParams(newParams, { replace: true });
-    }
   };
 
   const handleDelete = (id: string) => {
     deleteEntry(id);
     toast.success("Entry deleted");
-
-    const entryParam = searchParams.get("entry");
-    if (entryParam === id) {
-      const newParams = new URLSearchParams(searchParams);
-      newParams.delete("entry");
-      setSearchParams(newParams, { replace: true });
-    }
   };
 
   const handleRestore = (id: string) => {
@@ -304,15 +226,6 @@ export default function Journal() {
   const handleDemoMode = () => {
     toast.info("Demo mode activated");
   };
-
-  // Set ref for entry row
-  const setEntryRef = useCallback((id: string, el: HTMLDivElement | null) => {
-    if (el) {
-      entryRefs.current.set(id, el);
-    } else {
-      entryRefs.current.delete(id);
-    }
-  }, []);
 
   const handleOpenCreateDialog = useCallback(() => {
     setIsCreateDialogOpen(true);
@@ -417,7 +330,7 @@ export default function Journal() {
   if (pageState.isLoading) {
     return (
       <PageContainer testId="page-journal">
-        <JournalSkeleton />
+        <ScreenState status="loading" loadingVariant={<JournalSkeleton />} />
       </PageContainer>
     );
   }
@@ -426,24 +339,12 @@ export default function Journal() {
   if (pageState.isError) {
     return (
       <PageContainer testId="page-journal">
-        <div className="space-y-6">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">
-              Journal
-            </h1>
-          </div>
-
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription className="flex items-center justify-between">
-              <span>Failed to load journal entries. Please try again.</span>
-              <Button variant="outline" size="sm" onClick={handleRetry}>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Retry
-              </Button>
-            </AlertDescription>
-          </Alert>
-        </div>
+        <ScreenState
+          status="error"
+          onRetry={handleRetry}
+          errorTitle="Failed to load Journal"
+          errorMessage="Please try again."
+        />
       </PageContainer>
     );
   }
@@ -524,20 +425,6 @@ export default function Journal() {
               </div>
             </div>
           </div>
-
-          {/* Entry not found alert */}
-          {entryNotFound && (
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription className="flex items-center justify-between">
-                <span>Entry "{entryNotFound}" not found in journal.</span>
-                <Button variant="outline" size="sm" onClick={handleClearEntryNotFound}>
-                  <X className="h-4 w-4 mr-2" />
-                  Clear
-                </Button>
-              </AlertDescription>
-            </Alert>
-          )}
 
           {isCompletelyEmpty ? (
             <JournalEmptyState type="all" onLogEntry={handleOpenCreateDialog} />

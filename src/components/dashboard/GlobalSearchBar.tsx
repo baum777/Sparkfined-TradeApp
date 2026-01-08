@@ -11,6 +11,8 @@ import {
 } from "@/components/ui/command";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { routeHelpers } from "@/routes/routes";
+import { parseResearchChartQuery } from "@/utils/researchQuery";
 
 // ============ LocalStorage helpers ============
 const RECENTS_KEY = "sparkfined_recent_searches_v1";
@@ -44,45 +46,11 @@ function upsertRecent(recents: string[], value: string): string[] {
   return next;
 }
 
-function inferKind(value: string): "Ticker" | "Contract" {
-  const v = value.trim();
-  if (v.length >= 32 && !v.includes(" ")) return "Contract";
-  return "Ticker";
-}
-
-// ============ Validation helpers ============
-// Ticker: 1-15 chars, allowed charset [A-Z0-9._-]
-const TICKER_REGEX = /^[A-Z0-9._-]{1,15}$/i;
-// Solana contract address: Base58, length 32-44 chars
-const BASE58_REGEX = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
-
-interface ValidationResult {
-  isValid: boolean;
-  error: string | null;
-}
-
-function validateSearchInput(value: string): ValidationResult {
-  const v = value.trim();
-  if (!v) {
-    return { isValid: false, error: null }; // Empty is not an error, just invalid
-  }
-  
-  // Check if it's a valid ticker
-  if (TICKER_REGEX.test(v)) {
-    return { isValid: true, error: null };
-  }
-  
-  // Check if it's a valid Solana contract address
-  if (BASE58_REGEX.test(v)) {
-    return { isValid: true, error: null };
-  }
-  
-  // Neither ticker nor contract
-  if (v.length >= 32) {
-    return { isValid: false, error: "Invalid contract address (must be Base58, 32-44 chars)" };
-  }
-  
-  return { isValid: false, error: "Invalid ticker (1-15 chars, A-Z, 0-9, ., _, - only)" };
+function inferKind(value: string): "Ticker" | "Contract" | "Unknown" {
+  const parsed = parseResearchChartQuery(value);
+  if (parsed.kind === "ticker") return "Ticker";
+  if (parsed.kind === "address") return "Contract";
+  return "Unknown";
 }
 
 // ============ Quick chips config ============
@@ -120,23 +88,27 @@ export function GlobalSearchBar() {
   // Unified search handler
   const doSearch = useCallback(
     (raw?: string) => {
-      const value = (raw ?? query).trim();
-      if (!value) return;
+      const input = (raw ?? query).trim();
+      if (!input) return;
 
-      // Validate input
-      const validation = validateSearchInput(value);
-      if (!validation.isValid) {
-        if (validation.error) {
-          setValidationError(validation.error);
-        }
+      const parsed = parseResearchChartQuery(input);
+      if (parsed.kind === "invalid") {
+        setValidationError(
+          "Invalid query: expected ticker (1–15, A-Z/0-9/._-) or Solana-like address (32–44)."
+        );
+        // Ensure the escape-hatch CTA is clickable (recents dropdown can overlay it).
+        setIsOpen(false);
+        setHighlightedIndex(-1);
         return;
       }
+
+      const valueToNavigate = parsed.normalized;
 
       // Clear validation error on successful search
       setValidationError(null);
 
       setRecents((prev) => {
-        const next = upsertRecent(prev, value);
+        const next = upsertRecent(prev, valueToNavigate);
         saveRecents(next);
         return next;
       });
@@ -145,10 +117,29 @@ export function GlobalSearchBar() {
       setQuery("");
 
       // Navigate to Research workspace with query
-      navigate(`/research?q=${encodeURIComponent(value)}`);
+      navigate(routeHelpers.research({ q: valueToNavigate }));
     },
     [query, navigate]
   );
+
+  const handleSearchAnyway = useCallback(() => {
+    const raw = query.trim();
+    if (!raw) return;
+
+    setValidationError(null);
+
+    setRecents((prev) => {
+      const next = upsertRecent(prev, raw);
+      saveRecents(next);
+      return next;
+    });
+
+    setIsOpen(false);
+    setQuery("");
+
+    // Escape hatch: bypass strict validation only; still use canonical navigation path.
+    navigate(routeHelpers.research({ q: raw }));
+  }, [navigate, query]);
 
   // Clipboard button handler
   const handleClipboard = async () => {
@@ -348,9 +339,22 @@ export function GlobalSearchBar() {
 
       {/* Validation error */}
       {validationError && (
-        <p id="search-error" className="text-sm text-destructive" role="alert">
-          {validationError}
-        </p>
+        <div className="flex items-center justify-between gap-3">
+          <p id="search-error" className="text-sm text-destructive" role="alert">
+            {validationError}
+          </p>
+          {!!query.trim() && (
+            <Button
+              type="button"
+              variant="link"
+              size="sm"
+              onClick={handleSearchAnyway}
+              className="h-auto px-0 text-sm"
+            >
+              Search anyway
+            </Button>
+          )}
+        </div>
       )}
 
       {/* Quick chips */}

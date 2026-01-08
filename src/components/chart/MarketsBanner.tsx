@@ -17,6 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { HelpCircle, ChevronRight, ExternalLink, Search } from "lucide-react";
+import { routeHelpers } from "@/routes/routes";
 
 // LocalStorage helpers
 const RECENTS_KEY = "sparkfined_recent_markets_v1";
@@ -136,7 +137,7 @@ export function MarketsBanner({
               variant="ghost"
               size="sm"
               className="text-xs h-7"
-              onClick={() => navigate("/research?panel=watchlist")}
+              onClick={() => navigate(routeHelpers.research({ panel: "watchlist" }))}
             >
               Open Watchlist
               <ExternalLink className="h-3 w-3 ml-1" />
@@ -199,7 +200,7 @@ export function MarketsBanner({
             variant="outline"
             size="sm"
             className="w-full"
-            onClick={() => navigate("/research?panel=watchlist")}
+            onClick={() => navigate(routeHelpers.research({ panel: "watchlist" }))}
           >
             Add to Watchlist
           </Button>

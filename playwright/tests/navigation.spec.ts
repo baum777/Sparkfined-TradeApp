@@ -6,6 +6,11 @@ import { test, expect } from '@playwright/test';
  * Testet die grundlegende Navigation in der Anwendung
  */
 
+function getUrlParts(raw: string) {
+  const url = new URL(raw);
+  return { pathname: url.pathname, searchParams: url.searchParams };
+}
+
 test.describe('Navigation', () => {
   test.beforeEach(async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 720 });
@@ -28,11 +33,8 @@ test.describe('Navigation', () => {
       { tab: 'tab-dashboard', url: '/dashboard', page: 'page-dashboard' },
       { tab: 'tab-journal', url: '/journal', page: 'page-journal' },
       { tab: 'tab-research', url: '/research', page: 'page-research' },
+      { tab: 'tab-insights', url: '/insights', page: 'page-insights' },
       { tab: 'tab-alerts', url: '/alerts', page: 'page-alerts' },
-      { tab: 'tab-watchlist', url: '/watchlist', page: 'page-watchlist' },
-      { tab: 'tab-oracle', url: '/oracle', page: 'page-oracle' },
-      { tab: 'tab-learn', url: '/learn', page: 'page-learn' },
-      { tab: 'tab-handbook', url: '/handbook', page: 'page-handbook' },
       { tab: 'tab-settings', url: '/settings', page: 'page-settings' },
     ] as const;
 
@@ -40,11 +42,17 @@ test.describe('Navigation', () => {
 
     for (const t of tabs) {
       await sidebar.locator(`[data-testid="${t.tab}"]`).click();
+
+      // Canonical URLs may include query params; assert on pathname + required params where needed.
+      const { pathname, searchParams } = getUrlParts(page.url());
+      expect(pathname).toBe(t.url);
       if (t.tab === "tab-research") {
-        await expect(page).toHaveURL(/\/research/);
-      } else {
-        await expect(page).toHaveURL(t.url);
+        expect(searchParams.get("view")).toBe("chart");
       }
+      if (t.tab === "tab-journal") {
+        expect(searchParams.get("view")).toBe("pending");
+      }
+
       await page.waitForTimeout(250);
       if (errors.length > 0) {
         throw new Error(`Console/Page errors:\n- ${errors.join('\n- ')}`);
@@ -76,15 +84,23 @@ test.describe('Mobile Navigation', () => {
     const bottomNav = page.getByRole('navigation', { name: 'Main navigation' });
     // Navigiere zu Journal
     await bottomNav.locator('[data-testid="tab-journal"]').click();
-    await expect(page).toHaveURL('/journal');
+    {
+      const { pathname, searchParams } = getUrlParts(page.url());
+      expect(pathname).toBe('/journal');
+      expect(searchParams.get('view')).toBe('pending');
+    }
 
-    // Navigiere zu Learn
-    await bottomNav.locator('[data-testid="tab-learn"]').click();
-    await expect(page).toHaveURL('/learn');
+    // Navigiere zu Research
+    await bottomNav.locator('[data-testid="tab-research"]').click();
+    {
+      const { pathname, searchParams } = getUrlParts(page.url());
+      expect(pathname).toBe('/research');
+      expect(searchParams.get('view')).toBe('chart');
+    }
 
-    // Navigiere zu Settings
-    await bottomNav.locator('[data-testid="tab-settings"]').click();
-    await expect(page).toHaveURL('/settings');
+    // Navigiere zu Alerts
+    await bottomNav.locator('[data-testid="tab-alerts"]').click();
+    await expect(page).toHaveURL('/alerts');
   });
 });
 

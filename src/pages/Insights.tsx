@@ -11,10 +11,10 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useSearchParams, useParams, useNavigate } from "react-router-dom";
 import { PageContainer } from "@/components/layout/PageContainer";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AlertCircle, RefreshCw, ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import { ScreenState } from "@/components/layout/ScreenState";
 import {
   OracleHeader,
   OracleFilters,
@@ -283,7 +283,7 @@ export default function Insights() {
   if (pageState.isLoading) {
     return (
       <PageContainer testId="page-insights">
-        <OracleSkeleton />
+        <ScreenState status="loading" loadingVariant={<OracleSkeleton />} />
       </PageContainer>
     );
   }
@@ -292,23 +292,12 @@ export default function Insights() {
   if (pageState.isError) {
     return (
       <PageContainer testId="page-insights">
-        <div className="space-y-6">
-          <OracleHeader
-            unreadCount={0}
-            onMarkAllRead={handleMarkAllRead}
-            onRefresh={handleRefresh}
-          />
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription className="flex items-center justify-between">
-              <span>Failed to load insights. Please try again.</span>
-              <Button variant="outline" size="sm" onClick={handleRetry}>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Retry
-              </Button>
-            </AlertDescription>
-          </Alert>
-        </div>
+        <ScreenState
+          status="error"
+          onRetry={handleRetry}
+          errorTitle="Failed to load Insights"
+          errorMessage="Please try again."
+        />
       </PageContainer>
     );
   }

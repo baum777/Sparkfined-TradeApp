@@ -11,8 +11,9 @@
  */
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import { Navigate, useSearchParams, useParams } from "react-router-dom";
+import { Navigate, useNavigate, useSearchParams, useParams } from "react-router-dom";
 import { PageContainer } from "@/components/layout/PageContainer";
+import { ScreenState } from "@/components/layout/ScreenState";
 import { useChartStub, useOracleStub } from "@/stubs/hooks";
 import { useJournalApi } from "@/services/journal";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -20,9 +21,10 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { AlertCircle, RefreshCw, BarChart3, X, Eye, Play } from "lucide-react";
+import { AlertCircle, BarChart3, X, Eye, Play } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { isValidChartQuery, normalizeChartQuery, isValidSolanaBase58 } from "@/routes/routes";
+import { routeHelpers, isValidSolanaBase58 } from "@/routes/routes";
+import { parseResearchChartQuery } from "@/utils/researchQuery";
 import {
   ChartTopBar,
   ChartCanvas,
@@ -76,6 +78,7 @@ function saveWatchlist(items: WatchItemStub[]) {
 }
 
 export default function Research() {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { assetId } = useParams<{ assetId?: string }>();
   const isMobile = useIsMobile();
@@ -85,7 +88,14 @@ export default function Research() {
   if (view !== "chart") {
     const params = new URLSearchParams(searchParams);
     params.set("view", "chart");
-    return <Navigate to={`/research?${params.toString()}`} replace />;
+
+    // If /research/:assetId is used, preserve the path segment during normalization.
+    // This allows /research/:assetId to coexist with query params (canonical UI state).
+    const basePath = assetId
+      ? `/research/${encodeURIComponent(assetId)}`
+      : "/research";
+
+    return <Navigate to={`${basePath}?${params.toString()}`} replace />;
   }
   
   const {
@@ -133,16 +143,18 @@ export default function Research() {
       return;
     }
 
-    if (!isValidChartQuery(q) && !isValidSolanaBase58(q)) {
+    const parsed = parseResearchChartQuery(q);
+    if (parsed.kind === "invalid") {
+      // Do not hard-block. Backend decides; frontend should handle backend errors gracefully.
       setQueryError(
-        'Invalid query: expected ticker (1–15, A-Z/0-9/._-) or Solana Base58 (32–44).'
+        "Query looks unusual. Expected ticker (1–15, A-Z/0-9/._-) or Solana-like address (32–44)."
       );
+      setSelectedSymbol(parsed.raw);
       return;
     }
 
     setQueryError(null);
-    const normalized = isValidSolanaBase58(q) ? q : normalizeChartQuery(q);
-    setSelectedSymbol(normalized);
+    setSelectedSymbol(parsed.normalized);
     // BACKEND HOOK (unchanged): trigger fetch for selected market
   }, [querySymbol, assetId, setSelectedSymbol]);
 
@@ -174,13 +186,22 @@ export default function Research() {
   // Market selection
   const handleSelectMarket = useCallback(
     (symbol: string) => {
-      setSelectedSymbol(symbol);
-      const newParams = new URLSearchParams(searchParams);
-      newParams.set("q", symbol);
-      setSearchParams(newParams, { replace: true });
+      const parsed = parseResearchChartQuery(symbol);
+      const q = parsed.kind === "invalid" ? parsed.raw : parsed.normalized;
+
+      setSelectedSymbol(q);
+
+      navigate(
+        routeHelpers.research({
+          q,
+          panel: isWatchlistPanelOpen ? "watchlist" : undefined,
+          replay: isReplayMode,
+        }),
+        { replace: true }
+      );
       // BACKEND HOOK (unchanged): fetch chart data for selected market
     },
-    [searchParams, setSearchParams, setSelectedSymbol]
+    [navigate, isWatchlistPanelOpen, isReplayMode, setSelectedSymbol]
   );
 
   // Watchlist handlers
@@ -264,7 +285,7 @@ export default function Research() {
     return (
       <PageContainer testId="page-research">
         <h1 className="sr-only">Research</h1>
-        <ChartSkeleton />
+        <ScreenState status="loading" loadingVariant={<ChartSkeleton />} />
       </PageContainer>
     );
   }
@@ -273,21 +294,12 @@ export default function Research() {
   if (pageState.isError) {
     return (
       <PageContainer testId="page-research">
-        <div className="space-y-4">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            Research
-          </h1>
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription className="flex items-center justify-between">
-              <span>Failed to load research data. Please try again.</span>
-              <Button variant="outline" size="sm" onClick={handleRetry}>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Retry
-              </Button>
-            </AlertDescription>
-          </Alert>
-        </div>
+        <ScreenState
+          status="error"
+          onRetry={handleRetry}
+          errorTitle="Failed to load Research"
+          errorMessage="Please try again."
+        />
       </PageContainer>
     );
   }
