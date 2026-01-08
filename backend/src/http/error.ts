@@ -28,6 +28,8 @@ export const ErrorCodes = {
   // Preferred validation code for query/body semantics that should be actionable by clients.
   // Kept alongside VALIDATION_FAILED for backwards-compatibility.
   VALIDATION_ERROR: 'VALIDATION_ERROR',
+  INVALID_TRANSITION: 'INVALID_TRANSITION',
+  IDEMPOTENCY_KEY_CONFLICT: 'IDEMPOTENCY_KEY_CONFLICT',
   INVALID_QUERY: 'INVALID_QUERY',
   METHOD_NOT_ALLOWED: 'METHOD_NOT_ALLOWED',
   RATE_LIMITED: 'RATE_LIMITED',
