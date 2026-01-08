@@ -18,44 +18,37 @@ describe('Journal Service - Index Consistency (SQLite)', () => {
   describe('pending → confirmed flow', () => {
     it('should change status from PENDING to CONFIRMED', () => {
       const entry = journalCreate(TEST_USER, {
-        side: 'BUY',
         summary: 'Test entry',
-      });
+      }, 'idem-unit-confirm-1');
 
-      expect(entry.status).toBe('PENDING');
+      expect(entry.status).toBe('pending');
 
-      const confirmed = journalConfirm(TEST_USER, entry.id, { mood: 'ok', note: '', tags: [] });
+      const confirmed = journalConfirm(TEST_USER, entry.id);
 
-      expect(confirmed?.status).toBe('CONFIRMED');
+      expect(confirmed?.status).toBe('confirmed');
+      expect(confirmed?.confirmedAt).toBeDefined();
     });
 
     it('should be idempotent - double confirm returns same result', () => {
       const entry = journalCreate(TEST_USER, {
-        side: 'BUY',
         summary: 'Test entry',
-      });
+      }, 'idem-unit-confirm-2');
 
-      const first = journalConfirm(TEST_USER, entry.id, { mood: 'ok', note: '', tags: [] });
-      const second = journalConfirm(TEST_USER, entry.id, { mood: 'ok', note: '', tags: [] });
+      const first = journalConfirm(TEST_USER, entry.id);
+      const second = journalConfirm(TEST_USER, entry.id);
 
-      expect(first?.status).toBe('CONFIRMED');
-      expect(second?.status).toBe('CONFIRMED');
+      expect(first?.status).toBe('confirmed');
+      expect(second?.status).toBe('confirmed');
     });
 
     it('should store confirmation data', () => {
       const entry = journalCreate(TEST_USER, {
-        side: 'BUY',
         summary: 'Test entry',
-      });
+      }, 'idem-unit-confirm-3');
 
-      journalConfirm(TEST_USER, entry.id, {
-        mood: 'confident',
-        note: 'Great setup',
-        tags: ['breakout', 'volume'],
-      });
+      journalConfirm(TEST_USER, entry.id);
 
-      // Verify confirmation data was stored
-      // (In SQLite repo, confirmation is stored in separate table)
+      // Verify confirmation timestamp was stored (in a separate table).
       expect(true).toBe(true); // Test passes if no error
     });
   });
@@ -63,53 +56,50 @@ describe('Journal Service - Index Consistency (SQLite)', () => {
   describe('pending → archived flow', () => {
     it('should change status from PENDING to ARCHIVED', () => {
       const entry = journalCreate(TEST_USER, {
-        side: 'SELL',
         summary: 'Test entry',
-      });
+      }, 'idem-unit-archive-1');
 
-      expect(entry.status).toBe('PENDING');
+      expect(entry.status).toBe('pending');
 
-      const archived = journalArchive(TEST_USER, entry.id, 'Invalid setup');
+      const archived = journalArchive(TEST_USER, entry.id);
 
-      expect(archived?.status).toBe('ARCHIVED');
+      expect(archived?.status).toBe('archived');
+      expect(archived?.archivedAt).toBeDefined();
     });
 
     it('should be idempotent - double archive returns same result', () => {
       const entry = journalCreate(TEST_USER, {
-        side: 'SELL',
         summary: 'Test entry',
-      });
+      }, 'idem-unit-archive-2');
 
-      const first = journalArchive(TEST_USER, entry.id, 'Reason 1');
-      const second = journalArchive(TEST_USER, entry.id, 'Reason 2');
+      const first = journalArchive(TEST_USER, entry.id);
+      const second = journalArchive(TEST_USER, entry.id);
 
-      expect(first?.status).toBe('ARCHIVED');
-      expect(second?.status).toBe('ARCHIVED');
+      expect(first?.status).toBe('archived');
+      expect(second?.status).toBe('archived');
     });
   });
 
   describe('archived → pending (restore) flow', () => {
     it('should change status from ARCHIVED to PENDING', () => {
       const entry = journalCreate(TEST_USER, {
-        side: 'BUY',
         summary: 'Test entry',
-      });
-      journalArchive(TEST_USER, entry.id, 'Mistake');
+      }, 'idem-unit-restore-1');
+      journalArchive(TEST_USER, entry.id);
 
       const restored = journalRestore(TEST_USER, entry.id);
 
-      expect(restored?.status).toBe('PENDING');
+      expect(restored?.status).toBe('pending');
     });
 
     it('should be idempotent - restore on pending returns pending', () => {
       const entry = journalCreate(TEST_USER, {
-        side: 'BUY',
         summary: 'Test entry',
-      });
+      }, 'idem-unit-restore-2');
 
       const result = journalRestore(TEST_USER, entry.id);
 
-      expect(result?.status).toBe('PENDING');
+      expect(result?.status).toBe('pending');
     });
   });
 
@@ -118,12 +108,11 @@ describe('Journal Service - Index Consistency (SQLite)', () => {
       const OTHER_USER = 'other-user-xyz';
 
       const entry = journalCreate(TEST_USER, {
-        side: 'BUY',
         summary: 'User 1 entry',
-      });
+      }, 'idem-unit-mt-1');
 
       // OTHER_USER cannot confirm TEST_USER's entry
-      const result = journalConfirm(OTHER_USER, entry.id, { mood: 'ok', note: '', tags: [] });
+      const result = journalConfirm(OTHER_USER, entry.id);
 
       expect(result).toBeNull();
     });
@@ -132,11 +121,10 @@ describe('Journal Service - Index Consistency (SQLite)', () => {
       const OTHER_USER = 'other-user-xyz';
 
       const entry = journalCreate(TEST_USER, {
-        side: 'SELL',
         summary: 'User 1 entry',
-      });
+      }, 'idem-unit-mt-2');
 
-      const result = journalArchive(OTHER_USER, entry.id, 'Hack attempt');
+      const result = journalArchive(OTHER_USER, entry.id);
 
       expect(result).toBeNull();
     });
@@ -145,10 +133,9 @@ describe('Journal Service - Index Consistency (SQLite)', () => {
       const OTHER_USER = 'other-user-xyz';
 
       const entry = journalCreate(TEST_USER, {
-        side: 'BUY',
         summary: 'User 1 entry',
-      });
-      journalArchive(TEST_USER, entry.id, 'Archived');
+      }, 'idem-unit-mt-3');
+      journalArchive(TEST_USER, entry.id);
 
       const result = journalRestore(OTHER_USER, entry.id);
 
@@ -158,12 +145,12 @@ describe('Journal Service - Index Consistency (SQLite)', () => {
 
   describe('userId validation', () => {
     it('should throw error when userId is empty', () => {
-      expect(() => journalCreate('', { side: 'BUY', summary: 'Test' }))
+      expect(() => journalCreate('', { summary: 'Test' }, 'idem-unit-userid-1'))
         .toThrow('userId is required');
     });
 
     it('should throw error when userId is whitespace only', () => {
-      expect(() => journalCreate('   ', { side: 'BUY', summary: 'Test' }))
+      expect(() => journalCreate('   ', { summary: 'Test' }, 'idem-unit-userid-2'))
         .toThrow('userId is required');
     });
   });

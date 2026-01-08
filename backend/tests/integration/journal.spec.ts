@@ -22,34 +22,30 @@ describe('Journal Integration', () => {
   describe('Create', () => {
     it('should create entry with PENDING status', () => {
       const entry = journalCreate(TEST_USER_ID, {
-        side: 'BUY',
         summary: 'Test entry',
-      });
+      }, 'idem-create-1');
       
       expect(entry.id).toBeDefined();
-      expect(entry.userId).toBe(TEST_USER_ID);
-      expect(entry.side).toBe('BUY');
-      expect(entry.status).toBe('PENDING');
+      expect(entry.status).toBe('pending');
       expect(entry.summary).toBe('Test entry');
       expect(entry.timestamp).toBeDefined();
-      expect(entry.dayKey).toBeDefined();
+      expect(entry.createdAt).toBeDefined();
+      expect(entry.updatedAt).toBeDefined();
     });
     
     it('should use provided timestamp', () => {
       const timestamp = '2025-12-31T12:00:00.000Z';
       
       const entry = journalCreate(TEST_USER_ID, {
-        side: 'SELL',
         summary: 'Test',
         timestamp,
-      });
+      }, 'idem-create-2');
       
       expect(entry.timestamp).toBe(timestamp);
-      expect(entry.dayKey).toBe('2025-12-31');
     });
 
     it('should throw error when userId is empty', () => {
-      expect(() => journalCreate('', { side: 'BUY', summary: 'Test' }))
+      expect(() => journalCreate('', { summary: 'Test' }, 'idem-create-3'))
         .toThrow('userId is required');
     });
   });
@@ -57,9 +53,8 @@ describe('Journal Integration', () => {
   describe('Get by ID', () => {
     it('should return entry by id (userId-scoped)', () => {
       const created = journalCreate(TEST_USER_ID, {
-        side: 'BUY',
         summary: 'Find me',
-      });
+      }, 'idem-get-1');
       
       const found = journalGetById(TEST_USER_ID, created.id);
       
@@ -76,9 +71,8 @@ describe('Journal Integration', () => {
 
     it('should isolate entries by userId (multitenancy)', () => {
       const created = journalCreate(TEST_USER_ID, {
-        side: 'BUY',
         summary: 'User A only',
-      });
+      }, 'idem-isolation-1');
       
       // OTHER_USER cannot see it
       const foundByOther = journalGetById(OTHER_USER_ID, created.id);
@@ -93,14 +87,14 @@ describe('Journal Integration', () => {
   describe('List', () => {
     beforeEach(() => {
       // Create entries with different statuses for TEST_USER
-      journalCreate(TEST_USER_ID, { side: 'BUY', summary: 'Pending 1' });
-      journalCreate(TEST_USER_ID, { side: 'SELL', summary: 'Pending 2' });
+      journalCreate(TEST_USER_ID, { summary: 'Pending 1' }, 'idem-list-p1');
+      journalCreate(TEST_USER_ID, { summary: 'Pending 2' }, 'idem-list-p2');
       
-      const toConfirm = journalCreate(TEST_USER_ID, { side: 'BUY', summary: 'To confirm' });
-      journalConfirm(TEST_USER_ID, toConfirm.id, { mood: 'good', note: '', tags: [] });
+      const toConfirm = journalCreate(TEST_USER_ID, { summary: 'To confirm' }, 'idem-list-c1');
+      journalConfirm(TEST_USER_ID, toConfirm.id);
       
-      const toArchive = journalCreate(TEST_USER_ID, { side: 'SELL', summary: 'To archive' });
-      journalArchive(TEST_USER_ID, toArchive.id, 'Test reason');
+      const toArchive = journalCreate(TEST_USER_ID, { summary: 'To archive' }, 'idem-list-a1');
+      journalArchive(TEST_USER_ID, toArchive.id);
     });
     
     it('should list all entries without filter (userId-scoped)', () => {
@@ -113,21 +107,21 @@ describe('Journal Integration', () => {
       const result = journalList(TEST_USER_ID, 'pending');
       
       expect(result.items.length).toBe(2);
-      expect(result.items.every(e => e.status === 'PENDING')).toBe(true);
+      expect(result.items.every(e => e.status === 'pending')).toBe(true);
     });
     
     it('should filter by confirmed status', () => {
       const result = journalList(TEST_USER_ID, 'confirmed');
       
       expect(result.items.length).toBe(1);
-      expect(result.items[0].status).toBe('CONFIRMED');
+      expect(result.items[0].status).toBe('confirmed');
     });
     
     it('should filter by archived status', () => {
       const result = journalList(TEST_USER_ID, 'archived');
       
       expect(result.items.length).toBe(1);
-      expect(result.items[0].status).toBe('ARCHIVED');
+      expect(result.items[0].status).toBe('archived');
     });
     
     it('should respect limit', () => {
@@ -138,7 +132,7 @@ describe('Journal Integration', () => {
 
     it('should not list entries from other users', () => {
       // Create entry for OTHER_USER
-      journalCreate(OTHER_USER_ID, { side: 'BUY', summary: 'Other user entry' });
+      journalCreate(OTHER_USER_ID, { summary: 'Other user entry' }, 'idem-other-1');
       
       // TEST_USER list should not include it
       const testUserList = journalList(TEST_USER_ID);
@@ -151,30 +145,27 @@ describe('Journal Integration', () => {
   
   describe('Confirm', () => {
     it('should change status to CONFIRMED', () => {
-      const entry = journalCreate(TEST_USER_ID, { side: 'BUY', summary: 'Test' });
+      const entry = journalCreate(TEST_USER_ID, { summary: 'Test' }, 'idem-confirm-1');
       
-      const confirmed = journalConfirm(TEST_USER_ID, entry.id, {
-        mood: 'excited',
-        note: 'Great trade!',
-        tags: ['winner', 'strategy-a'],
-      });
+      const confirmed = journalConfirm(TEST_USER_ID, entry.id);
       
-      expect(confirmed?.status).toBe('CONFIRMED');
+      expect(confirmed?.status).toBe('confirmed');
+      expect(confirmed?.confirmedAt).toBeDefined();
     });
     
     it('should be idempotent', () => {
-      const entry = journalCreate(TEST_USER_ID, { side: 'BUY', summary: 'Test' });
+      const entry = journalCreate(TEST_USER_ID, { summary: 'Test' }, 'idem-confirm-2');
       
-      journalConfirm(TEST_USER_ID, entry.id, { mood: 'good', note: '', tags: [] });
-      const second = journalConfirm(TEST_USER_ID, entry.id, { mood: 'different', note: 'x', tags: [] });
+      journalConfirm(TEST_USER_ID, entry.id);
+      const second = journalConfirm(TEST_USER_ID, entry.id);
       
-      expect(second?.status).toBe('CONFIRMED');
+      expect(second?.status).toBe('confirmed');
     });
 
     it('should not confirm other users entries', () => {
-      const entry = journalCreate(TEST_USER_ID, { side: 'BUY', summary: 'Test' });
+      const entry = journalCreate(TEST_USER_ID, { summary: 'Test' }, 'idem-confirm-3');
       
-      const result = journalConfirm(OTHER_USER_ID, entry.id, { mood: 'ok', note: '', tags: [] });
+      const result = journalConfirm(OTHER_USER_ID, entry.id);
       
       expect(result).toBeNull();
     });
@@ -182,26 +173,27 @@ describe('Journal Integration', () => {
   
   describe('Archive', () => {
     it('should change status to ARCHIVED', () => {
-      const entry = journalCreate(TEST_USER_ID, { side: 'SELL', summary: 'Test' });
+      const entry = journalCreate(TEST_USER_ID, { summary: 'Test' }, 'idem-archive-1');
       
-      const archived = journalArchive(TEST_USER_ID, entry.id, 'Mistake entry');
+      const archived = journalArchive(TEST_USER_ID, entry.id);
       
-      expect(archived?.status).toBe('ARCHIVED');
+      expect(archived?.status).toBe('archived');
+      expect(archived?.archivedAt).toBeDefined();
     });
     
     it('should be idempotent', () => {
-      const entry = journalCreate(TEST_USER_ID, { side: 'SELL', summary: 'Test' });
+      const entry = journalCreate(TEST_USER_ID, { summary: 'Test' }, 'idem-archive-2');
       
-      journalArchive(TEST_USER_ID, entry.id, 'First reason');
-      const second = journalArchive(TEST_USER_ID, entry.id, 'Second reason');
+      journalArchive(TEST_USER_ID, entry.id);
+      const second = journalArchive(TEST_USER_ID, entry.id);
       
-      expect(second?.status).toBe('ARCHIVED');
+      expect(second?.status).toBe('archived');
     });
 
     it('should not archive other users entries', () => {
-      const entry = journalCreate(TEST_USER_ID, { side: 'SELL', summary: 'Test' });
+      const entry = journalCreate(TEST_USER_ID, { summary: 'Test' }, 'idem-archive-3');
       
-      const result = journalArchive(OTHER_USER_ID, entry.id, 'Hack');
+      const result = journalArchive(OTHER_USER_ID, entry.id);
       
       expect(result).toBeNull();
     });
@@ -209,25 +201,25 @@ describe('Journal Integration', () => {
   
   describe('Restore', () => {
     it('should change status back to PENDING', () => {
-      const entry = journalCreate(TEST_USER_ID, { side: 'BUY', summary: 'Test' });
-      journalArchive(TEST_USER_ID, entry.id, 'Oops');
+      const entry = journalCreate(TEST_USER_ID, { summary: 'Test' }, 'idem-restore-1');
+      journalArchive(TEST_USER_ID, entry.id);
       
       const restored = journalRestore(TEST_USER_ID, entry.id);
       
-      expect(restored?.status).toBe('PENDING');
+      expect(restored?.status).toBe('pending');
     });
     
     it('should be idempotent on pending', () => {
-      const entry = journalCreate(TEST_USER_ID, { side: 'BUY', summary: 'Test' });
+      const entry = journalCreate(TEST_USER_ID, { summary: 'Test' }, 'idem-restore-2');
       
       const restored = journalRestore(TEST_USER_ID, entry.id);
       
-      expect(restored?.status).toBe('PENDING');
+      expect(restored?.status).toBe('pending');
     });
 
     it('should not restore other users entries', () => {
-      const entry = journalCreate(TEST_USER_ID, { side: 'BUY', summary: 'Test' });
-      journalArchive(TEST_USER_ID, entry.id, 'Archived');
+      const entry = journalCreate(TEST_USER_ID, { summary: 'Test' }, 'idem-restore-3');
+      journalArchive(TEST_USER_ID, entry.id);
       
       const result = journalRestore(OTHER_USER_ID, entry.id);
       
@@ -237,7 +229,7 @@ describe('Journal Integration', () => {
   
   describe('Delete', () => {
     it('should remove entry', () => {
-      const entry = journalCreate(TEST_USER_ID, { side: 'BUY', summary: 'Test' });
+      const entry = journalCreate(TEST_USER_ID, { summary: 'Test' }, 'idem-delete-1');
       
       const deleted = journalDelete(TEST_USER_ID, entry.id);
       
@@ -252,7 +244,7 @@ describe('Journal Integration', () => {
     });
 
     it('should not delete other users entries', () => {
-      const entry = journalCreate(TEST_USER_ID, { side: 'BUY', summary: 'Test' });
+      const entry = journalCreate(TEST_USER_ID, { summary: 'Test' }, 'idem-delete-2');
       
       const deleted = journalDelete(OTHER_USER_ID, entry.id);
       
