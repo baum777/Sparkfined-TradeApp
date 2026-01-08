@@ -4,7 +4,7 @@
  * Verwaltet alle Trading-Journal-bezogenen API-Aufrufe
  */
 
-import { apiClient, type ApiResponse } from '../api/client';
+import { apiClient } from '../api/client';
 
 export interface JournalEntry {
   id: string;
@@ -75,7 +75,7 @@ class JournalService {
   /**
    * Holt alle Journal-Einträge mit optionalen Filtern
    */
-  async getEntries(filters?: JournalFilters): Promise<ApiResponse<JournalEntry[]>> {
+  async getEntries(filters?: JournalFilters): Promise<JournalEntry[]> {
     const queryParams = new URLSearchParams();
     
     if (filters) {
@@ -99,14 +99,14 @@ class JournalService {
   /**
    * Holt einen einzelnen Journal-Eintrag
    */
-  async getEntry(id: string): Promise<ApiResponse<JournalEntry>> {
+  async getEntry(id: string): Promise<JournalEntry> {
     return apiClient.get<JournalEntry>(`${this.basePath}/${id}`);
   }
 
   /**
    * Erstellt einen neuen Journal-Eintrag
    */
-  async createEntry(data: JournalEntryInput): Promise<ApiResponse<JournalEntry>> {
+  async createEntry(data: JournalEntryInput): Promise<JournalEntry> {
     // Berechne PnL
     const pnl = this.calculatePnL(
       data.direction,
@@ -130,21 +130,21 @@ class JournalService {
   async updateEntry(
     id: string,
     data: Partial<JournalEntryInput>
-  ): Promise<ApiResponse<JournalEntry>> {
+  ): Promise<JournalEntry> {
     return apiClient.patch<JournalEntry>(`${this.basePath}/${id}`, data);
   }
 
   /**
    * Löscht einen Journal-Eintrag
    */
-  async deleteEntry(id: string): Promise<ApiResponse<void>> {
-    return apiClient.delete<void>(`${this.basePath}/${id}`);
+  async deleteEntry(id: string): Promise<void> {
+    await apiClient.delete<void>(`${this.basePath}/${id}`);
   }
 
   /**
    * Archiviert einen Journal-Eintrag
    */
-  async archiveEntry(id: string): Promise<ApiResponse<JournalEntry>> {
+  async archiveEntry(id: string): Promise<JournalEntry> {
     return apiClient.patch<JournalEntry>(`${this.basePath}/${id}/archive`, {
       archived: true,
     });
@@ -153,7 +153,7 @@ class JournalService {
   /**
    * Holt Statistiken für alle Journal-Einträge
    */
-  async getStats(filters?: JournalFilters): Promise<ApiResponse<JournalStats>> {
+  async getStats(filters?: JournalFilters): Promise<JournalStats> {
     const queryParams = new URLSearchParams();
     
     if (filters) {
@@ -182,16 +182,12 @@ class JournalService {
   async uploadScreenshots(
     id: string,
     files: File[]
-  ): Promise<ApiResponse<string[]>> {
+  ): Promise<string[]> {
     // BACKEND_TODO: Support multipart/form-data uploads (ApiClient currently JSON-only).
     // BACKEND_TODO: Replace with real upload endpoint integration.
     void id;
     void files;
-    return {
-      data: [],
-      status: 501,
-      message: 'Not implemented (v1 UI stub)',
-    };
+    return [];
   }
 
   /**
@@ -238,12 +234,10 @@ class JournalService {
       ? `${this.basePath}/export/csv?${query}` 
       : `${this.basePath}/export/csv`;
 
-    const response = await fetch(
-      `${apiClient['config'].baseURL}${endpoint}`,
-      {
-        headers: apiClient['config'].headers,
-      }
-    );
+    // Use raw mode to avoid envelope assumptions for file downloads.
+    const response = await fetch(`${(apiClient as any)['config'].baseURL}${endpoint}`, {
+      headers: (apiClient as any)['config'].headers,
+    });
 
     if (!response.ok) {
       throw new Error('Export failed');

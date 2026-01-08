@@ -16,6 +16,12 @@ const envSchema = z.object({
   PORT: z.string().transform(Number).default('3000'),
   DATABASE_PATH: z.string().default('./.data/tradeapp.sqlite'),
   API_BASE_PATH: z.string().default('/api'),
+
+  // Legacy/compat fields used by some modules
+  BACKEND_PORT: z.string().transform(Number).default('3000'),
+  DATABASE_URL: z.string().default('sqlite:./.data/tradeapp.sqlite'),
+  LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
+  JWT_SECRET: z.string().default('dev-secret'),
   
   // Auth
   API_KEY: z.string().optional(),
@@ -28,10 +34,14 @@ const envSchema = z.object({
   // AI
   OPENAI_API_KEY: z.string().optional(),
   OPENAI_BASE_URL: z.string().default('https://api.openai.com/v1'),
+  OPENAI_MODEL_JOURNAL: z.string().optional(),
+  OPENAI_MODEL_INSIGHTS: z.string().optional(),
+  OPENAI_MODEL_CHARTS: z.string().optional(),
   
   DEEPSEEK_API_KEY: z.string().optional(),
   DEEPSEEK_BASE_URL: z.string().default('https://api.deepseek.com'),
   DEEPSEEK_MODEL_REASONING: z.string().default('deepseek-reasoner'),
+  OPUS_MODEL: z.string().optional(),
 
   // Grok Pulse
   GROK_API_KEY: z.string().optional(),
@@ -53,6 +63,7 @@ const envSchema = z.object({
 });
 
 export type Env = z.infer<typeof envSchema>;
+export type BackendEnv = Env;
 
 let envCache: Env | null = null;
 

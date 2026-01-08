@@ -18,14 +18,15 @@ export interface ApiResponse<T> {
 
 /**
  * Error Response Envelope
- * Per API_SPEC.md ErrorResponse
+ * Canonical contract:
+ *   { error: { code: string, message: string, details?: object } }
  */
-export interface ErrorResponse {
-  status: number;
-  message: string;
-  code: string;
-  requestId: string;
-  details?: Record<string, string[]>;
+export interface ErrorResponseBody {
+  error: {
+    code: string;
+    message: string;
+    details?: Record<string, string[]>;
+  };
 }
 
 export function sendJson<T>(
@@ -50,8 +51,8 @@ export function sendCreated<T>(res: VercelResponse, data: T, message?: string): 
 }
 
 export function sendNoContent(res: VercelResponse): void {
-  res.setHeader('x-request-id', getRequestId());
-  res.status(204).end();
+  // Canonical envelope even for "no content" semantics.
+  sendJson(res, null, 204);
 }
 
 export function sendError(
@@ -61,12 +62,12 @@ export function sendError(
   message: string,
   details?: Record<string, string[]>
 ): void {
-  const response: ErrorResponse = {
-    status,
-    message,
-    code,
-    requestId: getRequestId(),
-    details,
+  const response: ErrorResponseBody = {
+    error: {
+      code,
+      message,
+      details,
+    },
   };
 
   res.setHeader('Content-Type', 'application/json');

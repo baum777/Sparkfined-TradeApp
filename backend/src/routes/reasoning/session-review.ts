@@ -18,10 +18,11 @@ export async function handleReasoningSessionReview(req: ParsedRequest, res: Serv
   rateLimiters.reasoning(req.path, req.userId);
 
   const body = validateBody(sessionReviewRequestSchema, req.body);
+  const normalized = { ...body, version: body.version ?? REASONING_CONTRACT_VERSION };
 
   setCacheHeaders(res, { noStore: true });
 
-  const result = await runReasoning(req, 'session-review', body);
+  const result = await runReasoning(req, 'session-review', normalized);
 
   sendJson(res, result);
 }

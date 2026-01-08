@@ -1,4 +1,4 @@
-import type { IncomingMessage, ServerResponse } from 'http';
+import type { IncomingMessage, ServerResponse, IncomingHttpHeaders } from 'http';
 import { parse as parseUrl } from 'url';
 import { handleError, invalidJson, methodNotAllowed, notFound, ErrorCodes } from './error.js';
 import { createRequestContext, setRequestIdHeader, clearRequestId } from './requestId.js';
@@ -22,6 +22,7 @@ export interface ParsedRequest {
   params: RouteParams;
   query: Record<string, string | string[] | undefined>;
   body: unknown;
+  headers: IncomingHttpHeaders;
   userId: string; // Extracted from auth or 'anon'
   user?: AuthUser;
 }
@@ -196,6 +197,7 @@ export class Router {
         params: found.params,
         query: parsed.query as Record<string, string | string[] | undefined>,
         body,
+        headers: req.headers,
         userId,
         user,
       };

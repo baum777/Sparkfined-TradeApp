@@ -61,8 +61,8 @@ export function handleJournalGetById(req: ParsedRequest, res: ServerResponse): v
 export function handleJournalCreate(req: ParsedRequest, res: ServerResponse): void {
   const body = validateBody(journalCreateRequestSchema, req.body);
   
-  // Check for idempotency key
-  const idempotencyKey = req.query['idempotency-key'] as string | undefined;
+  // Check for idempotency key (header is canonical)
+  const idempotencyKey = req.headers['idempotency-key'] as string | undefined;
   
   // userId is now REQUIRED for all journal operations (multitenancy)
   const entry = journalCreate(req.userId, body, idempotencyKey);

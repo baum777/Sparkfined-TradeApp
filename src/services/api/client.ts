@@ -2,7 +2,6 @@
  * API Client Konfiguration
  * 
  * Zentraler HTTP-Client für alle API-Aufrufe.
- * Kann später mit axios, fetch oder einer anderen Library erweitert werden.
  */
 
 export interface ApiClientConfig {
@@ -11,20 +10,97 @@ export interface ApiClientConfig {
   headers: Record<string, string>;
 }
 
-export interface ApiResponse<T> {
+export interface ApiSuccessEnvelope<T> {
   data: T;
   status: number;
   message?: string;
 }
 
-export interface ApiError {
-  message: string;
-  status: number;
-  code?: string;
+export interface ApiErrorBody {
+  error: {
+    code: string;
+    message: string;
+    details?: unknown;
+  };
+}
+
+export class ApiHttpError extends Error {
+  readonly status: number;
+  readonly code?: string;
+  readonly details?: unknown;
+
+  constructor(message: string, status: number, info?: { code?: string; details?: unknown }) {
+    super(message);
+    this.name = 'ApiHttpError';
+    this.status = status;
+    this.code = info?.code;
+    this.details = info?.details;
+  }
+}
+
+export class ApiContractError extends Error {
+  readonly endpoint: string;
+  readonly hint?: string;
+
+  constructor(message: string, endpoint: string, hint?: string) {
+    super(message);
+    this.name = 'ApiContractError';
+    this.endpoint = endpoint;
+    this.hint = hint;
+  }
+}
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object';
+}
+
+function parseJsonSafely(text: string): unknown {
+  if (!text.length) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
+function isSuccessEnvelope(value: unknown): value is ApiSuccessEnvelope<unknown> {
+  return (
+    isObject(value) &&
+    'data' in value &&
+    'status' in value &&
+    typeof (value as any).status === 'number'
+  );
+}
+
+function parseCanonicalErrorBody(value: unknown): ApiErrorBody | null {
+  if (!isObject(value)) return null;
+  if (!('error' in value)) return null;
+  const err = (value as any).error;
+  if (!isObject(err)) return null;
+  if (typeof err.code !== 'string' || typeof err.message !== 'string') return null;
+  return value as ApiErrorBody;
+}
+
+function parseLegacyErrorBody(value: unknown): { code?: string; message?: string; details?: unknown } | null {
+  // Legacy backend shape (pre-envelope standardization)
+  // { status, message, code, details?, requestId? }
+  if (!isObject(value)) return null;
+  const code = typeof (value as any).code === 'string' ? (value as any).code : undefined;
+  const message = typeof (value as any).message === 'string' ? (value as any).message : undefined;
+  const details = (value as any).details;
+  if (!code && !message && details === undefined) return null;
+  return { code, message, details };
 }
 
 class ApiClient {
   private config: ApiClientConfig;
+  readonly raw: {
+    get: <TRaw>(endpoint: string, options?: RequestInit) => Promise<TRaw>;
+    post: <TRaw>(endpoint: string, data?: unknown, options?: RequestInit) => Promise<TRaw>;
+    put: <TRaw>(endpoint: string, data?: unknown, options?: RequestInit) => Promise<TRaw>;
+    patch: <TRaw>(endpoint: string, data?: unknown, options?: RequestInit) => Promise<TRaw>;
+    delete: <TRaw>(endpoint: string, options?: RequestInit) => Promise<TRaw>;
+  };
 
   constructor(config?: Partial<ApiClientConfig>) {
     this.config = {
@@ -35,13 +111,42 @@ class ApiClient {
         ...config?.headers,
       },
     };
+
+    // Raw mode: return response JSON as-is (no envelope enforcement / no unwrapping).
+    this.raw = {
+      get: (endpoint, options) => this.requestJson(endpoint, { ...options, method: 'GET' }),
+      post: (endpoint, data, options) =>
+        this.requestJson(endpoint, {
+          ...options,
+          method: 'POST',
+          body: data === undefined ? undefined : JSON.stringify(data),
+        }),
+      put: (endpoint, data, options) =>
+        this.requestJson(endpoint, {
+          ...options,
+          method: 'PUT',
+          body: data === undefined ? undefined : JSON.stringify(data),
+        }),
+      patch: (endpoint, data, options) =>
+        this.requestJson(endpoint, {
+          ...options,
+          method: 'PATCH',
+          body: data === undefined ? undefined : JSON.stringify(data),
+        }),
+      delete: (endpoint, options) => this.requestJson(endpoint, { ...options, method: 'DELETE' }),
+    };
   }
 
-  private async request<T>(
+  private buildUrl(endpoint: string): string {
+    const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    return `${this.config.baseURL}${path}`;
+  }
+
+  private async requestJson<T>(
     endpoint: string,
     options: RequestInit = {}
-  ): Promise<ApiResponse<T>> {
-    const url = `${this.config.baseURL}${endpoint}`;
+  ): Promise<T> {
+    const url = this.buildUrl(endpoint);
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), this.config.timeout);
 
@@ -57,76 +162,93 @@ class ApiClient {
 
       clearTimeout(timeoutId);
 
+      const text = await response.text();
+      const json = parseJsonSafely(text);
+
       if (!response.ok) {
-        throw {
-          message: `HTTP Error: ${response.statusText}`,
-          status: response.status,
-        } as ApiError;
+        const canonical = parseCanonicalErrorBody(json);
+        if (canonical) {
+          throw new ApiHttpError(canonical.error.message, response.status, {
+            code: canonical.error.code,
+            details: canonical.error.details,
+          });
+        }
+
+        const legacy = parseLegacyErrorBody(json);
+        if (legacy) {
+          throw new ApiHttpError(legacy.message || `HTTP ${response.status}`, response.status, {
+            code: legacy.code,
+            details: legacy.details,
+          });
+        }
+
+        throw new ApiHttpError(
+          response.statusText ? `HTTP Error: ${response.statusText}` : `HTTP ${response.status}`,
+          response.status
+        );
       }
 
-      const data = await response.json();
-
-      return {
-        data,
-        status: response.status,
-      };
+      return json as T;
     } catch (error) {
       clearTimeout(timeoutId);
       
       if (error instanceof Error && error.name === 'AbortError') {
-        throw {
-          message: 'Request timeout',
-          status: 408,
-          code: 'TIMEOUT',
-        } as ApiError;
+        throw new ApiHttpError('Request timeout', 408, { code: 'TIMEOUT' });
       }
 
       throw error;
     }
   }
 
-  async get<T>(endpoint: string, options?: RequestInit): Promise<ApiResponse<T>> {
-    return this.request<T>(endpoint, { ...options, method: 'GET' });
+  private async requestEnvelope<T>(endpoint: string, options?: RequestInit): Promise<ApiSuccessEnvelope<T>> {
+    const json = await this.requestJson<ApiSuccessEnvelope<T> | T>(endpoint, options);
+    if (isSuccessEnvelope(json)) {
+      return json as ApiSuccessEnvelope<T>;
+    }
+
+    // Defensive parsing to catch drift early. Use raw mode to opt in to non-enveloped payloads.
+    throw new ApiContractError(
+      `Non-canonical response shape for ${endpoint}: expected { data, status, message? } envelope`,
+      endpoint,
+      'Use apiClient.raw.* to access the raw JSON during migration, or fix the backend to return the canonical envelope.'
+    );
   }
 
-  async post<T>(
-    endpoint: string,
-    data?: unknown,
-    options?: RequestInit
-  ): Promise<ApiResponse<T>> {
-    return this.request<T>(endpoint, {
+  async get<T>(endpoint: string, options?: RequestInit): Promise<T> {
+    const env = await this.requestEnvelope<T>(endpoint, { ...options, method: 'GET' });
+    return env.data;
+  }
+
+  async post<T>(endpoint: string, data?: unknown, options?: RequestInit): Promise<T> {
+    const env = await this.requestEnvelope<T>(endpoint, {
       ...options,
       method: 'POST',
-      body: JSON.stringify(data),
+      body: data === undefined ? undefined : JSON.stringify(data),
     });
+    return env.data;
   }
 
-  async put<T>(
-    endpoint: string,
-    data?: unknown,
-    options?: RequestInit
-  ): Promise<ApiResponse<T>> {
-    return this.request<T>(endpoint, {
+  async put<T>(endpoint: string, data?: unknown, options?: RequestInit): Promise<T> {
+    const env = await this.requestEnvelope<T>(endpoint, {
       ...options,
       method: 'PUT',
-      body: JSON.stringify(data),
+      body: data === undefined ? undefined : JSON.stringify(data),
     });
+    return env.data;
   }
 
-  async patch<T>(
-    endpoint: string,
-    data?: unknown,
-    options?: RequestInit
-  ): Promise<ApiResponse<T>> {
-    return this.request<T>(endpoint, {
+  async patch<T>(endpoint: string, data?: unknown, options?: RequestInit): Promise<T> {
+    const env = await this.requestEnvelope<T>(endpoint, {
       ...options,
       method: 'PATCH',
-      body: JSON.stringify(data),
+      body: data === undefined ? undefined : JSON.stringify(data),
     });
+    return env.data;
   }
 
-  async delete<T>(endpoint: string, options?: RequestInit): Promise<ApiResponse<T>> {
-    return this.request<T>(endpoint, { ...options, method: 'DELETE' });
+  async delete<T>(endpoint: string, options?: RequestInit): Promise<T> {
+    const env = await this.requestEnvelope<T>(endpoint, { ...options, method: 'DELETE' });
+    return env.data;
   }
 
   setAuthToken(token: string) {

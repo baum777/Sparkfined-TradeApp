@@ -219,7 +219,7 @@ describe('Journal API Integration', () => {
       // Check response body code
       const calls = (res.json as any).mock.calls;
       expect(calls.length).toBeGreaterThan(0);
-      expect(calls[0][0].code).toBe(ErrorCodes.JOURNAL_NOT_FOUND);
+      expect(calls[0][0].error.code).toBe(ErrorCodes.JOURNAL_NOT_FOUND);
     });
   });
 
