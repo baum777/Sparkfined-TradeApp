@@ -30,11 +30,7 @@ const iconByTab: Record<PrimaryTabKey, LucideIcon> = {
   dashboard: LayoutDashboard,
   research: Search,
   journal: PenLine,
-<<<<<<< HEAD
-  research: LineChart,
-=======
   insights: Lightbulb,
->>>>>>> b029b84c6e75b685db3442e05518aa5e941f68bb
   alerts: Bell,
   settings: Settings,
 };

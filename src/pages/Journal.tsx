@@ -57,26 +57,6 @@ export default function Journal() {
   // Wallet guard state (stub) - default to true for demo
   const [isWalletConnected, setIsWalletConnected] = useState(true);
 
-<<<<<<< HEAD
-  // Journal v3 mode state
-  const [mode, setMode] = useState<JournalMode>(getStoredJournalMode);
-  const handleModeChange = useCallback(
-    (value: JournalMode) => {
-      setMode(value);
-      const params = new URLSearchParams(searchParams);
-      params.set("mode", value);
-      setSearchParams(params, { replace: true });
-    },
-    [searchParams, setSearchParams]
-  );
-
-  useEffect(() => {
-    const modeParam = searchParams.get("mode") as JournalMode | null;
-    if (modeParam && modeParam !== mode) {
-      setMode(modeParam);
-    }
-  }, [searchParams, mode]);
-=======
   // Journal v3 mode state - URL-driven
   const urlMode = searchParams.get("mode") as JournalMode | null;
   const [mode, setMode] = useState<JournalMode>(() => {
@@ -86,7 +66,6 @@ export default function Journal() {
     }
     return getStoredJournalMode();
   });
->>>>>>> b029b84c6e75b685db3442e05518aa5e941f68bb
   
   // Search state
   const [searchQuery, setSearchQuery] = useState("");

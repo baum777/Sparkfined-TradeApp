@@ -1,29 +1,9 @@
-<<<<<<< HEAD
-import { Navigate, useSearchParams } from "react-router-dom";
-import Chart from "@/pages/Chart";
-
-export default function Research() {
-  const [searchParams] = useSearchParams();
-  const view = searchParams.get("view");
-  const normalizedView = view?.toLowerCase();
-
-  if (normalizedView !== "chart") {
-    const params = new URLSearchParams(searchParams);
-    params.set("view", "chart");
-    const query = params.toString();
-
-    return <Navigate to={`/research${query ? `?${query}` : ""}`} replace />;
-  }
-
-  return <Chart />;
-}
-
-=======
 /**
  * Research Workspace
  * Consolidates: /chart, /watchlist, /replay, /asset/:assetId
  * 
  * URL state:
+ * - ?view=chart - Canonical view (default, normalized)
  * - ?q=<symbol> - Selected symbol
  * - ?panel=watchlist - Show watchlist panel
  * - ?replay=true - Enable replay mode
@@ -31,17 +11,16 @@ export default function Research() {
  */
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import { useSearchParams, useParams } from "react-router-dom";
+import { Navigate, useSearchParams, useParams } from "react-router-dom";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { useChartStub, useOracleStub } from "@/stubs/hooks";
 import { useJournalApi } from "@/services/journal";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useTradingWallet } from "@/hooks/useTradingWallet";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { AlertCircle, RefreshCw, BarChart3, X, Eye, Play, Wallet } from "lucide-react";
+import { AlertCircle, RefreshCw, BarChart3, X, Eye, Play } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { isValidChartQuery, normalizeChartQuery, isValidSolanaBase58 } from "@/routes/routes";
 import {
@@ -100,6 +79,14 @@ export default function Research() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { assetId } = useParams<{ assetId?: string }>();
   const isMobile = useIsMobile();
+
+  // Canonical normalization: ensure view=chart
+  const view = searchParams.get("view");
+  if (view !== "chart") {
+    const params = new URLSearchParams(searchParams);
+    params.set("view", "chart");
+    return <Navigate to={`/research?${params.toString()}`} replace />;
+  }
   
   const {
     pageState,
@@ -519,4 +506,3 @@ export default function Research() {
     </PageContainer>
   );
 }
->>>>>>> b029b84c6e75b685db3442e05518aa5e941f68bb

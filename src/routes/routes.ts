@@ -2,11 +2,7 @@ export type PrimaryTabKey =
   | "dashboard"
   | "research"
   | "journal"
-<<<<<<< HEAD
-  | "research"
-=======
   | "insights"
->>>>>>> b029b84c6e75b685db3442e05518aa5e941f68bb
   | "alerts"
   | "settings";
 
@@ -69,7 +65,7 @@ export const primaryTabs: PrimaryTab[] = [
   {
     key: "research",
     label: "Research",
-    route: "/research",
+    route: "/research?view=chart",
     tabTestId: "tab-research",
     pageTestId: "page-research",
     showInMobileNav: true,
@@ -83,20 +79,12 @@ export const primaryTabs: PrimaryTab[] = [
     showInMobileNav: true,
   },
   {
-<<<<<<< HEAD
-    key: "research",
-    label: "Research",
-    route: "/research",
-    tabTestId: "tab-research",
-    pageTestId: "page-research",
-=======
     key: "insights",
     label: "Insights",
     route: "/insights",
     tabTestId: "tab-insights",
     pageTestId: "page-insights",
     showInMobileNav: true,
->>>>>>> b029b84c6e75b685db3442e05518aa5e941f68bb
   },
   {
     key: "alerts",
@@ -137,39 +125,15 @@ function encodePathSegment(value: string): string {
 
 export const routeHelpers = {
   dashboard: () => "/dashboard",
-<<<<<<< HEAD
-  journal: () => "/journal",
-  research: (opts?: { q?: string; replay?: boolean }) => {
-    const params = new URLSearchParams();
-    params.set("view", "chart");
-    const query = opts?.q?.trim();
-    if (query) {
-      params.set("q", query);
-    }
-    if (opts?.replay) {
-      params.set("replay", "true");
-    }
-    const qs = params.toString();
-    return qs ? `/research?${qs}` : "/research";
-  },
-  alerts: () => "/alerts",
-  watchlist: () => "/watchlist",
-  oracle: () => "/oracle",
-  learn: () => "/learn",
-  handbook: () => "/handbook",
-  settings: () => "/settings",
 
-  // Secondary
-=======
-  
-  // Research workspace (consolidated from chart, watchlist, replay, asset)
+  // Research workspace (canonical: always view=chart)
   research: (opts?: { q?: string; panel?: string; replay?: boolean }) => {
     const sp = new URLSearchParams();
+    sp.set("view", "chart");
     if (opts?.q?.trim()) sp.set("q", opts.q.trim());
     if (opts?.panel) sp.set("panel", opts.panel);
     if (opts?.replay) sp.set("replay", "true");
-    const qs = sp.toString();
-    return qs ? `/research?${qs}` : "/research";
+    return `/research?${sp.toString()}`;
   },
   researchAsset: (assetId: string) => `/research/${encodePathSegment(assetId)}`,
   
@@ -181,7 +145,6 @@ export const routeHelpers = {
     const qs = sp.toString();
     return qs ? `/journal?${qs}` : "/journal";
   },
->>>>>>> b029b84c6e75b685db3442e05518aa5e941f68bb
   journalEntry: (entryId: string) => `/journal/${encodePathSegment(entryId)}`,
   
   // Insights (consolidated from oracle)

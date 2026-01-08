@@ -3,253 +3,126 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-<<<<<<< HEAD
-import { BrowserRouter, Routes, Route, Navigate, useLocation, useSearchParams, useParams } from "react-router-dom";
-=======
-import { BrowserRouter, Routes, Route, Navigate, useSearchParams } from "react-router-dom";
->>>>>>> b029b84c6e75b685db3442e05518aa5e941f68bb
+import { BrowserRouter, Routes, Route, Navigate, useSearchParams, useParams } from "react-router-dom";
 import { AppShell } from "@/components/layout/AppShell";
 
-// Primary pages
+// Primary pages (canonical)
 import Dashboard from "@/pages/Dashboard";
 import Research from "@/pages/Research";
 import Journal from "@/pages/Journal";
+import JournalEntry from "@/pages/JournalEntry";
 import Insights from "@/pages/Insights";
 import Alerts from "@/pages/Alerts";
 import SettingsPage from "@/pages/SettingsPage";
-
-// Secondary pages
-import JournalEntry from "@/pages/JournalEntry";
-<<<<<<< HEAD
-import OracleInbox from "@/pages/OracleInbox";
-import OracleInsight from "@/pages/OracleInsight";
-import OracleStatus from "@/pages/OracleStatus";
-import SettingsProviders from "@/pages/SettingsProviders";
-import SettingsData from "@/pages/SettingsData";
-import SettingsExperiments from "@/pages/SettingsExperiments";
-import SettingsPrivacy from "@/pages/SettingsPrivacy";
-import Asset from "@/pages/Asset";
-import Research from "@/pages/Research";
-=======
 import NotFound from "@/pages/NotFound";
 
 // Journal queue sync runner
 import { startJournalQueueSync } from "@/services/journal/queueStore";
->>>>>>> b029b84c6e75b685db3442e05518aa5e941f68bb
 
 const queryClient = new QueryClient();
 
-// Redirect components for legacy routes
+// Legacy redirect helpers (must preserve query params)
+function preserveSearchTo(path: string, searchParams: URLSearchParams): string {
+  const qs = searchParams.toString();
+  return qs ? `${path}?${qs}` : path;
+}
+
 function ChartRedirect() {
   const [searchParams] = useSearchParams();
-  const q = searchParams.get("q");
-  return <Navigate to={q ? `/research?q=${q}` : "/research"} replace />;
+  const params = new URLSearchParams(searchParams);
+  params.set("view", "chart");
+  return <Navigate to={preserveSearchTo("/research", params)} replace />;
 }
 
 function WatchlistRedirect() {
-  return <Navigate to="/research?panel=watchlist" replace />;
+  const [searchParams] = useSearchParams();
+  const params = new URLSearchParams(searchParams);
+  params.set("view", "chart");
+  params.set("panel", "watchlist");
+  return <Navigate to={preserveSearchTo("/research", params)} replace />;
 }
 
 function ReplayRedirect() {
-  return <Navigate to="/research?replay=true" replace />;
-}
-
-function AssetRedirect({ assetId }: { assetId: string }) {
-  return <Navigate to={`/research/${assetId}`} replace />;
+  const [searchParams] = useSearchParams();
+  const params = new URLSearchParams(searchParams);
+  params.set("view", "chart");
+  params.set("replay", "true");
+  return <Navigate to={preserveSearchTo("/research", params)} replace />;
 }
 
 function OracleRedirect() {
   const [searchParams] = useSearchParams();
-  const params = searchParams.toString();
-  return <Navigate to={params ? `/insights?${params}` : "/insights"} replace />;
+  return <Navigate to={preserveSearchTo("/insights", searchParams)} replace />;
 }
 
 function OracleInboxRedirect() {
-  return <Navigate to="/insights?filter=unread" replace />;
+  const [searchParams] = useSearchParams();
+  const params = new URLSearchParams(searchParams);
+  params.set("filter", "unread");
+  return <Navigate to={preserveSearchTo("/insights", params)} replace />;
 }
 
 function OracleStatusRedirect() {
-  return <Navigate to="/insights?mode=status" replace />;
-}
-
-function OracleInsightRedirect({ insightId }: { insightId: string }) {
-  return <Navigate to={`/insights/${insightId}`} replace />;
+  const [searchParams] = useSearchParams();
+  const params = new URLSearchParams(searchParams);
+  params.set("mode", "status");
+  return <Navigate to={preserveSearchTo("/insights", params)} replace />;
 }
 
 function LearnRedirect() {
-  return <Navigate to="/journal?mode=learn" replace />;
+  const [searchParams] = useSearchParams();
+  const params = new URLSearchParams(searchParams);
+  params.set("mode", "learn");
+  return <Navigate to={preserveSearchTo("/journal", params)} replace />;
 }
 
 function HandbookRedirect() {
-  return <Navigate to="/journal?mode=playbook" replace />;
+  const [searchParams] = useSearchParams();
+  const params = new URLSearchParams(searchParams);
+  params.set("mode", "playbook");
+  return <Navigate to={preserveSearchTo("/journal", params)} replace />;
 }
 
 function JournalReviewRedirect() {
-  return <Navigate to="/journal?mode=inbox" replace />;
+  const [searchParams] = useSearchParams();
+  const params = new URLSearchParams(searchParams);
+  params.set("mode", "inbox");
+  return <Navigate to={preserveSearchTo("/journal", params)} replace />;
 }
 
 function JournalInsightsRedirect() {
-  return <Navigate to="/journal?mode=learn" replace />;
+  const [searchParams] = useSearchParams();
+  const params = new URLSearchParams(searchParams);
+  params.set("mode", "learn");
+  return <Navigate to={preserveSearchTo("/journal", params)} replace />;
 }
 
-function SettingsProvidersRedirect() {
-  return <Navigate to="/settings?section=providers" replace />;
+function SettingsSectionRedirect({ section }: { section: string }) {
+  const [searchParams] = useSearchParams();
+  const params = new URLSearchParams(searchParams);
+  params.set("section", section);
+  return <Navigate to={preserveSearchTo("/settings", params)} replace />;
 }
 
-function SettingsDataRedirect() {
-  return <Navigate to="/settings?section=data" replace />;
-}
-
-function SettingsExperimentsRedirect() {
-  return <Navigate to="/settings?section=experiments" replace />;
-}
-
-function SettingsPrivacyRedirect() {
-  return <Navigate to="/settings?section=privacy" replace />;
-}
-
-// Wrapper for asset redirect to get params
-function AssetRedirectWrapper() {
-  // This will be handled by the route param
-  return null;
-}
-
-const App = () => {
-  // Start journal queue sync runner exactly once at root
-  useEffect(() => {
-    startJournalQueueSync();
-  }, []);
-
-  return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-          <Route element={<AppShell />}>
-            {/* Redirects (Root) */}
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-
-            {/* PRIMARY ROUTES (6 tabs) */}
-            <Route path="/dashboard" element={<Dashboard />} />
-<<<<<<< HEAD
-            <Route path="/journal/review" element={<Navigate to="/journal?mode=inbox&view=pending" replace />} />
-            <Route path="/journal/insights" element={<Navigate to="/journal?mode=learn&view=pending" replace />} />
-            <Route path="/journal" element={<JournalRoute />} />
-            <Route path="/research/:assetId" element={<NavigateToResearch />} />
-            <Route path="/research" element={<Research />} />
-            <Route path="/chart" element={<ChartLegacyRedirect />} />
-            <Route path="/replay" element={<ReplayLegacyRedirect />} />
-=======
-            <Route path="/research" element={<Research />} />
-            <Route path="/research/:assetId" element={<Research />} />
-            <Route path="/journal" element={<Journal />} />
-            <Route path="/journal/:entryId" element={<JournalEntry />} />
-            <Route path="/insights" element={<Insights />} />
-            <Route path="/insights/:insightId" element={<Insights />} />
->>>>>>> b029b84c6e75b685db3442e05518aa5e941f68bb
-            <Route path="/alerts" element={<Alerts />} />
-            <Route path="/settings" element={<SettingsPage />} />
-
-<<<<<<< HEAD
-            {/* Secondary Routes (Frozen Additions) */}
-            <Route path="/journal/:entryId" element={<JournalEntry />} />
-
-            <Route path="/oracle/inbox" element={<OracleInbox />} />
-            <Route path="/oracle/status" element={<OracleStatus />} />
-            <Route path="/oracle/:insightId" element={<OracleInsight />} />
-
-            <Route path="/settings/providers" element={<SettingsProviders />} />
-            <Route path="/settings/data" element={<SettingsData />} />
-            <Route path="/settings/experiments" element={<SettingsExperiments />} />
-            <Route path="/settings/privacy" element={<SettingsPrivacy />} />
-
-            <Route path="/asset/:assetId" element={<Asset />} />
-
-            {/* Existing Learn detail route (non-tab deep link) */}
-            <Route path="/learn/:id" element={<LessonViewer />} />
-=======
-            {/* LEGACY ROUTE REDIRECTS */}
-            {/* Chart → Research */}
-            <Route path="/chart" element={<ChartRedirect />} />
-            
-            {/* Watchlist → Research with panel */}
-            <Route path="/watchlist" element={<WatchlistRedirect />} />
-            
-            {/* Replay → Research with replay mode */}
-            <Route path="/replay" element={<ReplayRedirect />} />
-            
-            {/* Asset → Research with asset */}
-            <Route path="/asset/:assetId" element={<Navigate to="/research/:assetId" replace />} />
-            
-            {/* Oracle → Insights */}
-            <Route path="/oracle" element={<OracleRedirect />} />
-            <Route path="/oracle/inbox" element={<OracleInboxRedirect />} />
-            <Route path="/oracle/status" element={<OracleStatusRedirect />} />
-            <Route path="/oracle/:insightId" element={<Navigate to="/insights/:insightId" replace />} />
-            
-            {/* Learn → Journal with learn mode */}
-            <Route path="/learn" element={<LearnRedirect />} />
-            <Route path="/learn/:id" element={<LearnRedirect />} />
-            
-            {/* Handbook → Journal with playbook mode */}
-            <Route path="/handbook" element={<HandbookRedirect />} />
-            
-            {/* Journal subroutes → Journal with mode params */}
-            <Route path="/journal/review" element={<JournalReviewRedirect />} />
-            <Route path="/journal/insights" element={<JournalInsightsRedirect />} />
-            
-            {/* Settings subroutes → Settings with section params */}
-            <Route path="/settings/providers" element={<SettingsProvidersRedirect />} />
-            <Route path="/settings/data" element={<SettingsDataRedirect />} />
-            <Route path="/settings/experiments" element={<SettingsExperimentsRedirect />} />
-            <Route path="/settings/privacy" element={<SettingsPrivacyRedirect />} />
->>>>>>> b029b84c6e75b685db3442e05518aa5e941f68bb
-          </Route>
-
-            {/* 404 outside AppShell */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </QueryClientProvider>
-  );
-};
-
-export default App;
-
-function ChartLegacyRedirect() {
-  const { search } = useLocation();
-  return <Navigate to={`/research${search}`} replace />;
-}
-
-function ReplayLegacyRedirect() {
-  const { search } = useLocation();
-  const params = new URLSearchParams(search);
-  if (params.get("view") !== "chart") {
-    params.set("view", "chart");
-  }
-  params.set("replay", "true");
-  const query = params.toString();
-  return <Navigate to={`/research${query ? `?${query}` : ""}`} replace />;
-}
-
-function NavigateToResearch() {
+function AssetLegacyRedirect() {
   const { assetId } = useParams<{ assetId: string }>();
-  const params = new URLSearchParams();
-  params.set("view", "chart");
-  if (assetId) {
-    params.set("q", assetId);
-  }
-  const query = params.toString();
-  return <Navigate to={`/research${query ? `?${query}` : ""}`} replace />;
+  const [searchParams] = useSearchParams();
+  const qs = searchParams.toString();
+  return <Navigate to={`/research/${encodeURIComponent(assetId ?? "")}${qs ? `?${qs}` : ""}`} replace />;
+}
+
+function OracleInsightLegacyRedirect() {
+  const { insightId } = useParams<{ insightId: string }>();
+  const [searchParams] = useSearchParams();
+  const qs = searchParams.toString();
+  return <Navigate to={`/insights/${encodeURIComponent(insightId ?? "")}${qs ? `?${qs}` : ""}`} replace />;
 }
 
 function JournalRoute() {
   const [searchParams] = useSearchParams();
   const entryId = searchParams.get("entry");
 
+  // Legacy detail query param -> canonical path param
   if (entryId) {
     const params = new URLSearchParams(searchParams);
     params.delete("entry");
@@ -262,6 +135,7 @@ function JournalRoute() {
     );
   }
 
+  // Canonical list state requires view=
   if (!searchParams.has("view")) {
     const params = new URLSearchParams(searchParams);
     params.set("view", "pending");
@@ -270,3 +144,67 @@ function JournalRoute() {
 
   return <Journal />;
 }
+
+const App = () => {
+  useEffect(() => {
+    startJournalQueueSync();
+  }, []);
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route element={<AppShell />}>
+              {/* Redirects (Root) */}
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
+              {/* PRIMARY ROUTES (6 tabs) */}
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/research" element={<Research />} />
+              <Route path="/research/:assetId" element={<Research />} />
+              <Route path="/journal" element={<JournalRoute />} />
+              <Route path="/journal/:entryId" element={<JournalEntry />} />
+              <Route path="/insights" element={<Insights />} />
+              <Route path="/insights/:insightId" element={<Insights />} />
+              <Route path="/alerts" element={<Alerts />} />
+              <Route path="/settings" element={<SettingsPage />} />
+
+              {/* LEGACY ROUTE REDIRECTS */}
+              <Route path="/chart" element={<ChartRedirect />} />
+              <Route path="/replay" element={<ReplayRedirect />} />
+              <Route path="/watchlist" element={<WatchlistRedirect />} />
+              <Route path="/asset/:assetId" element={<AssetLegacyRedirect />} />
+
+              <Route path="/oracle" element={<OracleRedirect />} />
+              <Route path="/oracle/inbox" element={<OracleInboxRedirect />} />
+              <Route path="/oracle/status" element={<OracleStatusRedirect />} />
+              <Route path="/oracle/:insightId" element={<OracleInsightLegacyRedirect />} />
+
+              <Route path="/learn" element={<LearnRedirect />} />
+              <Route path="/learn/:id" element={<LearnRedirect />} />
+              <Route path="/handbook" element={<HandbookRedirect />} />
+
+              <Route path="/journal/review" element={<JournalReviewRedirect />} />
+              <Route path="/journal/insights" element={<JournalInsightsRedirect />} />
+
+              <Route path="/settings/providers" element={<SettingsSectionRedirect section="providers" />} />
+              <Route path="/settings/data" element={<SettingsSectionRedirect section="data" />} />
+              <Route path="/settings/privacy" element={<SettingsSectionRedirect section="privacy" />} />
+
+              {/* Existing experiments page is also legacy -> section param */}
+              <Route path="/settings/experiments" element={<SettingsSectionRedirect section="experiments" />} />
+            </Route>
+
+            {/* 404 outside AppShell */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
+
+export default App;
