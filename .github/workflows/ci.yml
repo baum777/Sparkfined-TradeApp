@@ -50,6 +50,71 @@ jobs:
           fi
         continue-on-error: true
 
+  # Guardrail: prevent new core endpoints in Vercel api/*
+  api-endpoint-guard:
+    name: API Endpoint Guard
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect forbidden api/* changes
+        run: |
+          set -euo pipefail
+
+          # Determine comparison base
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_REF="${{ github.event.pull_request.base.sha }}"
+          else
+            # For pushes, compare against main (fetched above); fallback to previous commit
+            git fetch origin main || true
+            BASE_REF=$(git rev-parse origin/main || git rev-parse HEAD^)
+          fi
+
+          echo "Comparing changes against ${BASE_REF}"
+          CHANGED_FILES=$(git diff --name-only "$BASE_REF"...HEAD || git diff --name-only "$BASE_REF" HEAD)
+
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "No changed files detected."
+            exit 0
+          fi
+
+          echo "$CHANGED_FILES" > /tmp/changed_files.txt
+          echo "Changed files:"
+          cat /tmp/changed_files.txt
+
+          # Allowed patterns inside api/*
+          ALLOWLIST_REGEX='^api/(wallet/webhook/|alerts/push/|alerts/stream\.ts$|cron/)'
+
+          # Core patterns that must not be added/modified in api/*
+          CORE_REGEX='^api/(alerts/|journal/|oracle/|grok-pulse/|reasoning/|chart/|usage/|profile/|meta\.ts$|health\.ts$)'
+
+          # Filter changed files under api/*
+          API_CHANGES=$(grep '^api/' /tmp/changed_files.txt || true)
+
+          if [ -z "$API_CHANGES" ]; then
+            echo "No api/* changes."
+            exit 0
+          fi
+
+          # Remove allowlisted paths
+          FORBIDDEN=$(echo "$API_CHANGES" | grep -Ev "$ALLOWLIST_REGEX" | grep -E "$CORE_REGEX" || true)
+
+          if [ -z "$FORBIDDEN" ]; then
+            echo "api/* changes are within allowlist."
+            exit 0
+          fi
+
+          echo "❌ Detected forbidden api/* changes:"
+          echo "$FORBIDDEN"
+          echo
+          echo "Core /api endpoints must live in the Node backend (backend/src/routes/*)."
+          echo "Please migrate these endpoints to the backend and remove/disable them from api/*."
+          exit 1
+
   # Build Job - Erstellt Production Build
   build:
     name: Build Application
