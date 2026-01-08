@@ -34,4 +34,22 @@ export default createHandler({
     
     sendJson(res, response);
   },
+  // Alias: allow PUT as well as POST (contract allows POST/PUT).
+  PUT: async ({ req, res, userId }) => {
+    await checkRateLimit('oracle', userId);
+    
+    const body = validateBody(oracleBulkReadStateRequestSchema, req.body);
+    
+    const results = await oracleBulkSetReadState(userId, body.ids, body.isRead);
+    
+    const response: OracleBulkReadStateResponse = {
+      updated: results.map(r => ({
+        id: r.id,
+        isRead: r.isRead,
+        updatedAt: r.updatedAt,
+      })),
+    };
+    
+    sendJson(res, response);
+  },
 });

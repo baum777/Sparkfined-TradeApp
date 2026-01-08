@@ -66,6 +66,8 @@ export function createApp(): Router {
   router.get('/oracle/daily', handleOracleDaily);
   router.put('/oracle/read-state', handleOracleReadState);
   router.post('/oracle/read-state/bulk', handleOracleBulkReadState);
+  // Alias: allow PUT as well as POST (contract allows POST/PUT).
+  router.put('/oracle/read-state/bulk', handleOracleBulkReadState);
   
   // Chart TA Route
   router.post('/chart/ta', handleTAAnalysis);
