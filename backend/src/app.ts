@@ -29,6 +29,10 @@ import {
   handleGrokPulseMeta,
   handleGrokPulseRun,
   handleUsageSummary,
+  handleFeedOracle,
+  handleFeedPulse,
+  handleSignalsUnified,
+  handleMarketDailyBias,
 } from './routes/index.js';
 
 /**
@@ -81,6 +85,14 @@ export function createApp(): Router {
   router.get('/grok-pulse/history/:address', handleGrokPulseHistory);
   router.get('/grok-pulse/meta/last-run', handleGrokPulseMeta);
   router.post('/grok-pulse/run', handleGrokPulseRun);
+
+  // Canonical Feeds & Signals (Theme Group 5)
+  router.get('/feed/oracle', handleFeedOracle);
+  router.get('/feed/pulse', handleFeedPulse);
+  router.get('/signals/unified', handleSignalsUnified);
+
+  // Market Aliases
+  router.get('/market/daily-bias', handleMarketDailyBias);
   
   return router;
 }
