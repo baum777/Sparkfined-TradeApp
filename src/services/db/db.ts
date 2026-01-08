@@ -1,6 +1,5 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
 import type { Alert } from '@/components/alerts/types';
-import type { JournalEntry } from '@/services/trading/journal.service';
 import type { ReasoningCacheRow } from '@/services/reasoning/cache';
 import type { JournalEntryV1, JournalQueueItem } from '@/services/journal/types';
 
@@ -9,11 +8,6 @@ interface TradeAppDB extends DBSchema {
     key: string;
     value: Alert;
     indexes: { 'by-status': string; 'by-created': string };
-  };
-  journal: {
-    key: string;
-    value: JournalEntry;
-    indexes: { 'by-date': string; 'by-status': string };
   };
   syncQueue: {
     key: string;
@@ -57,13 +51,6 @@ function getDB() {
           const store = db.createObjectStore('alerts', { keyPath: 'id' });
           store.createIndex('by-status', 'status');
           store.createIndex('by-created', 'createdAt');
-        }
-
-        // Journal Store (legacy)
-        if (!db.objectStoreNames.contains('journal')) {
-          const store = db.createObjectStore('journal', { keyPath: 'id' });
-          store.createIndex('by-date', 'timestamp');
-          store.createIndex('by-status', 'status');
         }
 
         // Sync Queue (for offline actions - legacy)
@@ -110,16 +97,6 @@ export const dbService = {
   async deleteAlert(id: string): Promise<void> {
     const db = await getDB();
     await db.delete('alerts', id);
-  },
-
-  async getAllJournalEntries(): Promise<JournalEntry[]> {
-    const db = await getDB();
-    return db.getAllFromIndex('journal', 'by-date');
-  },
-
-  async saveJournalEntry(entry: JournalEntry): Promise<void> {
-    const db = await getDB();
-    await db.put('journal', entry);
   },
 
   // Sync Queue methods (legacy)

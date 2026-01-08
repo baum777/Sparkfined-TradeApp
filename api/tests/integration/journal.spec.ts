@@ -4,7 +4,7 @@
  * Uses HTTP Handlers + Mocks instead of direct Repo calls
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { clearMemoryStore } from '../../_lib/kv/memory-store';
 import journalHandler from '../../journal/index';
 import journalIdHandler from '../../journal/[id]';
@@ -14,12 +14,6 @@ import restoreHandler from '../../journal/[id]/restore';
 import { createMockRequest, createMockResponse } from '../helpers/vercelMock';
 import { createValidToken } from '../helpers/jwt';
 import { ErrorCodes } from '../../_lib/errors';
-import { DexPaprikaAdapter } from '../../_lib/domain/journal/onchain/dexpaprika';
-import { MoralisAdapter } from '../../_lib/domain/journal/onchain/moralis';
-
-// Mock Onchain Adapters
-vi.mock('../../_lib/domain/journal/onchain/dexpaprika');
-vi.mock('../../_lib/domain/journal/onchain/moralis');
 
 const TEST_USER_ID = 'test-user-123';
 const AUTH_HEADER = { authorization: `Bearer ${createValidToken(TEST_USER_ID)}` };
@@ -40,8 +34,7 @@ describe('Journal API Integration', () => {
         method: 'POST',
         headers: { ...AUTH_HEADER },
         body: {
-          side: 'BUY',
-          summary: 'Test trade',
+          summary: 'Test reflection',
         },
       });
       const res = createMockResponse();
@@ -53,8 +46,7 @@ describe('Journal API Integration', () => {
 
       expect(data.id).toBeDefined();
       expect(data.status).toBe('pending'); // Lowercase contract
-      expect(data.side).toBe('BUY');
-      expect(data.summary).toBe('Test trade');
+      expect(data.summary).toBe('Test reflection');
       expect(data.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
       expect(data.updatedAt).toBe(data.createdAt);
       expect(data.timestamp).toBeDefined();
@@ -64,7 +56,7 @@ describe('Journal API Integration', () => {
 
     it('supports Idempotency-Key header (returns same entry on replay)', async () => {
       const idempotencyKey = 'idem-test-1';
-      const body = { side: 'SELL', summary: 'Idempotent trade' };
+      const body = { summary: 'Idempotent entry' };
 
       // First Request
       const req1 = createMockRequest({
@@ -102,7 +94,7 @@ describe('Journal API Integration', () => {
       const createReq = createMockRequest({
         method: 'POST',
         headers: { ...AUTH_HEADER },
-        body: { side: 'BUY', summary: 'List me' },
+        body: { summary: 'List me' },
       });
       await journalHandler(createReq, createMockResponse());
 
@@ -130,7 +122,7 @@ describe('Journal API Integration', () => {
       const req = createMockRequest({
         method: 'POST',
         headers: { ...AUTH_HEADER },
-        body: { side: 'BUY', summary: 'Transition test' },
+        body: { summary: 'Transition test' },
       });
       const res = createMockResponse();
       await journalHandler(req, res);
@@ -142,7 +134,6 @@ describe('Journal API Integration', () => {
         method: 'POST',
         headers: { ...AUTH_HEADER },
         query: { id: entryId },
-        body: { mood: 'confident', note: 'ok', tags: [] },
       });
       const res = createMockResponse();
 
@@ -156,12 +147,33 @@ describe('Journal API Integration', () => {
       expect(data.updatedAt).not.toBe(data.createdAt); // Should be updated
     });
 
-    it('archives entry: status="archived", sets archivedAt', async () => {
+    it('rejects archiving a pending entry (must confirm first)', async () => {
       const req = createMockRequest({
         method: 'POST',
         headers: { ...AUTH_HEADER },
         query: { id: entryId },
-        body: { reason: 'mistake' },
+      });
+      const res = createMockResponse();
+
+      await archiveHandler(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(409);
+      expect(getJson(res).error.code).toBe(ErrorCodes.JOURNAL_INVALID_STATE);
+    });
+
+    it('archives entry after confirm: status="archived", sets archivedAt', async () => {
+      // Confirm first
+      const confirmReq = createMockRequest({
+        method: 'POST',
+        headers: { ...AUTH_HEADER },
+        query: { id: entryId },
+      });
+      await confirmHandler(confirmReq, createMockResponse());
+
+      const req = createMockRequest({
+        method: 'POST',
+        headers: { ...AUTH_HEADER },
+        query: { id: entryId },
       });
       const res = createMockResponse();
 
@@ -174,12 +186,18 @@ describe('Journal API Integration', () => {
     });
 
     it('restores entry: status="pending", removes archivedAt', async () => {
-      // Archive first
+      // Confirm + archive first
+      const confirmReq = createMockRequest({
+        method: 'POST',
+        headers: { ...AUTH_HEADER },
+        query: { id: entryId },
+      });
+      await confirmHandler(confirmReq, createMockResponse());
+
       const archiveReq = createMockRequest({
         method: 'POST',
         headers: { ...AUTH_HEADER },
         query: { id: entryId },
-        body: { reason: 'mistake' },
       });
       await archiveHandler(archiveReq, createMockResponse());
 
@@ -220,84 +238,6 @@ describe('Journal API Integration', () => {
       const calls = (res.json as any).mock.calls;
       expect(calls.length).toBeGreaterThan(0);
       expect(calls[0][0].error.code).toBe(ErrorCodes.JOURNAL_NOT_FOUND);
-    });
-  });
-
-  describe('Onchain Snapshot (P1.2)', () => {
-    beforeEach(() => {
-      vi.clearAllMocks();
-    });
-
-    it('POST creates entry with onchainContext if symbolOrAddress provided', async () => {
-      // Setup successful mocks
-      vi.mocked(DexPaprikaAdapter.prototype.fetchTokenData).mockResolvedValue({
-        priceUsd: 1.23,
-        liquidityUsd: 1000,
-        volume24h: 500,
-        marketCap: 1000000,
-        ageMinutes: 10,
-        dexId: 'raydium',
-      });
-      vi.mocked(MoralisAdapter.prototype.fetchTokenData).mockResolvedValue({
-        holders: 100,
-        transfers24h: 20,
-      });
-
-      const req = createMockRequest({
-        method: 'POST',
-        headers: { ...AUTH_HEADER },
-        body: {
-          side: 'BUY',
-          summary: 'Snapshot test',
-          symbolOrAddress: 'So11111111111111111111111111111111111111112',
-        },
-      });
-      const res = createMockResponse();
-
-      await journalHandler(req, res);
-
-      expect(res.status).toHaveBeenCalledWith(201);
-      const data = getJson(res).data;
-      
-      expect(data.onchainContext).toBeDefined();
-      expect(data.onchainContext.priceUsd).toBe(1.23);
-      expect(data.onchainContext.holders).toBe(100);
-      // Meta fields only in persistence, not mapped to V1 frontend contract?
-      // Wait, Plan says: "JournalEntryV1 extension... Zusätzlich (additiv...): onchainContextMeta"
-      // But in types-contract I extended JournalEvent (Persistence) and JournalEntryV1 (Response) only with onchainContext?
-      // Let's check mapper again.
-    });
-
-    it('POST succeeds even if providers fail (Partial Snapshot)', async () => {
-      vi.mocked(DexPaprikaAdapter.prototype.fetchTokenData).mockRejectedValue(new Error('Timeout'));
-      vi.mocked(MoralisAdapter.prototype.fetchTokenData).mockResolvedValue({
-        holders: 50,
-        transfers24h: 5,
-      });
-
-      const req = createMockRequest({
-        method: 'POST',
-        headers: { ...AUTH_HEADER },
-        body: {
-          side: 'SELL',
-          summary: 'Partial test',
-          symbolOrAddress: 'So11111111111111111111111111111111111111112',
-        },
-      });
-      const res = createMockResponse();
-
-      await journalHandler(req, res);
-
-      expect(res.status).toHaveBeenCalledWith(201);
-      const data = getJson(res).data;
-      
-      expect(data.onchainContext).toBeDefined();
-      expect(data.onchainContext.priceUsd).toBe(0); // Failed
-      expect(data.onchainContext.holders).toBe(50); // Succeeded
-      
-      expect(data.onchainContextMeta).toBeDefined();
-      expect(data.onchainContextMeta.errors).toHaveLength(1);
-      expect(data.onchainContextMeta.errors[0].provider).toBe('dexpaprika');
     });
   });
 });

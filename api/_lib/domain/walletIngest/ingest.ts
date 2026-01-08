@@ -1,75 +1,7 @@
 import { kv, kvKeys, kvTTL } from '../../kv';
 import { getUserIdByWallet } from '../profile/repo';
-import { journalCreateWithMeta, journalRepoKV } from '../journal/repo';
-import { mergeOnchainContextMeta } from '../journal/onchain/merge';
-import { enqueueEnrichJob } from '../journal/enrich';
-import type { OnchainContextMetaV1 } from '../journal/onchain/types';
-import type { TradeEventV1 } from './types';
 import type { HeliusEnhancedTx } from './helius';
-import { analyzeTrade } from './tradeIntelligence';
-import { getEnv } from '../../env';
 import { logger } from '../../logger';
-
-// ─────────────────────────────────────────────────────────────
-// PARSING / MAPPING HELPER
-// ─────────────────────────────────────────────────────────────
-
-function mapHeliusToTradeEvent(tx: HeliusEnhancedTx, walletAddress: string): TradeEventV1 {
-  const isSwap = tx.type === 'SWAP';
-  const timestampISO = new Date(tx.timestamp * 1000).toISOString();
-  
-  let tokenInMint: string | undefined;
-  let tokenOutMint: string | undefined;
-  let amountIn: string | undefined;
-  let amountOut: string | undefined;
-
-  // Heuristic for SWAP
-  if (isSwap && tx.events?.swap) {
-    const swap = tx.events.swap;
-    // Simplification: take first input/output
-    if (swap.tokenInputs && swap.tokenInputs.length > 0) {
-      tokenInMint = swap.tokenInputs[0].mint;
-      amountIn = swap.tokenInputs[0].rawTokenAmount.tokenAmount;
-    } else if (swap.nativeInput) {
-      tokenInMint = 'So11111111111111111111111111111111111111112'; // SOL
-      amountIn = swap.nativeInput.amount;
-    }
-
-    if (swap.tokenOutputs && swap.tokenOutputs.length > 0) {
-      tokenOutMint = swap.tokenOutputs[0].mint;
-      amountOut = swap.tokenOutputs[0].rawTokenAmount.tokenAmount;
-    } else if (swap.nativeOutput) {
-      tokenOutMint = 'So11111111111111111111111111111111111111112'; // SOL
-      amountOut = swap.nativeOutput.amount;
-    }
-  } 
-  // Fallback: Check token transfers if specific type not SWAP but looks like transfer
-  else if (tx.tokenTransfers && tx.tokenTransfers.length > 0) {
-    // Determine direction relative to wallet
-    for (const t of tx.tokenTransfers) {
-      if (t.toUserAccount === walletAddress) {
-        tokenOutMint = t.mint;
-        amountOut = t.tokenAmount.toString();
-      } else if (t.fromUserAccount === walletAddress) {
-        tokenInMint = t.mint;
-        amountIn = t.tokenAmount.toString();
-      }
-    }
-  }
-
-  return {
-    id: `sig:${tx.signature}`,
-    walletAddress,
-    signature: tx.signature,
-    blockTime: timestampISO,
-    type: isSwap ? 'swap' : 'unknown', // we treat everything else as unknown/transfer
-    tokenInMint,
-    tokenOutMint,
-    amountIn,
-    amountOut,
-    source: 'helius',
-  };
-}
 
 // ─────────────────────────────────────────────────────────────
 // INGESTION LOGIC
@@ -83,7 +15,7 @@ export interface IngestResult {
 export async function ingestHeliusWebhook(
   payload: HeliusEnhancedTx[]
 ): Promise<IngestResult> {
-  let processed = 0;
+  const processed = 0;
   let skipped = 0;
 
   for (const tx of payload) {
@@ -163,97 +95,14 @@ export async function ingestHeliusWebhook(
           skipped++;
           continue;
         }
-        
-        // Map to Event
-        const env = getEnv();
-        const useIntelligence = env.AUTO_CAPTURE_INTELLIGENCE_ENABLED;
 
-        let side: 'BUY' | 'SELL' = 'BUY'; // default
-        let summary = `Auto-captured trade: `;
-        let symbolOrAddress: string | undefined = undefined;
-        let metaToAdd: Partial<OnchainContextMetaV1> | undefined;
-        const timestamp = new Date(tx.timestamp * 1000).toISOString();
-
-        if (useIntelligence) {
-          const analysis = analyzeTrade(tx, walletAddress);
-          side = analysis.side;
-          summary = analysis.summary;
-          symbolOrAddress = analysis.symbolOrAddress;
-          
-          metaToAdd = {
-            capturedAt: analysis.meta.capture.parsedAt,
-            errors: [], // Initial state
-            capture: analysis.meta.capture,
-            classification: analysis.meta.classification,
-            display: analysis.meta.display,
-          };
-        } else {
-          // Legacy Logic (Phase B)
-          const event = mapHeliusToTradeEvent(tx, walletAddress);
-          
-          if (event.tokenOutMint) {
-            side = 'BUY';
-            symbolOrAddress = event.tokenOutMint;
-            summary += `BUY ${event.tokenOutMint}`;
-          } else if (event.tokenInMint) {
-            side = 'SELL';
-            symbolOrAddress = event.tokenInMint;
-            summary += `SELL ${event.tokenInMint}`;
-          } else {
-            summary += `${tx.type} (sig=${tx.signature.slice(0, 8)}...)`;
-          }
-          
-          // Add amounts if available
-          if (event.amountIn && event.amountOut) {
-            summary += ` (in=${event.amountIn} out=${event.amountOut})`;
-          }
-          
-          summary += ` [sig=${tx.signature}]`;
-        }
-        
-        // Create Journal Entry
-        // Idempotency key: trade:<signature> (per user)
-        const idempotencyKey = `trade:${tx.signature}`;
-        
-        const { event: createdEvent, isReplay } = await journalCreateWithMeta(userId, {
-          side,
-          summary,
-          timestamp,
-          symbolOrAddress,
-        }, idempotencyKey);
-        
-        // Phase C: If intelligence enabled and new entry, attach meta
-        if (useIntelligence && !isReplay && metaToAdd) {
-          createdEvent.onchainContextMeta = mergeOnchainContextMeta(createdEvent.onchainContextMeta, metaToAdd);
-          await journalRepoKV.putEvent(userId, createdEvent);
-        }
-        
-        // Phase C: Enqueue for enrichment (non-blocking)
-        if (useIntelligence && !isReplay && symbolOrAddress) {
-          // Fire and forget - don't await to keep webhook fast? 
-          // Ideally we await but catch errors so we don't fail the batch.
-          // Since enqueue is just a KV push, it's fast.
-          try {
-            await enqueueEnrichJob({
-              userId,
-              entryId: createdEvent.id,
-              symbolOrAddress,
-              timestamp: createdEvent.createdAt,
-            });
-          } catch (e) {
-            console.error('Failed to enqueue enrich job', { entryId: createdEvent.id, error: e });
-            // Do not fail the ingest
-          }
-        }
-        
-        processed++;
-        
-        logger.info('Auto-captured trade', { 
-          userId, 
-          signature: tx.signature, 
-          side,
-          intelligence: useIntelligence,
-          isReplay
+        // Journal v1 is Diary/Reflection only.
+        // Trading auto-capture MUST NOT create /api/journal entries.
+        skipped++;
+        logger.info('Trade ingest received (Journal v1 capture disabled)', {
+          userId,
+          walletAddress,
+          signature: tx.signature,
         });
       }
 

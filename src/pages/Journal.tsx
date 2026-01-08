@@ -45,6 +45,7 @@ export default function Journal() {
     pageState,
     entries,
     setEntries,
+    createEntry,
     confirmEntry,
     archiveEntry,
     deleteEntry,
@@ -178,20 +179,18 @@ export default function Journal() {
   }, [navigate]);
 
   // Handle create entry (diary entry - confirmed by default per spec)
-  const handleCreateEntry = useCallback((payload: CreateEntryPayload) => {
-    const now = new Date().toISOString();
-    const newEntry: JournalEntryLocal = {
-      id: `entry-${Date.now()}`,
-      side: "BUY", // Diary entries default to BUY
-      status: "confirmed", // Diary entries are confirmed by default
-      timestamp: now,
-      summary: payload.reasoning || `${payload.feeling} · ${payload.confidence}% confident`,
-      createdAt: now,
-      updatedAt: now,
-    };
-    setEntries((prev) => [newEntry, ...prev]);
-    toast.success("Entry logged");
-  }, [setEntries]);
+  const handleCreateEntry = useCallback(async (payload: CreateEntryPayload) => {
+    const parts = [
+      payload.reasoning?.trim(),
+      payload.notes?.trim(),
+    ].filter(Boolean) as string[];
+    const summary =
+      parts[0] ||
+      `Reflection: feeling=${payload.feeling}, confidence=${payload.confidence}%`;
+
+    await createEntry(summary);
+    toast.success("Entry created");
+  }, [createEntry]);
   // Handlers
   const handleConfirm = (id: string) => {
     confirmEntry(id);
@@ -199,6 +198,11 @@ export default function Journal() {
   };
 
   const handleArchive = (id: string) => {
+    const current = entries.find((e) => e.id === id);
+    if (current?.status === "pending") {
+      toast.error("Confirm the entry before archiving");
+      return;
+    }
     archiveEntry(id);
     toast.success("Archived", {
       action: {
@@ -242,16 +246,6 @@ export default function Journal() {
     toast.success("Confirmed");
   }, [confirmEntry]);
 
-  const handleReviewArchive = useCallback((id: string) => {
-    archiveEntry(id);
-    toast.success("Archived", {
-      action: {
-        label: "Undo",
-        onClick: () => handleRestore(id),
-      },
-    });
-  }, [archiveEntry]);
-
   const handleReviewEdit = useCallback((entry: JournalEntryLocal) => {
     setIsReviewOverlayOpen(false);
     setConfirmModalEntry(entry);
@@ -274,16 +268,6 @@ export default function Journal() {
     confirmEntry(id);
     toast.success("Confirmed");
   }, [confirmEntry]);
-
-  const handleInboxArchive = useCallback((id: string) => {
-    archiveEntry(id);
-    toast.success("Archived", {
-      action: {
-        label: "Undo",
-        onClick: () => restoreEntry(id),
-      },
-    });
-  }, [archiveEntry, restoreEntry]);
 
   const handleInboxSaveNote = useCallback((id: string, reflection: ReflectionData) => {
     // BACKEND_HOOK: Save reflection without confirming
@@ -452,13 +436,6 @@ export default function Journal() {
                     onCardClick={handleTimelineCardClick}
                     onEdit={(entry) => setConfirmModalEntry(entry)}
                     onArchive={(id) => handleArchive(id)}
-                    onAddReflection={(entry) => {
-                      // Open mini reflection for this entry
-                      const idx = pendingEntries.findIndex((e) => e.id === entry.id);
-                      if (idx !== -1) {
-                        handleOpenReviewOverlay(idx);
-                      }
-                    }}
                   />
                 </div>
               )}
@@ -467,7 +444,6 @@ export default function Journal() {
                 <JournalInboxView
                   pendingEntries={pendingEntries}
                   onConfirm={handleInboxConfirm}
-                  onArchive={handleInboxArchive}
                   onSaveNote={handleInboxSaveNote}
                   onConfirmWithNote={handleInboxConfirmWithNote}
                   onGoToTimeline={() => handleModeChange("timeline")}
@@ -528,7 +504,6 @@ export default function Journal() {
           pendingEntries={pendingEntries}
           initialIndex={reviewInitialIndex}
           onConfirm={handleReviewConfirm}
-          onArchive={handleReviewArchive}
           onEdit={handleReviewEdit}
         />
       </WalletGuard>

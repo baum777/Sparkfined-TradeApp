@@ -64,20 +64,15 @@ export function JournalMomentCard({ entry, onClick }: JournalMomentCardProps) {
       <CardContent className="p-4 pl-5">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0 space-y-1.5">
-            {/* Title / Setup */}
+            {/* Status */}
             <div className="flex items-center gap-2">
               <Badge
                 data-testid="journal-status-badge"
-                variant={entry.side === "BUY" ? "default" : "secondary"}
+                variant="secondary"
                 className="text-xs shrink-0"
               >
-                {entry.side}
+                {entry.status}
               </Badge>
-              {entry.status === "pending" && (
-                <Badge variant="outline" className="text-xs text-amber-500 border-amber-500/50">
-                  Pending
-                </Badge>
-              )}
             </div>
 
             {/* Preview text */}

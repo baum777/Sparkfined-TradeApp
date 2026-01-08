@@ -6,8 +6,14 @@
  * - sf:v1:journal:{userId}:entry:{id}
  * - sf:v1:journal:{userId}:day:{YYYY-MM-DD}:ids
  * - sf:v1:journal:{userId}:status:PENDING:ids
+ * - sf:v1:journal:{userId}:status:CONFIRMED:ids
  * - sf:v1:journal:{userId}:status:ARCHIVED:ids
  * - sf:v1:journal:{userId}:index:updatedAt
+ *
+ * CANONICAL PRODUCT MEANING (Journal v1 - Diary/Reflection):
+ * - No trading fields (no side, symbols, prices, pnl, exports)
+ * - Stable status flow: pending -> confirmed -> archived
+ * - Optional future metadata must be non-breaking
  */
 
 // ─────────────────────────────────────────────────────────────
@@ -29,38 +35,19 @@ export function normalizeStatus(status: string): JournalStatus {
 // JOURNAL EVENT TYPE
 // ─────────────────────────────────────────────────────────────
 
-import type { OnchainContextV1, OnchainContextMetaV1 } from './onchain/types';
-
-export type JournalEntrySide = 'BUY' | 'SELL';
-
 export interface JournalEvent {
   id: string;
   userId: string; // REQUIRED - no fallback
-  side: JournalEntrySide;
   status: JournalStatus;
-  timestamp: string; // ISO 8601 - when the trade occurred
+  timestamp: string; // ISO 8601
   summary: string;
   dayKey: string; // YYYY-MM-DD - derived from timestamp, stored for indexing
   createdAt: string; // ISO 8601
   updatedAt: string; // ISO 8601
-  
-  // Frozen Onchain Snapshot (P1.2)
-  onchainContext?: OnchainContextV1;
-  onchainContextMeta?: OnchainContextMetaV1;
-  
-  // Optional confirmation data
-  confirmData?: {
-    mood: string;
-    note: string;
-    tags: string[];
-    confirmedAt: string;
-  };
-  
-  // Optional archive data
-  archiveData?: {
-    reason: string;
-    archivedAt: string;
-  };
+
+  // Canonical timestamps (present iff in that status)
+  confirmedAt?: string; // only if confirmed
+  archivedAt?: string; // only if archived
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -68,20 +55,8 @@ export interface JournalEvent {
 // ─────────────────────────────────────────────────────────────
 
 export interface JournalCreateRequest {
-  side: JournalEntrySide;
   summary: string;
   timestamp?: string; // defaults to now
-  symbolOrAddress?: string; // optional: Solana address (base58) for snapshot
-}
-
-export interface JournalConfirmPayload {
-  mood: string;
-  note: string;
-  tags: string[];
-}
-
-export interface JournalArchivePayload {
-  reason: string;
 }
 
 export interface JournalListResult {

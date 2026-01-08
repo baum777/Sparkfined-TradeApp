@@ -27,14 +27,8 @@ import {
   Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { TradingWalletHint } from "@/components/common";
-import type { JournalEntryV1 } from "@/types/journal";
 
-// FUTURE USAGE: When a trading wallet is set, it can be passed as contextual
-// metadata in the journal entry payload (e.g., tradingWallet field) once the
-// API supports it. Currently, the wallet is shown for user awareness only.
-
-type FeelingValue = NonNullable<JournalEntryV1["reflection"]>["feeling"];
+type FeelingValue = "very_negative" | "negative" | "neutral" | "positive" | "very_positive";
 
 export interface CreateEntryPayload {
   feeling: FeelingValue;
@@ -129,7 +123,6 @@ export function JournalCreateDialog({
       >
         <DialogHeader>
           <DialogTitle>New Diary Entry</DialogTitle>
-          <TradingWalletHint className="mt-1" />
         </DialogHeader>
 
         <div className="space-y-6 py-4">
@@ -175,7 +168,7 @@ export function JournalCreateDialog({
             />
           </div>
 
-          {/* COLLAPSED SECTION: Market Context */}
+          {/* COLLAPSED SECTION: Context */}
           <Collapsible
             open={openSection === "context"}
             onOpenChange={() => toggleSection("context")}
@@ -183,7 +176,7 @@ export function JournalCreateDialog({
           >
             <CollapsibleTrigger asChild>
               <button className="flex items-center justify-between w-full p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors">
-                <span className="text-sm font-medium">Market Context</span>
+                <span className="text-sm font-medium">Context</span>
                 <ChevronDown
                   className={cn(
                     "h-4 w-4 transition-transform",
@@ -197,7 +190,7 @@ export function JournalCreateDialog({
                 <Label htmlFor="reasoning">Reasoning</Label>
                 <Textarea
                   id="reasoning"
-                  placeholder="Why did you take this trade / observation?"
+                  placeholder="What happened? What are you thinking about?"
                   value={reasoning}
                   onChange={(e) => setReasoning(e.target.value)}
                   rows={2}
@@ -207,7 +200,7 @@ export function JournalCreateDialog({
                 <Label htmlFor="expectation">Expectation</Label>
                 <Textarea
                   id="expectation"
-                  placeholder="What do you expect to happen?"
+                  placeholder="What do you want to remember or try next time?"
                   value={expectation}
                   onChange={(e) => setExpectation(e.target.value)}
                   rows={2}
@@ -216,7 +209,7 @@ export function JournalCreateDialog({
             </CollapsibleContent>
           </Collapsible>
 
-          {/* COLLAPSED SECTION: Additional Metrics (placeholder) */}
+          {/* COLLAPSED SECTION: Prompts (placeholder) */}
           <Collapsible
             open={openSection === "metrics"}
             onOpenChange={() => toggleSection("metrics")}
@@ -224,7 +217,7 @@ export function JournalCreateDialog({
           >
             <CollapsibleTrigger asChild>
               <button className="flex items-center justify-between w-full p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors">
-                <span className="text-sm font-medium">Additional Metrics</span>
+                <span className="text-sm font-medium">Prompts</span>
                 <ChevronDown
                   className={cn(
                     "h-4 w-4 transition-transform",
@@ -235,7 +228,7 @@ export function JournalCreateDialog({
             </CollapsibleTrigger>
             <CollapsibleContent className="pt-3">
               <p className="text-sm text-muted-foreground">
-                Additional metrics sliders coming soon
+                Optional prompts coming soon (e.g., “What did I learn?”, “What would I do differently?”)
               </p>
             </CollapsibleContent>
           </Collapsible>
@@ -298,7 +291,7 @@ export function JournalCreateDialog({
                 <Label htmlFor="tags">Tags (comma-separated)</Label>
                 <Input
                   id="tags"
-                  placeholder="e.g., breakout, momentum, scalp"
+                  placeholder="e.g., learning, gratitude, focus"
                   value={tagsInput}
                   onChange={(e) => setTagsInput(e.target.value)}
                 />

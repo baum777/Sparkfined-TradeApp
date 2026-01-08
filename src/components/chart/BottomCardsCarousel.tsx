@@ -104,12 +104,6 @@ export function BottomCardsCarousel({
         <div className="flex items-start justify-between gap-2 mb-2">
           <div className="flex items-center gap-2">
             <BookOpen className="h-4 w-4 text-primary shrink-0" />
-            <Badge
-              variant={entry.side === "BUY" ? "default" : "secondary"}
-              className="text-xs"
-            >
-              {entry.side}
-            </Badge>
           </div>
           <Badge variant="outline" className="shrink-0 text-xs capitalize">
             {entry.status}

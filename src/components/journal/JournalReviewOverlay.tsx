@@ -20,10 +20,7 @@ import { Separator } from "@/components/ui/separator";
 import {
   ChevronLeft,
   ChevronRight,
-  TrendingUp,
-  TrendingDown,
   Check,
-  Archive,
   Edit3,
   Circle,
   CheckCircle2,
@@ -39,7 +36,6 @@ interface JournalReviewOverlayProps {
   pendingEntries: JournalEntryLocal[];
   initialIndex?: number;
   onConfirm: (id: string) => void;
-  onArchive: (id: string) => void;
   onEdit: (entry: JournalEntryLocal) => void;
 }
 
@@ -56,7 +52,6 @@ export function JournalReviewOverlay({
   pendingEntries,
   initialIndex = 0,
   onConfirm,
-  onArchive,
   onEdit,
 }: JournalReviewOverlayProps) {
   const isMobile = useIsMobile();
@@ -110,19 +105,6 @@ export function JournalReviewOverlay({
     }
   }, [currentEntry, hasNext, hasPrev, onConfirm, onClose]);
 
-  const handleArchive = useCallback(() => {
-    if (currentEntry) {
-      onArchive(currentEntry.id);
-      if (hasNext) {
-        // Stay at same index
-      } else if (hasPrev) {
-        setActiveIndex((i) => i - 1);
-      } else {
-        onClose();
-      }
-    }
-  }, [currentEntry, hasNext, hasPrev, onArchive, onClose]);
-
   const updateChecklistItem = (id: string, value: string) => {
     setChecklist((prev) =>
       prev.map((item) =>
@@ -166,7 +148,7 @@ export function JournalReviewOverlay({
             </span>
             <span className="text-muted-foreground">•</span>
             <span className="text-sm text-muted-foreground">
-              {currentEntry.side === "BUY" ? "LONG" : "SHORT"}
+              {format(new Date(currentEntry.timestamp), "HH:mm")}
             </span>
           </div>
           <Badge variant="outline" className="text-amber-500 border-amber-500/50">
@@ -212,22 +194,8 @@ export function JournalReviewOverlay({
             Snapshot
           </h3>
           <div className="bg-muted/30 rounded-lg p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Direction</span>
-              <div className="flex items-center gap-1.5">
-                {currentEntry.side === "BUY" ? (
-                  <TrendingUp className="h-4 w-4 text-emerald-500" />
-                ) : (
-                  <TrendingDown className="h-4 w-4 text-red-500" />
-                )}
-                <span className="text-sm font-medium">
-                  {currentEntry.side === "BUY" ? "Long" : "Short"}
-                </span>
-              </div>
-            </div>
-            <Separator />
             <div className="flex items-start justify-between gap-4">
-              <span className="text-sm text-muted-foreground shrink-0">Setup</span>
+              <span className="text-sm text-muted-foreground shrink-0">Entry</span>
               <p className="text-sm text-foreground text-right line-clamp-3">
                 {currentEntry.summary}
               </p>
@@ -308,15 +276,6 @@ export function JournalReviewOverlay({
         >
           <Edit3 className="h-4 w-4 mr-2" />
           Edit
-        </Button>
-        <Button
-          data-testid="journal-review-archive"
-          variant="outline"
-          className="text-destructive border-destructive/50 hover:bg-destructive/10"
-          onClick={handleArchive}
-        >
-          <Archive className="h-4 w-4 mr-2" />
-          Archive
         </Button>
       </div>
     </div>

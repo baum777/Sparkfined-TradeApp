@@ -53,10 +53,6 @@ export default function JournalEntry() {
               <span className="font-medium">{entry.status}</span>
             </div>
             <div>
-              <span className="text-muted-foreground">Side: </span>
-              <span className="font-medium">{entry.side}</span>
-            </div>
-            <div>
               <span className="text-muted-foreground">Timestamp: </span>
               <span className="font-medium">{entry.timestamp}</span>
             </div>

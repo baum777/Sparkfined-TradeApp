@@ -5,7 +5,6 @@
 import { createHandler } from '../../_lib/handler';
 import { sendJson, setCacheHeaders } from '../../_lib/response';
 import { notFound, conflict, ErrorCodes } from '../../_lib/errors';
-import { validateBody, journalConfirmPayloadSchema } from '../../_lib/validation';
 import { journalGetById, journalConfirm } from '../../_lib/domain/journal/repo';
 import { toApiJournalEntryV1 } from '../../_lib/domain/journal/mapper';
 import { checkRateLimit } from '../../_lib/rate-limit';
@@ -15,7 +14,6 @@ export default createHandler({
     await checkRateLimit('journal', userId);
     
     const id = req.query.id as string;
-    const payload = validateBody(journalConfirmPayloadSchema, req.body);
     
     // userId is now REQUIRED for all journal operations (multitenancy)
     // First check if entry exists
@@ -24,7 +22,7 @@ export default createHandler({
       throw notFound(`Journal entry not found: ${id}`, ErrorCodes.JOURNAL_NOT_FOUND);
     }
     
-    // Check for invalid state (can't confirm archived)
+    // Canonical transitions: pending -> confirmed only (idempotent if already confirmed)
     if (existing.status === 'ARCHIVED') {
       throw conflict(
         'Cannot confirm an archived entry',
@@ -32,7 +30,7 @@ export default createHandler({
       );
     }
     
-    const entry = await journalConfirm(userId, id, payload);
+    const entry = await journalConfirm(userId, id);
     
     if (!entry) {
       throw notFound(`Journal entry not found: ${id}`, ErrorCodes.JOURNAL_NOT_FOUND);
