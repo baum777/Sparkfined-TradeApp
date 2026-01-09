@@ -43,6 +43,28 @@ Diese Datei listet **alle aktuell im Repo referenzierten** Env Vars + empfohlene
 | `DATABASE_URL` | ✅ | ✅ (operationally sensitive) | `sqlite:./.data/tradeapp.sqlite` | Runtime | `backend/src/config/env.ts`, `backend/src/config/config.ts` |
 | `LOG_LEVEL` | ✅ | ❌ | `info` | Runtime | `backend/src/config/env.ts` |
 
+---
+
+## AI / LLM Router (Backend-only)
+
+> Diese Werte sind **Secrets / runtime-only**. **Nie** als `VITE_*` setzen.
+
+| Name | Required | Secret? | Default | Scope | Verwendet in |
+|---|---:|---:|---|---|---|
+| `DEEPSEEK_API_KEY` | ✅ (wenn Router/DeepSeek genutzt) | ✅ | — | Runtime | `backend/src/config/env.ts`, `backend/src/lib/llm/providers/deepseek.ts` |
+| `DEEPSEEK_BASE_URL` | ❌ | ❌ | `https://api.deepseek.com` | Runtime | `backend/src/config/env.ts` |
+| `DEEPSEEK_MODEL_ROUTER` | ❌ | ❌ | `deepseek-reasoner` | Runtime | `backend/src/config/env.ts` |
+| `DEEPSEEK_MODEL_ANSWER` | ❌ | ❌ | `deepseek-chat` | Runtime | `backend/src/config/env.ts` |
+| `OPENAI_API_KEY` | ❌ | ✅ | — | Runtime | `backend/src/config/env.ts`, `backend/src/lib/llm/providers/openai.ts` |
+| `OPENAI_BASE_URL` | ❌ | ❌ | `https://api.openai.com/v1` | Runtime | `backend/src/config/env.ts` |
+| `GROK_API_KEY` | ❌ | ✅ | — | Runtime | `backend/src/config/env.ts`, `backend/src/lib/llm/providers/grok.ts` |
+| `GROK_BASE_URL` | ❌ | ❌ | `https://api.x.ai/v1` | Runtime | `backend/src/config/env.ts` |
+| `LLM_ROUTER_ENABLED` | ❌ | ❌ | `true` | Runtime | `backend/src/config/env.ts`, `backend/src/routes/llm.ts` |
+| `LLM_ROUTER_DEBUG` | ❌ | ❌ | `false` | Runtime | `backend/src/config/env.ts` |
+| `LLM_TIMEOUT_MS` | ❌ | ❌ | `20000` | Runtime | `backend/src/config/env.ts` |
+| `LLM_MAX_RETRIES` | ❌ | ❌ | `2` | Runtime | `backend/src/config/env.ts` |
+| `LLM_BUDGET_DEFAULT` | ❌ | ❌ | `low` | Runtime | `backend/src/config/env.ts` |
+
 **Wichtige Production-Hinweise**
 - **`DATABASE_URL`**:
   - Aktueller Default ist **lokal** (`sqlite:./.data/...`) → auf Vercel nicht persistent.

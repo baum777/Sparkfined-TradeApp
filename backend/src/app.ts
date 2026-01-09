@@ -29,6 +29,8 @@ import {
   handleFeedPulse,
   handleSignalsUnified,
   handleMarketDailyBias,
+  handleReasoningRoute,
+  handleLlmExecute,
 } from './routes/index.js';
 
 /**
@@ -77,6 +79,10 @@ export function createApp(): Router {
   router.post('/reasoning/session-review', handleReasoningSessionReview);
   router.post('/reasoning/board-scenarios', handleReasoningBoardScenarios);
   router.post('/reasoning/insight-critic', handleReasoningInsightCritic);
+  router.post('/reasoning/route', handleReasoningRoute);
+
+  // LLM Execute (router + provider)
+  router.post('/llm/execute', handleLlmExecute);
 
   // Canonical Feeds & Signals (Theme Group 5)
   router.get('/feed/oracle', handleFeedOracle);
