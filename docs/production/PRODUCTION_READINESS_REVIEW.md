@@ -119,11 +119,11 @@ In `.env.example` zusätzlich dokumentiert (teils optional):
 - `VITE_ANALYTICS_ID` (optional)
 
 **Risiko**:
-- Service Worker nutzt **nicht** `VITE_API_URL`, sondern hardcoded `"/api"` (`src/sw/sw-alerts.ts`, `src/sw/sw-oracle.ts`).  
-  - **Impact**: Wenn Backend nicht same-origin unter `/api` läuft, funktionieren SW Polling/Notifications nicht.
+- Service Worker nutzt `VITE_API_URL` (Build-time) bzw. fallback `"/api"` (`src/sw/sw-alerts.ts`, `src/sw/sw-oracle.ts`).  
+  - **Impact**: Wenn Backend nicht same-origin unter `/api` läuft und `VITE_API_URL` nicht korrekt gesetzt ist, funktionieren SW Polling/Notifications nicht (Routing/CORS).
   - **Remediation**: Architektur-Entscheid treffen:
-    - **Option A (fail-safe)**: Backend same-origin `/api` via Vercel rewrite/proxy.
-    - **Option B**: SW bekommt Build-time API Origin (und CORS/Auth wird sauber gelöst).
+    - **Option A (fail-safe)**: Backend same-origin `/api` via Vercel rewrite/proxy (empfohlen; dann `VITE_API_URL="/api"`).
+    - **Option B**: `VITE_API_URL` direkt auf externe API setzen und CORS/Auth sauber lösen.
 
 ### Backend (Runtime)
 Env-Schema definiert:

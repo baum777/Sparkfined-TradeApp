@@ -74,9 +74,10 @@ Wählt passend zur Topologie:
 ## 3) Environment Variables (Vercel Environments)
 
 ### Production (pflicht)
-- **[ ]** `VITE_API_URL` setzen:
-  - **Same-origin**: `"/api"` (nur wenn `/api` wirklich geroutet ist)
-  - **External API**: `https://api.example.com/api`
+- **[ ]** Wenn `/api/*` per Rewrite auf ein externes Backend zeigen soll (siehe `vercel.json`):
+  - **[ ]** `VERCEL_BACKEND_URL` setzen (**nur Hostname**, ohne `https://` und ohne `/api`), z.B. `my-backend.up.railway.app`
+  - **[ ]** `VITE_API_URL="/api"` lassen/setzen (same-origin), damit App + Service Worker zuverlässig über den Rewrite gehen
+- **[ ]** Alternative (ohne Rewrite): `VITE_API_URL` direkt auf externe Base setzen, z.B. `https://api.example.com/api`
 - **[ ]** `VITE_ENABLE_DEV_NAV="false"` (fail-safe: Dev UI nicht exponieren)
 
 ### Production (optional, aber kontrolliert)
@@ -119,7 +120,7 @@ Diese Checks gelten unabhängig von Hosting (extern oder Functions).
 
 - **[ ]** Erwartung bestätigen: SW polling läuft nur, solange App offen ist (v1).
 - **[ ]** Wenn Backend external ist:
-  - **[ ]** SW muss API korrekt erreichen (aktuell hardcoded `/api`)
+  - **[ ]** SW muss API korrekt erreichen (nutzt `VITE_API_URL` oder fallback `"/api"`)
   - **[ ]** CORS/Authorization Verhalten ist definiert
 - **[ ]** `sw.js` Update-Flow testen:
   - **[ ]** Neuer Deploy → Client holt neue SW-Version

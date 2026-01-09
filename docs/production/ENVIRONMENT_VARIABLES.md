@@ -10,7 +10,8 @@ Diese Datei listet **alle aktuell im Repo referenzierten** Env Vars + empfohlene
 |---|---|---|
 | Frontend (Vite) | `import.meta.env.VITE_*` | **Build-time** (Values werden in das Bundle eingebettet). |
 | Backend (Node) | `process.env` (zod schema) | **Runtime** (bei Vercel Functions: Runtime Env; bei externem Backend: Provider-seitig). |
-| Service Worker | kein Env Zugriff (im Browser) | Aktuell hardcoded `"/api"` als API-Basis. |
+| Service Worker | via Vite gebundled: `import.meta.env.VITE_*` | **Build-time** (Service Worker wird mitgebaut und kann `VITE_*` nutzen). |
+| Vercel Routing | `vercel.json` `{env:...}` | **Runtime** (Rewrites laufen serverseitig bei Vercel). |
 
 ---
 
@@ -76,12 +77,28 @@ Diese Datei listet **alle aktuell im Repo referenzierten** Env Vars + empfohlene
 
 ## Service Worker (Browser-Kontext)
 
-Aktuell **keine** Env Vars; API-Base ist hardcoded:
-- Alerts: `API_BASE = "/api"` in `src/sw/sw-alerts.ts`
-- Oracle: `API_BASE = "/api"` in `src/sw/sw-oracle.ts`
+Der Service Worker wird von Vite mitgebaut und kann deshalb `import.meta.env.VITE_*` nutzen:
+- Alerts: `API_BASE = import.meta.env.VITE_API_URL || "/api"` in `src/sw/sw-alerts.ts`
+- Oracle: `API_BASE = import.meta.env.VITE_API_URL || "/api"` in `src/sw/sw-oracle.ts`
 
 **Production-Risiko**
 - Wenn Backend external ist und nicht same-origin unter `/api` liegt, bricht SW-Polling (und ggf. CORS/Auth).
+
+---
+
+## Vercel Routing — `vercel.json` `{env:...}`
+
+Diese Variable ist **kein** `VITE_*` und landet **nicht** im Frontend-Bundle. Sie wird nur von Vercel zum Routing verwendet.
+
+| Name | Required | Secret? | Default | Scope | Verwendet in |
+|---|---:|---:|---|---|---|
+| `VERCEL_BACKEND_URL` | ✅ (wenn `/api` per Rewrite auf externes Backend zeigt) | ❌ | — | Runtime (Vercel) | `vercel.json`, `scripts/verify-vercel-api-ownership.mjs` |
+
+**Wichtiges Format**
+- Wert ist **nur der Hostname**, ohne `https://` und ohne `/api`.
+  - ✅ `my-backend.up.railway.app`
+  - ❌ `https://my-backend.up.railway.app`
+  - ❌ `my-backend.up.railway.app/api`
 
 ---
 
