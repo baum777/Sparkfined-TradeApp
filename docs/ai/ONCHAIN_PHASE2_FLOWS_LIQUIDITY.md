@@ -66,8 +66,9 @@ Pflicht (Reason-String, Guardrail gegen Drift):
 
 Damit Cache Keys stabil und reproduzierbar sind, ist der Provider-Fingerprint erweitert um:
 
-- `enhanced_pages=6`
-- `enhanced_limit=100`
+- `flows:v2`
+- `pages=6` (oder via Env Caps)
+- `limit=100` (oder via Env Caps)
 
 Änderungen an Caps müssen **Fingerprint/CacheKey** verändern, um Cache-Kollisionen zu vermeiden.
 

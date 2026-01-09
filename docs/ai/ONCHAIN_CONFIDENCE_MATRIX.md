@@ -26,3 +26,11 @@ Ziel: **deterministisches** Confidence-Gating über Tiers, ohne Prompt-/Schema-�
 - Flows: `best-effort proxy from tokenTransfers; not exchange-identified flows`
 - Liquidity: `proxy based on transfer-rate, not pool liquidity`
 
+### < 1h Timeframes (micro/intraday) — Kontext-Regeln
+
+- **Hard Gates** bleiben **guarded** und brauchen Chart-Kontext:
+  - `nearResistance === true` **oder** breakout-/breakdown-related Setup
+- **`nearResistance` Thresholds (Default)**:
+  - micro (`15s|30s|1m`): \(0.003 = 0.3\%\)
+  - intraday (`5m|15m|30m`): \(0.006 = 0.6\%\)
+
