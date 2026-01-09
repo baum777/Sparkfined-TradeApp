@@ -14,7 +14,6 @@ import JournalEntry from "@/pages/JournalEntry";
 import Insights from "@/pages/Insights";
 import Alerts from "@/pages/Alerts";
 import SettingsPage from "@/pages/SettingsPage";
-import NavigationMap from "@/pages/NavigationMap";
 import NotFound from "@/pages/NotFound";
 
 // Journal queue sync runner
@@ -174,7 +173,6 @@ const App = () => {
               <Route path="/insights/:insightId" element={<Insights />} />
               <Route path="/alerts" element={<Alerts />} />
               <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/navigation" element={<NavigationMap />} />
 
               {/* LEGACY ROUTE REDIRECTS */}
               <Route path="/chart" element={<ChartRedirect />} />
