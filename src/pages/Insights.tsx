@@ -28,6 +28,7 @@ import {
 import { UnifiedSignalsView } from "@/components/signals";
 import { toast } from "@/hooks/use-toast";
 import { usePageState } from "@/stubs/pageState";
+import { resolveContextAsset } from "@/lib/asset/resolveContextAsset";
 import { makeOracle } from "@/stubs/fixtures";
 import type { OracleInsight } from "@/services/oracle/types";
 import { fetchOracleDaily, putOracleReadState, bulkOracleReadState } from "@/services/oracle/api";
@@ -53,6 +54,7 @@ export default function Insights() {
   const { insightId } = useParams<{ insightId?: string }>();
   const pageState = usePageState("ready");
   const storage = getStorage();
+  const [signalsAsset, setSignalsAsset] = useState<string | null>(() => resolveContextAsset());
 
   // URL state
   const urlFilter = searchParams.get("filter") as OracleFilter | null;
@@ -253,7 +255,10 @@ export default function Insights() {
 
   const handleRetry = useCallback(() => {
     pageState.setState("loading");
-    setTimeout(() => pageState.setState("ready"), 1000);
+    setTimeout(() => {
+      setSignalsAsset(resolveContextAsset());
+      pageState.setState("ready");
+    }, 250);
   }, [pageState]);
 
   const handleToggleStatusMode = useCallback(() => {
@@ -352,6 +357,20 @@ export default function Insights() {
     );
   }
 
+  // Missing asset context: show standard error (prevents calling backend without asset).
+  if (!signalsAsset) {
+    return (
+      <PageContainer testId="page-insights">
+        <ScreenState
+          status="error"
+          onRetry={handleRetry}
+          errorTitle="Missing asset context"
+          errorMessage="Select an asset in Research, then retry."
+        />
+      </PageContainer>
+    );
+  }
+
   // Global empty state (no insights at all)
   if (pageState.isEmpty || insights.length === 0) {
     return (
@@ -431,7 +450,7 @@ export default function Insights() {
 
         {/* Unified Signals View */}
         <section aria-label="Unified signals">
-          <UnifiedSignalsView />
+          <UnifiedSignalsView assetId={signalsAsset} />
         </section>
 
         {/* Pinned cards */}

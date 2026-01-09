@@ -17,6 +17,7 @@ import { UnifiedSignalsView } from "@/components/signals";
 import { TradingWalletHint } from "@/components/common";
 import { toast } from "@/hooks/use-toast";
 import { usePageState } from "@/stubs/pageState";
+import { resolveContextAsset } from "@/lib/asset/resolveContextAsset";
 import { makeOracle } from "@/stubs/fixtures";
 import type { OracleInsight } from "@/services/oracle/types";
 import { fetchOracleDaily, putOracleReadState, bulkOracleReadState } from "@/services/oracle/api";
@@ -39,6 +40,7 @@ function getStorage(): StorageLike {
 export default function Oracle() {
   const pageState = usePageState("ready");
   const storage = getStorage();
+  const [signalsAsset, setSignalsAsset] = useState<string | null>(() => resolveContextAsset());
 
   // Insights with read state from localStorage
   const [insights, setInsights] = useState<OracleInsight[]>(() => {
@@ -238,7 +240,10 @@ export default function Oracle() {
 
   const handleRetry = useCallback(() => {
     pageState.setState("loading");
-    setTimeout(() => pageState.setState("ready"), 1000);
+    setTimeout(() => {
+      setSignalsAsset(resolveContextAsset());
+      pageState.setState("ready");
+    }, 250);
   }, [pageState]);
 
   // Loading state
@@ -324,7 +329,20 @@ export default function Oracle() {
 
         {/* Unified Signals View */}
         <section aria-label="Unified signals">
-          <UnifiedSignalsView />
+          {signalsAsset ? (
+            <UnifiedSignalsView assetId={signalsAsset} />
+          ) : (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription className="flex items-center justify-between">
+                <span>Missing asset context for signals.</span>
+                <Button variant="outline" size="sm" onClick={handleRetry}>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Retry
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
         </section>
 
         {/* Pinned cards */}
