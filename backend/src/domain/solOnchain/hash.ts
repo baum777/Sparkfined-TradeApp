@@ -4,6 +4,9 @@ type JsonValue = null | boolean | number | string | JsonObject | JsonValue[];
 type JsonObject = { [k: string]: JsonValue };
 
 function stable(value: JsonValue): JsonValue {
+  // Defensive: callers may accidentally pass runtime-undefined values.
+  // We coerce them to null to keep hashing deterministic and avoid crashes.
+  if ((value as any) === undefined) return null;
   if (value === null) return null;
   if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return value;
   if (Array.isArray(value)) return value.map(v => stable(v));
