@@ -1,4 +1,5 @@
 import type { ServerResponse } from 'http';
+import { getRequestId } from './requestId.js';
 
 /**
  * Standardized Error Response
@@ -126,9 +127,22 @@ export function internalError(message = 'Internal server error'): AppError {
 }
 
 export function sendError(res: ServerResponse, error: AppError): void {
-  const body = JSON.stringify(error.toResponse());
+  const requestId = getRequestId();
+  const base = error.toResponse();
+  const details: Record<string, string[]> = {
+    ...(base.error.details ?? {}),
+    // Canonical: always echo request id into the error payload for correlation.
+    requestId: [requestId],
+  };
+  const body = JSON.stringify({
+    error: {
+      ...base.error,
+      details,
+    },
+  } satisfies ErrorResponseBody);
   res.writeHead(error.status, {
     'Content-Type': 'application/json',
+    'x-request-id': requestId,
   });
   res.end(body);
 }

@@ -114,67 +114,84 @@ export const handleLlmExecute: RouteHandler = async (req, res) => {
     mustInclude: routing.mustInclude,
   });
 
-  // Execute chosen provider, but never send the full context to OpenAI/Grok.
-  if (routing.decision.provider === 'none') {
-    const result = await callDeepSeek({
+  type DecisionProvider = 'none' | 'openai' | 'grok';
+
+  async function callProvider(provider: DecisionProvider) {
+    // Execute chosen provider, but never send the full context to OpenAI/Grok.
+    if (provider === 'none') {
+      return await callDeepSeek({
+        requestId,
+        timeoutMs: env.LLM_TIMEOUT_MS,
+        model: env.DEEPSEEK_MODEL_ANSWER || 'deepseek-chat',
+        messages,
+        temperature,
+        maxTokens,
+        jsonOnly: false,
+      });
+    }
+
+    if (provider === 'openai') {
+      return await callOpenAI({
+        requestId,
+        timeoutMs: env.LLM_TIMEOUT_MS,
+        model: env.OPENAI_MODEL_INSIGHTS || 'gpt-4o-mini',
+        messages,
+        temperature,
+        maxTokens,
+        jsonOnly: false,
+      });
+    }
+
+    // grok
+    return await callGrok({
       requestId,
       timeoutMs: env.LLM_TIMEOUT_MS,
-      model: env.DEEPSEEK_MODEL_ANSWER || 'deepseek-chat',
+      model: 'grok-beta',
       messages,
       temperature,
       maxTokens,
       jsonOnly: false,
     });
+  }
 
-    return sendJson(res, {
+  function pickExecuteFallback(primary: DecisionProvider): DecisionProvider | null {
+    const forced = env.LLM_FALLBACK_PROVIDER;
+    if (forced && forced !== primary) return forced;
+    // Deterministic single-hop fallback.
+    if (primary === 'openai') return 'none';
+    if (primary === 'grok') return 'openai';
+    return 'openai';
+  }
+
+  const primary = routing.decision.provider;
+  let usedProvider: DecisionProvider = primary;
+  let result: Awaited<ReturnType<typeof callProvider>>;
+  try {
+    result = await callProvider(primary);
+  } catch (err) {
+    const fallback = pickExecuteFallback(primary);
+    if (!fallback || fallback === primary) throw err;
+    usedProvider = fallback;
+    result = await callProvider(fallback);
+  }
+
+  return sendJson(
+    res,
+    {
       requestId,
       provider: result.provider,
       text: result.text,
       ...(env.LLM_ROUTER_DEBUG
-        ? { debug: { routerProviderDecision: routing.decision.provider, routerLatencyMs: routing.debug?.routerLatencyMs } }
+        ? {
+            debug: {
+              routerProviderDecision: primary,
+              executedProviderDecision: usedProvider,
+              routerLatencyMs: routing.debug?.routerLatencyMs,
+            },
+          }
         : {}),
-    }, 200);
-  }
-
-  if (routing.decision.provider === 'openai') {
-    const result = await callOpenAI({
-      requestId,
-      timeoutMs: env.LLM_TIMEOUT_MS,
-      model: env.OPENAI_MODEL_INSIGHTS || 'gpt-4o-mini',
-      messages,
-      temperature,
-      maxTokens,
-      jsonOnly: false,
-    });
-
-    return sendJson(res, {
-      requestId,
-      provider: result.provider,
-      text: result.text,
-      ...(env.LLM_ROUTER_DEBUG
-        ? { debug: { routerProviderDecision: routing.decision.provider, routerLatencyMs: routing.debug?.routerLatencyMs } }
-        : {}),
-    }, 200);
-  }
-
-  // grok
-  const result = await callGrok({
-    requestId,
-    timeoutMs: env.LLM_TIMEOUT_MS,
-    model: 'grok-beta',
-    messages,
-    temperature,
-    maxTokens,
-    jsonOnly: false,
-  });
-
-  return sendJson(res, {
-    requestId,
-    provider: result.provider,
-    text: result.text,
-    ...(env.LLM_ROUTER_DEBUG
-      ? { debug: { routerProviderDecision: routing.decision.provider, routerLatencyMs: routing.debug?.routerLatencyMs } }
-      : {}),
-  }, 200);
+    },
+    200
+  );
 };
 
