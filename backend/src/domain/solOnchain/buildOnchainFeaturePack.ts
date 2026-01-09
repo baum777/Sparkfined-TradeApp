@@ -77,8 +77,10 @@ export type BuildOnchainFeaturePackParams = {
   /** If omitted, uses current time (then bucketed). */
   asOfTs?: number;
   provider: SolanaOnchainProvider;
-  /** Reserved for future gating/notes behavior; not used yet. */
-  tier?: 'free' | 'standard' | 'pro' | 'high';
+  /** Tier (controls cost + which blocks are allowed). */
+  tier: 'free' | 'standard' | 'pro' | 'high';
+  /** Whether downstream pipeline has chart setups (cost control). */
+  hasSetups: boolean;
 };
 
 export type BuildOnchainFeaturePackMeta = {
@@ -97,7 +99,22 @@ export async function buildOnchainFeaturePackWithCacheMeta(params: BuildOnchainF
   const windows = getOnchainWindowsForTimeframe(params.timeframe);
   const asOfBucket = bucketAsOfTs(params.timeframe, params.asOfTs ?? Date.now());
 
-  const caps = params.provider.capabilities();
+  const baseCaps = params.provider.capabilities();
+
+  // Tier/cost guardrails:
+  // - FREE: no-op gating -> only allow riskFlags (info only).
+  // - STANDARD: allow flows (short-only, no zScore) when hasSetups=true; no liquidity.
+  // - PRO/HIGH: allow enhanced flows + liquidity ONLY when hasSetups=true.
+  const allowFlows = (params.tier === 'standard' || params.tier === 'pro' || params.tier === 'high') && params.hasSetups;
+  const allowLiquidity = (params.tier === 'pro' || params.tier === 'high') && params.hasSetups;
+
+  const caps = {
+    activity: params.tier === 'free' ? false : baseCaps.activity,
+    holders: params.tier === 'free' ? false : baseCaps.holders,
+    flows: allowFlows ? baseCaps.flows : false,
+    liquidity: allowLiquidity ? baseCaps.liquidity : false,
+    riskFlags: baseCaps.riskFlags,
+  };
 
   // If provider is entirely non-functional, return a deterministic empty pack
   // (still includes provider fingerprint in cacheKey so caches don't collide).
@@ -116,6 +133,8 @@ export async function buildOnchainFeaturePackWithCacheMeta(params: BuildOnchainF
       windows,
       asOfBucket,
       providerFingerprint: params.provider.fingerprint(),
+      tier: params.tier,
+      hasSetups: params.hasSetups,
       schemaVersion: ONCHAIN_FEATURE_PACK_SCHEMA_VERSION,
     });
     return { pack: { ...pack, notes: normalizeNotes(pack.notes) }, cacheKey, featurePackHash, asOfBucket };
@@ -143,9 +162,24 @@ export async function buildOnchainFeaturePackWithCacheMeta(params: BuildOnchainF
 
   const activity: OnchainActivityFeatures = availability.activity ? ensureActivityShape(activityRes!.data) : nullActivity();
   const holders: OnchainHoldersFeatures = availability.holders ? ensureHoldersShape(holdersRes!.data, windows) : nullHolders(windows);
-  const flows: OnchainFlowsFeatures = availability.flows ? ensureFlowsShape(flowsRes!.data) : nullFlows();
+  let flows: OnchainFlowsFeatures = availability.flows ? ensureFlowsShape(flowsRes!.data) : nullFlows();
   const liquidity: OnchainLiquidityFeatures = availability.liquidity ? ensureLiquidityShape(liquidityRes!.data) : nullLiquidity();
   const riskFlags: OnchainRiskFlags = availability.riskFlags ? ensureRiskFlagsShape(riskRes!.data) : nullRiskFlags();
+
+  // Tier shaping (without inventing numbers):
+  // - standard: netInflowProxy short-only (baseline/zScore null), no largeTransfersProxy
+  if (params.tier === 'standard') {
+    flows = {
+      ...flows,
+      netInflowProxy: {
+        short: flows.netInflowProxy.short ?? null,
+        baseline: null,
+        zScore: null,
+      },
+      largeTransfersProxy: undefined,
+      exchangeTaggedFlowProxy: undefined,
+    };
+  }
 
   const notes = normalizeNotes([
     ...(activityRes?.notes ?? []),
@@ -177,6 +211,8 @@ export async function buildOnchainFeaturePackWithCacheMeta(params: BuildOnchainF
     windows,
     asOfBucket,
     providerFingerprint: params.provider.fingerprint(),
+    tier: params.tier,
+    hasSetups: params.hasSetups,
     schemaVersion: ONCHAIN_FEATURE_PACK_SCHEMA_VERSION,
   });
 
@@ -189,9 +225,14 @@ function buildCacheKey(input: {
   windows: OnchainWindows;
   asOfBucket: number;
   providerFingerprint: string;
+  tier: BuildOnchainFeaturePackParams['tier'];
+  hasSetups: boolean;
   schemaVersion: string;
 }): string {
-  return `onchainfp:${input.mint}:${input.timeframe}:${input.windows.short}:${input.windows.baseline}:${input.asOfBucket}:${input.providerFingerprint}:${input.schemaVersion}`;
+  // Include tier + hasSetups because they deterministically change which blocks are allowed.
+  return `onchainfp:${input.mint}:${input.timeframe}:${input.windows.short}:${input.windows.baseline}:${input.asOfBucket}:tier=${input.tier}:hasSetups=${
+    input.hasSetups ? 1 : 0
+  }:${input.providerFingerprint}:${input.schemaVersion}`;
 }
 
 // ---- Minimal shape guards / normalizers (no invented numbers) ----

@@ -160,6 +160,43 @@ export const taRequestSchema = z.object({
 });
 
 // ─────────────────────────────────────────────────────────────
+// SOL CHART ANALYSIS (JSON+Text) — Phase-2 onchain gating
+// ─────────────────────────────────────────────────────────────
+
+const solTimeframeSchema = z.enum(['15s', '30s', '1m', '5m', '15m', '30m', '1h', '4h']);
+const analysisTierSchema = z.enum(['free', 'standard', 'pro', 'high']);
+const chartTaskKindSchema = z.enum([
+  'chart_teaser_free',
+  'chart_setups',
+  'chart_patterns_validate',
+  'chart_confluence_onchain',
+  'chart_microstructure',
+]);
+
+const inputCandleSchema = z.object({
+  ts: z.number().int().nonnegative(),
+  open: z.number(),
+  high: z.number(),
+  low: z.number(),
+  close: z.number(),
+  volume: z.number(),
+});
+
+export const chartAnalysisRequestSchema = z.object({
+  mint: z.string().min(1),
+  symbol: z.string().min(1).optional(),
+  timeframe: solTimeframeSchema,
+  candles: z.array(inputCandleSchema).min(20),
+  tier: analysisTierSchema.optional(),
+  taskKind: chartTaskKindSchema.optional(),
+  chartContext: z
+    .object({
+      nearResistance: z.boolean().optional(),
+    })
+    .optional(),
+});
+
+// ─────────────────────────────────────────────────────────────
 // TYPE EXPORTS
 // ─────────────────────────────────────────────────────────────
 
@@ -180,3 +217,4 @@ export type FeedPulseQuery = z.infer<typeof feedPulseQuerySchema>;
 export type SignalsUnifiedQuery = z.infer<typeof signalsUnifiedQuerySchema>;
 
 export type TARequest = z.infer<typeof taRequestSchema>;
+export type ChartAnalysisRequest = z.infer<typeof chartAnalysisRequestSchema>;

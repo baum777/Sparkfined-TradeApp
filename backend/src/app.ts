@@ -20,6 +20,7 @@ import {
   handleOracleReadState,
   handleOracleBulkReadState,
   handleTAAnalysis,
+  handleChartAnalyze,
   handleReasoningTradeReview,
   handleReasoningSessionReview,
   handleReasoningBoardScenarios,
@@ -73,6 +74,8 @@ export function createApp(): Router {
   
   // Chart TA Route
   router.post('/chart/ta', handleTAAnalysis);
+  // SOL Chart Analysis (JSON+Text) with Phase-2 onchain gating
+  router.post('/chart/analyze', handleChartAnalyze);
 
   // Reasoning Routes
   router.post('/reasoning/trade-review', handleReasoningTradeReview);
