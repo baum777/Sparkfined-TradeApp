@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { createServer, type Server } from 'http';
 import { createApp } from '../../src/app';
 import { signToken } from '../../src/lib/auth/jwt';
+import { getDatabase } from '../../src/db/sqlite';
 import * as grokPulseAdapter from '../../src/domain/grokPulse/grokPulseAdapter';
 
 async function readJson(res: Response): Promise<any> {
@@ -125,6 +126,84 @@ describe('Journal insights Grok gating', () => {
     expect(res.status).toBe(200);
     expect(body.status).toBe('ok');
     expect(spy).not.toHaveBeenCalled();
+  });
+
+  it('includeGrok=true + pro + grokEnabled=true => 200 and returns narrative', async () => {
+    const token = signToken({ userId: 'u-ins-pro-on', tier: 'pro' });
+
+    // enable grok
+    const settingsRes = await fetch(`${baseUrl}/api/settings`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ ai: { grokEnabled: true } }),
+    });
+    const settingsBody = await readJson(settingsRes);
+    expect(settingsRes.status).toBe(200);
+    expect(settingsBody.status).toBe('ok');
+    expect(settingsBody.data).toEqual({ ai: { grokEnabled: true } });
+
+    // create a journal entry
+    const createRes = await fetch(`${baseUrl}/api/journal`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'Idempotency-Key': 'idem-ins-4',
+      },
+      body: JSON.stringify({ summary: 'Entry' }),
+    });
+    const created = await readJson(createRes);
+    expect(createRes.status).toBe(201);
+    const id = created.data.id as string;
+
+    // Force minimal capture metadata in DB so insights can resolve an asset and call Grok adapter.
+    const db = getDatabase();
+    db.prepare(
+      `
+        UPDATE journal_entries_v2
+        SET capture_source = ?,
+            capture_key = ?,
+            action_type = ?,
+            asset_mint = ?,
+            amount = ?,
+            price_hint = ?
+        WHERE user_id = ? AND id = ?
+      `
+    ).run(
+      'test',
+      'cap-test-1',
+      'buy',
+      'So11111111111111111111111111111111111111112',
+      null,
+      null,
+      'u-ins-pro-on',
+      id
+    );
+
+    const spy = vi
+      .spyOn(grokPulseAdapter, 'getPulseFeedSnapshot')
+      .mockResolvedValue({ ok: true, source: 'test' } as any);
+
+    const res = await fetch(`${baseUrl}/api/journal/${id}/insights`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ kind: 'review', includeGrok: true }),
+    });
+    const body = await readJson(res);
+
+    expect(res.status).toBe(200);
+    expect(body.status).toBe('ok');
+    expect(body.data?.narrative?.source).toBe('grok_pulse_snapshot');
+    expect(body.data?.narrative?.pulse).toEqual({ ok: true, source: 'test' });
+    expect(spy).toHaveBeenCalledTimes(1);
+
+    spy.mockRestore();
   });
 });
 

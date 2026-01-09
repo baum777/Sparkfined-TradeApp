@@ -183,7 +183,8 @@ export class JournalRepoSQLite implements JournalRepo {
           timestamp = excluded.timestamp,
           summary = excluded.summary,
           day_key = excluded.day_key,
-          created_at = excluded.created_at,
+          -- Stability: never mutate created_at on update
+          created_at = journal_entries_v2.created_at,
           updated_at = excluded.updated_at,
 
           -- Preserve existing capture metadata if caller doesn't provide it on update.
