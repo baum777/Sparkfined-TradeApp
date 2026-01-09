@@ -247,8 +247,9 @@ export class HeliusAdapter implements SolanaOnchainProvider {
   }
 
   fingerprint(): string {
-    // Include enhanced paging caps for deterministic cache keys.
-    return `${computeProviderFingerprint({ tag: this.tag, version: this.version, capabilities: this.capabilities() })}:enhanced_pages=${this.enhancedMaxPages}:enhanced_limit=${this.enhancedLimit}`;
+    // Include enhanced paging caps + flows version for deterministic cache keys.
+    // NOTE: Keep tokens stable; docs/tests rely on them for cache drift prevention.
+    return `${computeProviderFingerprint({ tag: this.tag, version: this.version, capabilities: this.capabilities() })}:flows:v2:pages=${this.enhancedMaxPages}:limit=${this.enhancedLimit}`;
   }
 
   private clients() {

@@ -26,7 +26,7 @@ describe('HeliusAdapter (SolanaOnchainProvider) - unit', () => {
 
   it('fingerprint is stable and cache-friendly', () => {
     const p = new HeliusAdapter();
-    expect(p.fingerprint()).toBe('helius@2.0.0:a=1,h=1,f=1,l=1,r=1:enhanced_pages=6:enhanced_limit=100');
+    expect(p.fingerprint()).toBe('helius@2.0.0:a=1,h=1,f=1,l=1,r=1:flows:v2:pages=6:limit=100');
   });
 
   it('getRiskFlags maps mint/freeze authority from DAS getAsset (and best-effort largeHolderDominance)', async () => {

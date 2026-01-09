@@ -21,7 +21,32 @@ export function sortSetupsByGatedConfidence(setups: SetupCard[]): SetupCard[] {
     .map(r => r.x);
 }
 
-function computeNearResistance(input: {
+export function getNearResistanceThreshold(timeframe: SolTimeframe): number {
+  // Defaults per spec:
+  // - micro (15s/30s/1m): 0.3%
+  // - intraday (5m/15m/30m): 0.6%
+  // - swing (1h/4h): keep conservative fallback (0.75%)
+  switch (timeframe) {
+    case '15s':
+    case '30s':
+    case '1m':
+      return 0.003;
+    case '5m':
+    case '15m':
+    case '30m':
+      return 0.006;
+    case '1h':
+    case '4h':
+      return 0.0075;
+    default: {
+      const _exhaustive: never = timeframe;
+      return _exhaustive;
+    }
+  }
+}
+
+export function computeNearResistance(input: {
+  timeframe: SolTimeframe;
   lastPrice: number;
   resistances: Array<{ price: number }>;
 }): boolean {
@@ -34,8 +59,8 @@ function computeNearResistance(input: {
     return best == null ? d : Math.min(best, d);
   }, null);
 
-  // 0.75% proximity threshold (deterministic, conservative).
-  return nearest != null && nearest <= 0.0075;
+  const threshold = getNearResistanceThreshold(input.timeframe);
+  return nearest != null && nearest <= threshold;
 }
 
 function buildHeadline(input: { tier: AnalysisTier; timeframe: SolTimeframe; mint: string; symbol?: string; setups: SetupCard[] }): string {
@@ -110,7 +135,11 @@ export async function analyzeChartWithOnchainGating(input: ChartAnalysisInput): 
   const nearResistance =
     typeof input.chartContext?.nearResistance === 'boolean'
       ? input.chartContext.nearResistance
-      : computeNearResistance({ lastPrice: chart.ohlcvSummary.lastPrice, resistances: chart.srLevels.resistances ?? [] });
+      : computeNearResistance({
+          timeframe: input.timeframe,
+          lastPrice: chart.ohlcvSummary.lastPrice,
+          resistances: chart.srLevels.resistances ?? [],
+        });
 
   const tuningProfile = env.ONCHAIN_TUNING_PROFILE;
   const tuning =

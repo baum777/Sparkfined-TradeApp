@@ -51,6 +51,9 @@ Diese Datei listet **alle aktuell im Repo referenzierten** Env Vars + empfohlene
 | `HELIUS_ENHANCED_LIMIT` | ❌ | ❌ | `100` | Runtime | `backend/src/config/env.ts`, `backend/src/domain/solOnchain/getOnchainProvider.ts` |
 | `ONCHAIN_TUNING_PROFILE` | ❌ | ❌ | `default` (`default|conservative|aggressive`) | Runtime | `backend/src/config/env.ts`, `backend/src/domain/solChartAnalysis/orchestrator.ts` |
 
+**Hinweis (Determinismus/Cache):**
+- Änderungen an `HELIUS_ENHANCED_MAX_PAGES` / `HELIUS_ENHANCED_LIMIT` ändern den Provider-Fingerprint (inkl. `flows:v2`) und damit Onchain-CacheKeys, um Cache-Drift zu vermeiden.
+
 ---
 
 ## AI / LLM Router (Backend-only)

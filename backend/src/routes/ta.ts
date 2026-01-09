@@ -2,9 +2,11 @@ import type { ServerResponse } from 'http';
 import type { ParsedRequest } from '../http/router.js';
 import { sendJson, setCacheHeaders } from '../http/response.js';
 import { validateBody } from '../validation/validate.js';
-import { taRequestSchema } from '../validation/schemas.js';
-import { generateTAReport } from '../domain/ta/taGenerator.js';
-import { taCacheGet, taCacheSet } from '../domain/ta/cacheRepo.js';
+import { chartAnalysisRequestSchema } from '../validation/schemas.js';
+import type { AnalysisTier } from '../domain/solChartAnalysis/contracts.js';
+import { getRequestId } from '../http/requestId.js';
+import { getEnv } from '../config/env.js';
+import { analyzeTA } from '../domain/solChart/ta/analyzeTA.js';
 import { rateLimiters } from '../http/rateLimit.js';
 
 /**
@@ -14,32 +16,26 @@ import { rateLimiters } from '../http/rateLimit.js';
  * // BACKEND_TODO: wire GPT vision for real TA analysis
  */
 
-function getDayBucket(date: Date): string {
-  return date.toISOString().split('T')[0];
-}
-
-export function handleTAAnalysis(req: ParsedRequest, res: ServerResponse): void {
-  const body = validateBody(taRequestSchema, req.body);
+export async function handleTAAnalysis(req: ParsedRequest, res: ServerResponse): Promise<void> {
+  const env = getEnv();
+  const body = validateBody(chartAnalysisRequestSchema, req.body);
   
   // Rate limit check
   rateLimiters.ta(req.path, req.userId);
-  
-  const now = new Date();
-  const bucket = getDayBucket(now);
-  
-  // Check cache first
-  let report = taCacheGet(body.market, body.timeframe, body.replay, bucket);
-  
-  if (!report) {
-    // Generate new report
-    report = generateTAReport(body.market, body.timeframe, body.replay, now);
-    
-    // Cache it
-    taCacheSet(body.market, body.timeframe, body.replay, bucket, report);
-  }
-  
-  // Cache headers per API_SPEC.md
-  setCacheHeaders(res, { public: false, maxAge: 300 }); // 5 min
-  
-  sendJson(res, report);
+
+  // Keep handler thin: validate → call service → sendJson
+  const tier = (body.tier ?? env.LLM_TIER_DEFAULT) as AnalysisTier;
+  const out = await analyzeTA({
+    requestId: getRequestId(),
+    mint: body.mint,
+    symbol: body.symbol,
+    timeframe: body.timeframe,
+    candles: body.candles,
+    tier,
+    taskKind: body.taskKind,
+    chartContext: body.chartContext,
+  });
+
+  setCacheHeaders(res, { public: false, maxAge: 60 });
+  sendJson(res, out, 200);
 }
