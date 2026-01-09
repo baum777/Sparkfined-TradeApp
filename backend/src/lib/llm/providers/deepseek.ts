@@ -74,7 +74,7 @@ export async function callDeepSeek(options: ProviderCallOptions): Promise<Provid
       return { res, text };
     },
     {
-      maxRetries: env.LLM_MAX_RETRIES,
+      maxRetries: options.maxRetries ?? env.LLM_MAX_RETRIES,
       baseDelayMs: 250,
       maxDelayMs: 2000,
     },

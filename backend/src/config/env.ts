@@ -66,6 +66,7 @@ const envSchema = z.object({
   LLM_TIMEOUT_MS: z.string().transform(Number).default('20000'),
   LLM_MAX_RETRIES: z.string().transform(Number).default('2'),
   LLM_BUDGET_DEFAULT: z.enum(['low', 'medium', 'high']).default('low'),
+  LLM_TIER_DEFAULT: z.enum(['free', 'standard', 'pro', 'high']).default('free'),
   // Deterministic fallback when router fails or primary provider fails (optional override).
   // Note: values align with RouterDecisionProvider: "none" => DeepSeek Answer model.
   LLM_FALLBACK_PROVIDER: z.enum(['none', 'openai', 'grok']).optional(),

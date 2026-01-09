@@ -16,6 +16,7 @@ export interface LlmUsage {
 export interface ProviderCallOptions {
   requestId: string;
   timeoutMs: number;
+  maxRetries?: number;
   model: string;
   messages: LlmMessage[];
   temperature?: number;

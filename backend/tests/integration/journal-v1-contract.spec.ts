@@ -49,8 +49,8 @@ describe('Journal v1 Contract (Diary/Reflection)', () => {
     const body1 = await readJson(res1);
 
     expect(res1.status).toBe(201);
+    expect(body1).toHaveProperty('status', 'ok');
     expect(body1).toHaveProperty('data');
-    expect(body1).toHaveProperty('status', 201);
     expect(body1.data).toHaveProperty('id');
     expect(body1.data).toHaveProperty('status', 'pending');
     expect(body1.data).toHaveProperty('createdAt');
@@ -71,6 +71,7 @@ describe('Journal v1 Contract (Diary/Reflection)', () => {
     const body2 = await readJson(res2);
 
     expect(res2.status).toBe(201);
+    expect(body2).toHaveProperty('status', 'ok');
     expect(body2).toHaveProperty('data');
     expect(body2.data.id).toBe(body1.data.id);
 
@@ -78,6 +79,7 @@ describe('Journal v1 Contract (Diary/Reflection)', () => {
     const listBody = await readJson(listRes);
 
     expect(listRes.status).toBe(200);
+    expect(listBody).toHaveProperty('status', 'ok');
     expect(listBody).toHaveProperty('data');
     expect(listBody.data).toHaveProperty('items');
     expect(Array.isArray(listBody.data.items)).toBe(true);
@@ -96,11 +98,13 @@ describe('Journal v1 Contract (Diary/Reflection)', () => {
     });
     const created = await readJson(createRes);
     expect(createRes.status).toBe(201);
+    expect(created).toHaveProperty('status', 'ok');
     const id = created.data.id as string;
 
     const confirmRes = await fetch(`${baseUrl}/api/journal/${id}/confirm`, { method: 'POST' });
     const confirmBody = await readJson(confirmRes);
     expect(confirmRes.status).toBe(200);
+    expect(confirmBody).toHaveProperty('status', 'ok');
     expect(confirmBody).toHaveProperty('data');
     expect(confirmBody.data).toHaveProperty('status', 'confirmed');
     expect(confirmBody.data).toHaveProperty('confirmedAt');
@@ -109,6 +113,7 @@ describe('Journal v1 Contract (Diary/Reflection)', () => {
     const archiveRes = await fetch(`${baseUrl}/api/journal/${id}/archive`, { method: 'POST' });
     const archiveBody = await readJson(archiveRes);
     expect(archiveRes.status).toBe(200);
+    expect(archiveBody).toHaveProperty('status', 'ok');
     expect(archiveBody.data).toHaveProperty('status', 'archived');
     expect(archiveBody.data).toHaveProperty('archivedAt');
     // confirmedAt must only exist when status === "confirmed"
@@ -117,6 +122,7 @@ describe('Journal v1 Contract (Diary/Reflection)', () => {
     const restoreRes = await fetch(`${baseUrl}/api/journal/${id}/restore`, { method: 'POST' });
     const restoreBody = await readJson(restoreRes);
     expect(restoreRes.status).toBe(200);
+    expect(restoreBody).toHaveProperty('status', 'ok');
     expect(restoreBody.data).toHaveProperty('status', 'pending');
     expect(restoreBody.data).not.toHaveProperty('archivedAt');
     expect(restoreBody.data).not.toHaveProperty('confirmedAt');
@@ -140,6 +146,7 @@ describe('Journal v1 Contract (Diary/Reflection)', () => {
     const badConfirmRes = await fetch(`${baseUrl}/api/journal/${id}/confirm`, { method: 'POST' });
     const badConfirmBody = await readJson(badConfirmRes);
     expect(badConfirmRes.status).toBe(409);
+    expect(badConfirmBody).toHaveProperty('status', 'error');
     expect(badConfirmBody).toHaveProperty('error');
     expect(badConfirmBody.error).toHaveProperty('code', 'INVALID_TRANSITION');
 
@@ -159,6 +166,7 @@ describe('Journal v1 Contract (Diary/Reflection)', () => {
     const badRestoreRes = await fetch(`${baseUrl}/api/journal/${id2}/restore`, { method: 'POST' });
     const badRestoreBody = await readJson(badRestoreRes);
     expect(badRestoreRes.status).toBe(409);
+    expect(badRestoreBody).toHaveProperty('status', 'error');
     expect(badRestoreBody).toHaveProperty('error');
     expect(badRestoreBody.error).toHaveProperty('code', 'INVALID_TRANSITION');
   });

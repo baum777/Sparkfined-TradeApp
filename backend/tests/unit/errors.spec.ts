@@ -31,6 +31,7 @@ describe('Error Handling', () => {
       const response = error.toResponse();
 
       expect(response).toEqual({
+        status: 'error',
         error: {
           code: 'VALIDATION_FAILED',
           message: 'Test',

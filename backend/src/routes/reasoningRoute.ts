@@ -6,8 +6,11 @@ import { AppError, ErrorCodes } from '../http/error.js';
 import { routeAndCompress } from '../lib/llm/router/router.js';
 
 const routeRequestSchema = z.object({
-  taskId: z.string().min(1).optional(),
-  mode: z.enum(['route_compress', 'postprocess']),
+  mode: z.literal('route_compress'),
+  tier: z.enum(['free', 'standard', 'pro', 'high']).optional(),
+  taskKind: z
+    .enum(['general', 'journal_teaser', 'chart_teaser', 'chart_analysis', 'sentiment_alpha'])
+    .optional(),
   userMessage: z.string().min(1).max(20000),
   context: z
     .object({
@@ -27,7 +30,6 @@ const routeRequestSchema = z.object({
     .object({
       maxFinalTokens: z.number().int().min(16).max(4096).optional(),
       latencyBudgetMs: z.number().int().min(250).max(120000).optional(),
-      costBudget: z.enum(['low', 'medium', 'high']).optional(),
       safety: z.enum(['default', 'strict']).optional(),
     })
     .optional(),
@@ -37,11 +39,12 @@ export const handleReasoningRoute: RouteHandler = async (req, res) => {
   const parsed = routeRequestSchema.safeParse(req.body ?? {});
   if (!parsed.success) {
     throw new AppError('Validation failed', 400, ErrorCodes.VALIDATION_ERROR, {
-      requestId: [getRequestId()],
+      requestId: getRequestId(),
     });
   }
 
-  const out = await routeAndCompress(parsed.data, getRequestId());
+  const requestId = getRequestId();
+  const out = await routeAndCompress(parsed.data, requestId);
   sendJson(res, out, 200);
 };
 
