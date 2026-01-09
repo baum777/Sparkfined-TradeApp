@@ -11,12 +11,24 @@
 
 export type Tier = 'free' | 'standard' | 'pro' | 'high';
 
-export type RouterDecisionProvider = 'none' | 'deepseek' | 'openai' | 'grok';
+export type RouterDecisionProvider = 'deepseek' | 'openai' | 'grok';
 
 export type RouterMode = 'route_compress' | 'postprocess';
 
 export type LlmTaskKind =
   | 'general'
+  // Chart (Solana)
+  | 'chart_teaser_free'
+  | 'chart_setups'
+  | 'chart_patterns_validate'
+  | 'chart_confluence_onchain'
+  | 'chart_microstructure'
+  // Journal
+  | 'journal_teaser_free'
+  | 'journal_review'
+  | 'journal_playbook_update'
+  | 'journal_risk'
+  // Back-compat aliases
   | 'journal_teaser'
   | 'chart_teaser'
   | 'chart_analysis'
@@ -48,11 +60,9 @@ export interface ReasoningRouteRequest {
 
 export interface ReasoningRouteResponse {
   requestId: string;
-  decision: {
-    provider: RouterDecisionProvider;
-    reason: string;
-    maxTokens: number;
-  };
+  provider: RouterDecisionProvider;
+  templateId: string;
+  maxTokens: number;
   compressedPrompt: string;
   mustInclude: string[];
   redactions: string[];

@@ -32,11 +32,9 @@ export interface ReasoningRouteInput {
 
 export interface ReasoningRouteResult {
   requestId: string;
-  decision: {
-    provider: RouterDecisionProvider;
-    reason: string;
-    maxTokens: number;
-  };
+  provider: RouterDecisionProvider;
+  templateId: string;
+  maxTokens: number;
   compressedPrompt: string;
   mustInclude: string[];
   redactions: string[];
@@ -72,26 +70,24 @@ function parseFirstJsonObject(text: string): unknown {
 function buildRouterSystemPrompt(): string {
   return [
     'You are a routing/compression engine.',
-    'Output JSON only. No prose. No markdown.',
+    'Output JSON only.',
+    'Choose templateId and provider based on tier+taskKind.',
+    'Never include secrets.',
     '',
     'You MUST output a single JSON object with exactly this shape:',
     '{',
-    '  "decision": { "provider": "none|deepseek|openai|grok", "reason": "…", "maxTokens": 800 },',
-    '  "compressedPrompt": "…",',
-    '  "mustInclude": ["…"],',
-    '  "redactions": ["…"]',
+    '  "provider": "deepseek|openai|grok",',
+    '  "templateId": "...",',
+    '  "maxTokens": 800,',
+    '  "compressedPrompt": "...",',
+    '  "mustInclude": ["..."],',
+    '  "redactions": ["..."]',
     '}',
     '',
     'Rules:',
-    '- Keep compressedPrompt short and executable (include only essential constraints and context).',
-    '- Never include secrets: API keys, tokens, cookies, Authorization/Bearer headers. If present in input, add them to redactions and omit from compressedPrompt.',
-    '- decision.provider:',
-    '  - "none" if DeepSeek can cheaply produce the final answer from compressedPrompt.',
-    '  - "deepseek" if DeepSeek Answer model should be used explicitly.',
-    '  - "openai" for higher-quality long-form writing, complex structured outputs, or when accuracy matters most.',
-    '  - "grok" for X/Twitter style, snappy "alpha" phrasing, or realtime/social-sentiment flavor.',
-    '- decision.maxTokens should be appropriate for the final answer (not the router).',
-    '- Be deterministic and conservative: prefer "none" when unsure.',
+    '- Keep compressedPrompt short and include only necessary constraints/context.',
+    '- Never include secrets (API keys, tokens, cookies, Authorization/Bearer headers). If present in input, add them to redactions and omit them from compressedPrompt.',
+    '- maxTokens is for the FINAL answer (not the router).',
   ].join('\n');
 }
 
@@ -175,9 +171,9 @@ export async function routeAndCompress(input: ReasoningRouteInput, requestId: st
       tier,
       taskKind,
       routerDecision: {
-        provider: parsed.decision.provider,
-        reason: parsed.decision.reason,
-        maxTokens: parsed.decision.maxTokens,
+        provider: parsed.provider,
+        templateId: parsed.templateId,
+        maxTokens: parsed.maxTokens,
       },
       compressedPrompt: redactSecrets(parsed.compressedPrompt),
       mustInclude: parsed.mustInclude ?? [],
@@ -186,7 +182,9 @@ export async function routeAndCompress(input: ReasoningRouteInput, requestId: st
 
     const out: ReasoningRouteResult = {
       requestId,
-      decision: enforced.decision,
+      provider: enforced.provider,
+      templateId: enforced.templateId,
+      maxTokens: enforced.maxTokens,
       compressedPrompt: enforced.compressedPrompt,
       mustInclude: enforced.mustInclude,
       redactions: parsed.redactions ?? [],
@@ -199,8 +197,8 @@ export async function routeAndCompress(input: ReasoningRouteInput, requestId: st
         requestId,
         tier: out.tierApplied,
         taskKind: out.taskKindApplied,
-        provider: out.decision.provider,
-        maxTokens: out.decision.maxTokens,
+        provider: out.provider,
+        maxTokens: out.maxTokens,
         routerLatencyMs: Date.now() - started,
         compressedPromptPreview: truncate(out.compressedPrompt, 200),
       });
@@ -222,7 +220,7 @@ export async function routeAndCompress(input: ReasoningRouteInput, requestId: st
     const enforced = enforcePermissions({
       tier,
       taskKind,
-      routerDecision: { provider: 'deepseek', reason: 'router_fallback', maxTokens: tierSettings.finalMaxTokens },
+      routerDecision: { provider: 'deepseek', templateId: 'GENERAL', maxTokens: tierSettings.finalMaxTokens },
       compressedPrompt: fallbackCompressedPrompt({ ...input, tier, taskKind }),
       mustInclude: [],
       constraints: { maxFinalTokens: input.constraints?.maxFinalTokens },
@@ -230,7 +228,9 @@ export async function routeAndCompress(input: ReasoningRouteInput, requestId: st
 
     return {
       requestId,
-      decision: enforced.decision,
+      provider: enforced.provider,
+      templateId: enforced.templateId,
+      maxTokens: enforced.maxTokens,
       compressedPrompt: enforced.compressedPrompt,
       mustInclude: enforced.mustInclude,
       redactions: [],
