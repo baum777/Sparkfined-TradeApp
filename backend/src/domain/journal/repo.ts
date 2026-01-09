@@ -126,23 +126,102 @@ export class JournalRepoSQLite implements JournalRepo {
   async putEvent(userId: string, event: JournalEntryV1): Promise<void> {
     assertUserId(userId);
     const db = getDatabase();
-    
-    db.prepare(`
-      INSERT OR REPLACE INTO journal_entries_v2 
-      (id, user_id, side, status, timestamp, summary, day_key, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      event.id,
-      userId,
+
+    // P0 FIX: Avoid INSERT OR REPLACE (it can NULL additive columns not present in the statement).
+    // Use ON CONFLICT DO UPDATE and preserve capture_* / link fields when excluded values are NULL.
+    // This prevents silent data loss introduced by migration 0005_journal_capture_fields.sql.
+
+    const now = new Date().toISOString();
+    const timestamp = event.timestamp || now;
+    const dayKey = extractDayKey(timestamp);
+    const capture = event.capture;
+
+    db.prepare(
+      `
+        INSERT INTO journal_entries_v2 (
+          id,
+          user_id,
+          side,
+          status,
+          timestamp,
+          summary,
+          day_key,
+          created_at,
+          updated_at,
+          capture_source,
+          capture_key,
+          tx_signature,
+          wallet,
+          action_type,
+          asset_mint,
+          amount,
+          price_hint,
+          linked_entry_id
+        ) VALUES (
+          @id,
+          @user_id,
+          @side,
+          @status,
+          @timestamp,
+          @summary,
+          @day_key,
+          @created_at,
+          @updated_at,
+          @capture_source,
+          @capture_key,
+          @tx_signature,
+          @wallet,
+          @action_type,
+          @asset_mint,
+          @amount,
+          @price_hint,
+          @linked_entry_id
+        )
+        ON CONFLICT(user_id, id) DO UPDATE SET
+          side = excluded.side,
+          status = excluded.status,
+          timestamp = excluded.timestamp,
+          summary = excluded.summary,
+          day_key = excluded.day_key,
+          created_at = excluded.created_at,
+          updated_at = excluded.updated_at,
+
+          -- Preserve existing capture metadata if caller doesn't provide it on update.
+          capture_source = COALESCE(excluded.capture_source, journal_entries_v2.capture_source),
+          capture_key = COALESCE(excluded.capture_key, journal_entries_v2.capture_key),
+          tx_signature = COALESCE(excluded.tx_signature, journal_entries_v2.tx_signature),
+          wallet = COALESCE(excluded.wallet, journal_entries_v2.wallet),
+          action_type = COALESCE(excluded.action_type, journal_entries_v2.action_type),
+          asset_mint = COALESCE(excluded.asset_mint, journal_entries_v2.asset_mint),
+          amount = COALESCE(excluded.amount, journal_entries_v2.amount),
+          price_hint = COALESCE(excluded.price_hint, journal_entries_v2.price_hint),
+
+          -- Link fields: preserve unless explicitly updated (NULL will keep old)
+          linked_entry_id = COALESCE(excluded.linked_entry_id, journal_entries_v2.linked_entry_id)
+      `
+    ).run({
+      id: event.id,
+      user_id: userId,
       // Legacy column; Journal v1 has no trading fields. We store a placeholder.
-      'BUY',
-      event.status,
-      event.timestamp || new Date().toISOString(),
-      event.summary || '',
-      extractDayKey(event.timestamp || new Date().toISOString()),
-      event.createdAt,
-      event.updatedAt
-    );
+      side: 'BUY',
+      status: event.status,
+      timestamp,
+      summary: event.summary || '',
+      day_key: dayKey,
+      created_at: event.createdAt,
+      updated_at: event.updatedAt,
+
+      // capture fields (all optional; keep NULL if absent so COALESCE preserves old)
+      capture_source: capture?.source ?? null,
+      capture_key: capture?.captureKey ?? null,
+      tx_signature: capture?.txSignature ?? null,
+      wallet: capture?.wallet ?? null,
+      action_type: capture?.actionType ?? null,
+      asset_mint: capture?.assetMint ?? null,
+      amount: typeof capture?.amount === 'number' ? capture.amount : null,
+      price_hint: typeof capture?.priceHint === 'number' ? capture.priceHint : null,
+      linked_entry_id: capture?.linkedEntryId ?? null,
+    });
     
     // Transition timestamps live in legacy tables; we only store timestamps (no user-provided notes/reasons).
     if (event.confirmedAt && event.status === 'confirmed') {
