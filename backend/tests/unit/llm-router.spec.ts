@@ -30,7 +30,9 @@ describe('LLM Reasoning Router (DeepSeek) - unit', () => {
           {
             message: {
               content: JSON.stringify({
-                decision: { provider: 'openai', reason: 'needs quality', maxTokens: 5000 },
+                provider: 'openai',
+                templateId: 'CHART_SETUPS',
+                maxTokens: 5000,
                 compressedPrompt: 'Do the thing.',
                 mustInclude: ['A'],
                 redactions: [],
@@ -54,8 +56,9 @@ describe('LLM Reasoning Router (DeepSeek) - unit', () => {
     );
 
     expect(out.requestId).toBe('req-1');
-    expect(out.decision.provider).toBe('openai');
-    expect(out.decision.maxTokens).toBe(900);
+    expect(out.provider).toBe('openai');
+    expect(out.maxTokens).toBe(900);
+    expect(out.templateId).toBe('CHART_SETUPS');
     expect(out.compressedPrompt).toBe('Do the thing.');
   });
 
@@ -78,8 +81,8 @@ describe('LLM Reasoning Router (DeepSeek) - unit', () => {
     );
 
     expect(out.requestId).toBe('req-2');
-    expect(out.decision.provider).toBe('deepseek');
-    expect(out.decision.reason).toBe('router_fallback');
+    expect(out.provider).toBe('deepseek');
+    expect(out.templateId).toBe('GENERAL');
     expect(typeof out.compressedPrompt).toBe('string');
   });
 
@@ -90,7 +93,9 @@ describe('LLM Reasoning Router (DeepSeek) - unit', () => {
           {
             message: {
               content: JSON.stringify({
-                decision: { provider: 'none', reason: 'cheap', maxTokens: 200 },
+                    provider: 'deepseek',
+                    templateId: 'GENERAL',
+                    maxTokens: 200,
                 compressedPrompt: 'Authorization: Bearer sk-THIS_SHOULD_NOT_LEAK',
                 mustInclude: [],
                 redactions: ['Authorization header'],

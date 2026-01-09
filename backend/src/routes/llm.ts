@@ -10,11 +10,31 @@ import { callOpenAI } from '../lib/llm/providers/openai.js';
 import { callGrok } from '../lib/llm/providers/grok.js';
 import type { LlmMessage } from '../lib/llm/types.js';
 import { getTierSettings, type LlmTaskKind, type Tier } from '../lib/llm/tierPolicy.js';
+import { getTemplateSystemPrompt } from '../lib/llm/templates/solChartJournal.js';
 
 const executeRequestSchema = z.object({
   tier: z.enum(['free', 'standard', 'pro', 'high']).optional(),
   taskKind: z
-    .enum(['general', 'journal_teaser', 'chart_teaser', 'chart_analysis', 'sentiment_alpha'])
+    .enum([
+      'general',
+      // Chart
+      'chart_teaser_free',
+      'chart_setups',
+      'chart_patterns_validate',
+      'chart_confluence_onchain',
+      'chart_microstructure',
+      // Journal
+      'journal_teaser_free',
+      'journal_review',
+      'journal_playbook_update',
+      'journal_risk',
+      // Back-compat aliases
+      'journal_teaser',
+      'chart_teaser',
+      'chart_analysis',
+      // Other
+      'sentiment_alpha',
+    ])
     .optional(),
   userMessage: z.string().min(1).max(20000),
   context: z
@@ -43,13 +63,16 @@ const executeRequestSchema = z.object({
 function finalSystemPrompt(input: {
   safety: 'default' | 'strict';
   mustInclude: string[];
+  templateId?: string;
 }): string {
   return [
     'You are a helpful assistant.',
+    getTemplateSystemPrompt(input.templateId),
     'Follow the user request in the prompt.',
     input.safety === 'strict'
       ? 'Be cautious: do not provide instructions for wrongdoing. Prefer safe alternatives.'
       : 'Safety: default.',
+    input.templateId ? `TEMPLATE_ID: ${input.templateId}` : '',
     input.mustInclude.length ? '' : '',
     input.mustInclude.length ? 'MUST_INCLUDE:' : '',
     ...(input.mustInclude.length ? input.mustInclude.map(x => `- ${x}`) : []),
@@ -62,11 +85,12 @@ function buildFinalMessages(input: {
   compressedPrompt: string;
   safety: 'default' | 'strict';
   mustInclude: string[];
+  templateId?: string;
 }): LlmMessage[] {
   return [
     {
       role: 'system',
-      content: finalSystemPrompt({ safety: input.safety, mustInclude: input.mustInclude }),
+      content: finalSystemPrompt({ safety: input.safety, mustInclude: input.mustInclude, templateId: input.templateId }),
     },
     { role: 'user', content: input.compressedPrompt },
   ];
@@ -101,11 +125,12 @@ export const handleLlmExecute: RouteHandler = async (req, res) => {
       )
     : {
         requestId,
-        decision: {
-          provider: 'deepseek' as const,
-          reason: 'router_disabled',
-          maxTokens: Math.min(tierSettings.finalMaxTokens, parsed.data.constraints?.maxFinalTokens ?? tierSettings.finalMaxTokens),
-        },
+        provider: 'deepseek' as const,
+        templateId: 'GENERAL',
+        maxTokens: Math.min(
+          tierSettings.finalMaxTokens,
+          parsed.data.constraints?.maxFinalTokens ?? tierSettings.finalMaxTokens
+        ),
         compressedPrompt: parsed.data.userMessage,
         mustInclude: [],
         redactions: [],
@@ -113,16 +138,17 @@ export const handleLlmExecute: RouteHandler = async (req, res) => {
         taskKindApplied: taskKind,
       };
 
-  const maxTokens = routing.decision.maxTokens;
+  const maxTokens = routing.maxTokens;
   const temperature = 0;
 
   const messages = buildFinalMessages({
     compressedPrompt: routing.compressedPrompt,
     safety,
     mustInclude: routing.mustInclude,
+    templateId: routing.templateId,
   });
 
-  type DecisionProvider = 'none' | 'deepseek' | 'openai' | 'grok';
+  type DecisionProvider = 'deepseek' | 'openai' | 'grok';
 
   const timeoutMs = Math.min(
     tierSettings.timeoutMs,
@@ -135,7 +161,7 @@ export const handleLlmExecute: RouteHandler = async (req, res) => {
 
   async function callProvider(provider: DecisionProvider) {
     // Execute chosen provider, but never send the full context to OpenAI/Grok.
-    if (provider === 'none' || provider === 'deepseek') {
+    if (provider === 'deepseek') {
       return await callDeepSeek({
         requestId,
         timeoutMs,
@@ -176,14 +202,16 @@ export const handleLlmExecute: RouteHandler = async (req, res) => {
 
   function pickExecuteFallback(primary: DecisionProvider): DecisionProvider | null {
     const forced = env.LLM_FALLBACK_PROVIDER;
-    if (forced && forced !== primary) return forced;
+    if (forced && forced !== primary) {
+      if (forced === 'deepseek' || forced === 'openai' || forced === 'grok') return forced;
+    }
     // Deterministic single-hop fallback.
-    if (primary === 'openai') return 'none';
+    if (primary === 'openai') return 'deepseek';
     if (primary === 'grok') return 'openai';
     return 'openai';
   }
 
-  const primary = routing.decision.provider;
+  const primary = routing.provider;
   let result: Awaited<ReturnType<typeof callProvider>>;
   try {
     result = await callProvider(primary);

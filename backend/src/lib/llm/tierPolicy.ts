@@ -2,12 +2,24 @@ export type Tier = 'free' | 'standard' | 'pro' | 'high';
 
 export type LlmTaskKind =
   | 'general'
+  // Chart (Solana)
+  | 'chart_teaser_free'
+  | 'chart_setups'
+  | 'chart_patterns_validate'
+  | 'chart_confluence_onchain'
+  | 'chart_microstructure'
+  // Journal
+  | 'journal_teaser_free'
+  | 'journal_review'
+  | 'journal_playbook_update'
+  | 'journal_risk'
+  // Back-compat aliases (deprecated; normalized server-side)
   | 'journal_teaser'
   | 'chart_teaser'
   | 'chart_analysis'
   | 'sentiment_alpha';
 
-export type RouterDecisionProvider = 'none' | 'deepseek' | 'openai' | 'grok';
+export type RouterDecisionProvider = 'deepseek' | 'openai' | 'grok';
 
 export interface TierSettings {
   tier: Tier;
@@ -19,14 +31,16 @@ export interface TierSettings {
 
 export interface RouterDecision {
   provider: RouterDecisionProvider;
-  reason: string;
+  templateId: string;
   maxTokens: number;
 }
 
 export interface EnforcedDecisionResult {
   tierApplied: Tier;
   taskKindApplied: LlmTaskKind;
-  decision: RouterDecision;
+  provider: RouterDecisionProvider;
+  templateId: string;
+  maxTokens: number;
   compressedPrompt: string;
   mustInclude: string[];
 }
@@ -67,13 +81,28 @@ export function applyTokenClamps(input: {
 
 export function teaserMustInclude(): string[] {
   return [
-    'Bullet list only.',
+    // Kept for back-compat callers; newer templates use stricter, task-specific contracts.
     'Support(s)',
     'Resistance(s)',
-    'Suggested stop-loss level',
-    'One-line risk note',
-    'Do NOT provide a full analysis.',
+    'Stop-loss',
+    'Invalidation',
+    'Risk',
   ];
+}
+
+function normalizeTaskKind(taskKind: LlmTaskKind): LlmTaskKind {
+  if (taskKind === 'journal_teaser') return 'journal_teaser_free';
+  if (taskKind === 'chart_teaser') return 'chart_teaser_free';
+  if (taskKind === 'chart_analysis') return 'chart_setups';
+  return taskKind;
+}
+
+function downgradeTaskKindForTier(tier: Tier, taskKind: LlmTaskKind): LlmTaskKind {
+  if (tier !== 'free') return taskKind;
+  if (taskKind === 'sentiment_alpha') return taskKind;
+  if (taskKind.startsWith('chart_') && taskKind !== 'chart_teaser_free') return 'chart_teaser_free';
+  if (taskKind.startsWith('journal_') && taskKind !== 'journal_teaser_free') return 'journal_teaser_free';
+  return taskKind;
 }
 
 export function enforcePermissions(params: {
@@ -86,7 +115,7 @@ export function enforcePermissions(params: {
 }): EnforcedDecisionResult {
   const tierSettings = getTierSettings(params.tier);
   const tierApplied = params.tier;
-  const taskKindApplied = params.taskKind;
+  const taskKindApplied = downgradeTaskKindForTier(tierApplied, normalizeTaskKind(params.taskKind));
 
   const clampBase = (maxTokens: number) =>
     applyTokenClamps({
@@ -97,15 +126,18 @@ export function enforcePermissions(params: {
     });
 
   let provider: RouterDecisionProvider = params.routerDecision.provider;
-  let reason = params.routerDecision.reason;
+  let templateId = params.routerDecision.templateId || 'GENERAL';
   let maxTokens = clampBase(params.routerDecision.maxTokens);
   let compressedPrompt = params.compressedPrompt;
   let mustInclude = [...(params.mustInclude ?? [])];
 
-  const isTeaser = taskKindApplied === 'journal_teaser' || taskKindApplied === 'chart_teaser';
+  const isFreeJournalTeaser = taskKindApplied === 'journal_teaser_free';
+  const isFreeChartTeaser = taskKindApplied === 'chart_teaser_free';
+  const isTeaser = isFreeJournalTeaser || isFreeChartTeaser;
   const isSentiment = taskKindApplied === 'sentiment_alpha';
 
   const allowOpenAi = (() => {
+    // FROZEN: FREE tier may use OpenAI ONLY for *_teaser_free.
     if (tierApplied === 'free') return isTeaser;
     if (tierApplied === 'standard') return true;
     if (tierApplied === 'pro') return true;
@@ -120,7 +152,7 @@ export function enforcePermissions(params: {
   })();
 
   const allowProvider = (p: RouterDecisionProvider): boolean => {
-    if (p === 'none' || p === 'deepseek') return true;
+    if (p === 'deepseek') return true;
     if (p === 'openai') return allowOpenAi;
     if (p === 'grok') return allowGrok;
     return false;
@@ -128,8 +160,8 @@ export function enforcePermissions(params: {
 
   const pickFallback = (): RouterDecisionProvider => {
     if (tierApplied === 'free') return 'deepseek';
-    // standard/pro/high: prefer OpenAI for chart_analysis, otherwise DeepSeek.
-    if (taskKindApplied === 'chart_analysis') return 'openai';
+    // standard/pro/high: prefer OpenAI for chart tasks (unless router chooses otherwise).
+    if (taskKindApplied.startsWith('chart_')) return 'openai';
     if (taskKindApplied === 'sentiment_alpha') return 'openai';
     return 'deepseek';
   };
@@ -137,20 +169,59 @@ export function enforcePermissions(params: {
   if (!allowProvider(provider)) {
     const fallback = pickFallback();
     provider = fallback;
-    reason = `permission_override:${params.routerDecision.provider}->${fallback}`;
+    // Keep templateId, but ensure we don't claim an incompatible provider.
+    templateId = params.routerDecision.templateId || templateId;
   }
 
-  // Free-tier teaser guardrails: always enforce the teaser output contract.
-  if (tierApplied === 'free' && isTeaser) {
-    mustInclude = Array.from(new Set([...teaserMustInclude(), ...mustInclude]));
+  // FROZEN: Free-tier strict teaser output contracts.
+  if (tierApplied === 'free' && isFreeChartTeaser) {
+    templateId = 'CHART_TEASER_FREE';
+    mustInclude = Array.from(
+      new Set([
+        'Support: ...',
+        'Resistance: ...',
+        'Stop-loss: ...',
+        'Invalidation: ...',
+        'Risk: ...',
+        'No targets. No patterns. No long analysis.',
+        ...mustInclude,
+      ])
+    );
     compressedPrompt = [
-      'TEASER_OUTPUT_CONSTRAINTS:',
-      '- Bullet list only.',
-      '- Support(s)',
-      '- Resistance(s)',
-      '- Suggested stop-loss level',
-      '- One-line risk note',
-      '- No full analysis.',
+      'CHART_TEASER_FREE_CONSTRAINTS:',
+      '- Output MUST include BOTH JSON and TEXT.',
+      '- TEXT format MUST be exactly 5 lines:',
+      '  Support: ...',
+      '  Resistance: ...',
+      '  Stop-loss: ...',
+      '  Invalidation: ...',
+      '  Risk: ...',
+      '- No targets, no patterns, no long analysis.',
+      '',
+      compressedPrompt,
+    ].join('\n');
+  }
+
+  if (tierApplied === 'free' && isFreeJournalTeaser) {
+    templateId = 'JOURNAL_TEASER_FREE';
+    mustInclude = Array.from(
+      new Set([
+        '3 bullets max.',
+        'One thing to do next',
+        'One thing to avoid',
+        'One risk',
+        'No long coaching.',
+        ...mustInclude,
+      ])
+    );
+    compressedPrompt = [
+      'JOURNAL_TEASER_FREE_CONSTRAINTS:',
+      '- Output MUST include BOTH JSON and TEXT.',
+      '- TEXT: 3 bullets max:',
+      '  - One thing to do next',
+      '  - One thing to avoid',
+      '  - One risk',
+      '- No long coaching.',
       '',
       compressedPrompt,
     ].join('\n');
@@ -165,7 +236,9 @@ export function enforcePermissions(params: {
   return {
     tierApplied,
     taskKindApplied,
-    decision: { provider, reason, maxTokens },
+    provider,
+    templateId,
+    maxTokens,
     compressedPrompt,
     mustInclude,
   };

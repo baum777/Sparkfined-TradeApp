@@ -9,7 +9,26 @@ const routeRequestSchema = z.object({
   mode: z.literal('route_compress'),
   tier: z.enum(['free', 'standard', 'pro', 'high']).optional(),
   taskKind: z
-    .enum(['general', 'journal_teaser', 'chart_teaser', 'chart_analysis', 'sentiment_alpha'])
+    .enum([
+      'general',
+      // Chart
+      'chart_teaser_free',
+      'chart_setups',
+      'chart_patterns_validate',
+      'chart_confluence_onchain',
+      'chart_microstructure',
+      // Journal
+      'journal_teaser_free',
+      'journal_review',
+      'journal_playbook_update',
+      'journal_risk',
+      // Back-compat aliases
+      'journal_teaser',
+      'chart_teaser',
+      'chart_analysis',
+      // Other
+      'sentiment_alpha',
+    ])
     .optional(),
   userMessage: z.string().min(1).max(20000),
   context: z
