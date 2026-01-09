@@ -41,6 +41,9 @@ const envSchema = z.object({
   DEEPSEEK_API_KEY: z.string().optional(),
   DEEPSEEK_BASE_URL: z.string().default('https://api.deepseek.com'),
   DEEPSEEK_MODEL_REASONING: z.string().default('deepseek-reasoner'),
+  // Reasoning Router (DeepSeek R1 "thinking mode") + execution defaults
+  DEEPSEEK_MODEL_ROUTER: z.string().default('deepseek-reasoner'),
+  DEEPSEEK_MODEL_ANSWER: z.string().default('deepseek-chat'),
   OPUS_MODEL: z.string().optional(),
 
   // Grok Pulse
@@ -56,6 +59,13 @@ const envSchema = z.object({
   // Vercel KV
   KV_REST_API_URL: z.string().optional(),
   KV_REST_API_TOKEN: z.string().optional(),
+
+  // LLM Router / timeouts / retries
+  LLM_ROUTER_ENABLED: z.enum(['true', 'false']).default('true').transform(v => v === 'true'),
+  LLM_ROUTER_DEBUG: z.enum(['true', 'false']).default('false').transform(v => v === 'true'),
+  LLM_TIMEOUT_MS: z.string().transform(Number).default('20000'),
+  LLM_MAX_RETRIES: z.string().transform(Number).default('2'),
+  LLM_BUDGET_DEFAULT: z.enum(['low', 'medium', 'high']).default('low'),
 
   // Monitoring
   WATCHER_INTERVAL_MS: z.string().transform(Number).default('5000'),
