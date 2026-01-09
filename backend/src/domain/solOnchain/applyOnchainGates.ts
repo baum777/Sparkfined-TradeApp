@@ -123,7 +123,8 @@ export function applyOnchainGates(input: ApplyOnchainGatesInput): SetupCard[] {
       if (allowHardGate && trigger && liquidityProxyDelta < liquidityDropHardGatePct) {
         pass = false;
         hardDelta -= 0.25;
-        notes.push('hard gate: suddenLiquidityDrop (proxy + chart-context)');
+        // Guardrail: keep the reason string stable (docs/tests rely on it).
+        notes.push('Hard gate: liquidity proxy drop (<-30%) + breakout context');
       }
     }
 

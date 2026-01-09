@@ -48,7 +48,17 @@ Ein Hard Gate darf **nur** triggern, wenn **alle** Bedingungen erfüllt sind:
 - **Proxy-Delta**: `liquidityDeltaPct.short < -0.30` (default; per Tuning konfigurierbar)
 - **Chart-Kontext-Trigger**: `nearResistance === true` **oder** Setup ist breakout-/breakdown-related
 
+Wichtig (Schema-Freeze):
+
+- **Liquidity drop ist ein Gate, kein riskFlag (Schema bleibt frozen).**
+- **Gate basiert auf Transfer-Rate Proxy, nicht echter Pool Liquidity.**
+
 > Motivation: Liquidity ist nur ein Proxy; ohne Chart-Kontext wäre das Signal zu fehleranfällig.
+
+Pflicht (Reason-String, Guardrail gegen Drift):
+
+- `onchainGate.notes[]` muss den Gate-Reason enthalten, z.B.:  
+  `Hard gate: liquidity proxy drop (<-30%) + breakout context`
 
 ---
 
