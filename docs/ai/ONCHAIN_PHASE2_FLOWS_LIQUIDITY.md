@@ -32,9 +32,9 @@ Diese Phase erweitert das Onchain-FeaturePack um **Flows** und **Liquidity** als
 | Tier | Chart-Setups | Onchain riskFlags | Onchain activity/holders | Onchain flows/liquidity (Enhanced) |
 |---|---:|---:|---:|---:|
 | `free` | ✅ | ✅ (info-only) | ❌ (derzeit deaktiviert) | ❌ (NO-OP, **keine Enhanced Calls**) |
-| `standard` | ✅ | ✅ | ✅ (provider-abhängig) | ❌ |
-| `pro` | ✅ | ✅ | ✅ | ✅ **nur wenn `hasSetups=true`** |
-| `high` | ✅ | ✅ | ✅ | ✅ **nur wenn `hasSetups=true`** |
+| `standard` | ✅ | ✅ | ✅ (provider-abhängig) | ✅ **Flows (short-only), nur wenn `hasSetups=true`** |
+| `pro` | ✅ | ✅ | ✅ | ✅ **Flows+Liquidity, nur wenn `hasSetups=true`** |
+| `high` | ✅ | ✅ | ✅ | ✅ **Flows+Liquidity, nur wenn `hasSetups=true`** |
 
 ---
 
@@ -70,4 +70,9 @@ Damit Cache Keys stabil und reproduzierbar sind, ist der Provider-Fingerprint er
 - `default`: standard
 - `conservative`: stärkere RiskFlag-Penalties, früheres Liquidity-Hard-Gate
 - `aggressive`: mildere Penalties, späteres Liquidity-Hard-Gate
+
+### HIGH Tier Delta Scaling
+
+- `high` skaliert **nur Soft-Deltas** (Confidence-Anpassungen) mit **×1.25**.
+- **Hard Gates** (z.B. `suddenLiquidityDrop`) werden **nicht** skaliert.
 

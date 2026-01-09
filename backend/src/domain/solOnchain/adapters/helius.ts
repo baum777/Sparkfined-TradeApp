@@ -56,6 +56,26 @@ function toMsFromUnixSeconds(tsSeconds: number): number {
   return tsSeconds < 1_000_000_000_000 ? tsSeconds * 1000 : tsSeconds;
 }
 
+function parseBigIntString(x: unknown): bigint | null {
+  if (typeof x === 'string' && /^[0-9]+$/.test(x)) return BigInt(x);
+  if (typeof x === 'number' && Number.isFinite(x) && x >= 0 && Number.isInteger(x)) return BigInt(x);
+  return null;
+}
+
+function quantileBigInt(values: bigint[], q: number): bigint | null {
+  if (!values.length) return null;
+  const sorted = [...values].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  const qq = Math.max(0, Math.min(1, q));
+  const idx = Math.floor(qq * (sorted.length - 1));
+  return sorted[idx] ?? null;
+}
+
+function safeZ(numer: number, denom: number): number | null {
+  if (!Number.isFinite(numer) || !Number.isFinite(denom) || denom <= 0) return null;
+  const z = numer / denom;
+  return Number.isFinite(z) ? z : null;
+}
+
 function parseBigIntAmount(amount: unknown): bigint | null {
   if (typeof amount === 'string' && /^[0-9]+$/.test(amount)) return BigInt(amount);
   if (typeof amount === 'number' && Number.isFinite(amount) && amount >= 0 && Number.isInteger(amount)) return BigInt(amount);
@@ -328,7 +348,7 @@ export class HeliusAdapter implements SolanaOnchainProvider {
     const baselineCutoff = input.asOfTs - windowIdToMs(input.windows.baseline);
     const shortCutoff = input.asOfTs - windowIdToMs(input.windows.short);
 
-    const maxPages = 10;
+    const maxPages = 6;
     const limit = 100;
 
     let paginationToken: string | null | undefined = undefined;
@@ -399,6 +419,13 @@ export class HeliusAdapter implements SolanaOnchainProvider {
       signature: string;
       timestamp: number; // unix seconds
       tokenTransfers?: Array<{ mint: string; tokenAmount: number; fromUserAccount?: string; toUserAccount?: string }>;
+      type?: string;
+      eventsSwap?: {
+        tokenInputs?: Array<{ mint: string; rawTokenAmount: { tokenAmount: string } }>;
+        tokenOutputs?: Array<{ mint: string; rawTokenAmount: { tokenAmount: string } }>;
+        nativeInput?: { amount: string };
+        nativeOutput?: { amount: string };
+      };
     }>
   > {
     const apiKey = resolveHeliusApiKey();
@@ -406,6 +433,13 @@ export class HeliusAdapter implements SolanaOnchainProvider {
       signature: string;
       timestamp: number;
       tokenTransfers?: Array<{ mint: string; tokenAmount: number; fromUserAccount?: string; toUserAccount?: string }>;
+      type?: string;
+      eventsSwap?: {
+        tokenInputs?: Array<{ mint: string; rawTokenAmount: { tokenAmount: string } }>;
+        tokenOutputs?: Array<{ mint: string; rawTokenAmount: { tokenAmount: string } }>;
+        nativeInput?: { amount: string };
+        nativeOutput?: { amount: string };
+      };
     }> = [];
 
     let before: string | undefined;
@@ -463,7 +497,19 @@ export class HeliusAdapter implements SolanaOnchainProvider {
               .filter(t => t.mint.length > 0)
           : undefined;
 
-        out.push({ signature: sig, timestamp: ts, tokenTransfers });
+        const type = typeof (row as any).type === 'string' ? (row as any).type : undefined;
+        const swap = (row as any)?.events?.swap;
+        const eventsSwap =
+          swap && typeof swap === 'object'
+            ? {
+                tokenInputs: Array.isArray((swap as any).tokenInputs) ? (swap as any).tokenInputs : undefined,
+                tokenOutputs: Array.isArray((swap as any).tokenOutputs) ? (swap as any).tokenOutputs : undefined,
+                nativeInput: (swap as any).nativeInput && typeof (swap as any).nativeInput === 'object' ? (swap as any).nativeInput : undefined,
+                nativeOutput: (swap as any).nativeOutput && typeof (swap as any).nativeOutput === 'object' ? (swap as any).nativeOutput : undefined,
+              }
+            : undefined;
+
+        out.push({ signature: sig, timestamp: ts, tokenTransfers, type, eventsSwap });
       }
 
       const last = out[out.length - 1];
@@ -494,23 +540,91 @@ export class HeliusAdapter implements SolanaOnchainProvider {
         timeoutMs: cfg.timeoutMs,
       });
 
-      let baselineTransfers = 0;
-      let shortTransfers = 0;
+      // v2 proxy: derive BUY/SELL imbalance from enhanced SWAP events.
+      // Still best-effort (no exchange attribution).
+      let baselineBuys = 0;
+      let baselineSells = 0;
+      let shortBuys = 0;
+      let shortSells = 0;
+
+      const baselineAbsAmounts: bigint[] = [];
+      const shortAbsAmounts: bigint[] = [];
+
       for (const tx of txs) {
         const ms = toMsFromUnixSeconds(tx.timestamp);
-        const transfers = (tx.tokenTransfers ?? []).filter(t => t.mint === input.mint);
-        if (ms >= baselineCutoffMs) baselineTransfers += transfers.length;
-        if (ms >= shortCutoffMs) shortTransfers += transfers.length;
+        const inBaseline = ms >= baselineCutoffMs;
+        const inShort = ms >= shortCutoffMs;
+        if (!inBaseline && !inShort) continue;
+
+        const swap = tx.eventsSwap;
+        if (!swap) continue;
+        const tokenIns = Array.isArray(swap.tokenInputs) ? swap.tokenInputs : [];
+        const tokenOuts = Array.isArray(swap.tokenOutputs) ? swap.tokenOutputs : [];
+
+        const outLeg = tokenOuts.find(x => (x as any)?.mint === input.mint);
+        const inLeg = tokenIns.find(x => (x as any)?.mint === input.mint);
+
+        const outAmt = parseBigIntString((outLeg as any)?.rawTokenAmount?.tokenAmount);
+        const inAmt = parseBigIntString((inLeg as any)?.rawTokenAmount?.tokenAmount);
+
+        if (outLeg && !inLeg) {
+          if (inBaseline) baselineBuys++;
+          if (inShort) shortBuys++;
+          if (outAmt != null) {
+            if (inBaseline) baselineAbsAmounts.push(outAmt);
+            if (inShort) shortAbsAmounts.push(outAmt);
+          }
+          continue;
+        }
+        if (inLeg && !outLeg) {
+          if (inBaseline) baselineSells++;
+          if (inShort) shortSells++;
+          if (inAmt != null) {
+            if (inBaseline) baselineAbsAmounts.push(inAmt);
+            if (inShort) shortAbsAmounts.push(inAmt);
+          }
+          continue;
+        }
       }
 
-      const shortRatePerMin = shortTransfers / Math.max(1, shortMs / 60_000);
-      const baselineRatePerMin = baselineTransfers / Math.max(1, baselineMs / 60_000);
+      const baselineTotal = baselineBuys + baselineSells;
+      const shortTotal = shortBuys + shortSells;
+
+      if (baselineTotal === 0 && shortTotal === 0) {
+        return {
+          available: false,
+          data: { netInflowProxy: nullMetricZ(), largeTransfersProxy: nullMetricZ() },
+          notes: ['flows:swap_events_unavailable_or_empty', 'best-effort proxy from tokenTransfers; not exchange-identified flows'],
+        };
+      }
+
+      const shortMinutes = Math.max(1, shortMs / 60_000);
+      const baselineMinutes = Math.max(1, baselineMs / 60_000);
+
+      const netShort = shortBuys - shortSells;
+      const netBaseline = baselineBuys - baselineSells;
+      const netShortRate = netShort / shortMinutes;
+      const netBaselineRate = netBaseline / baselineMinutes;
+
+      const p = baselineTotal > 0 ? baselineBuys / baselineTotal : 0.5;
+      const expectedNet = shortTotal * (2 * p - 1);
+      const variance = 4 * shortTotal * p * (1 - p);
+      const zScore = variance > 0 ? safeZ(netShort - expectedNet, Math.sqrt(variance)) : null;
+
+      const threshold = quantileBigInt(baselineAbsAmounts, 0.95);
+      const baselineLarge = threshold == null ? 0 : baselineAbsAmounts.filter(a => a >= threshold).length;
+      const shortLarge = threshold == null ? 0 : shortAbsAmounts.filter(a => a >= threshold).length;
+
+      const q = baselineTotal > 0 ? baselineLarge / baselineTotal : 0;
+      const expectedLarge = shortTotal * q;
+      const varLarge = shortTotal * q * (1 - q);
+      const zLarge = varLarge > 0 ? safeZ(shortLarge - expectedLarge, Math.sqrt(varLarge)) : null;
 
       return {
         available: true,
         data: {
-          // Proxy: transfer-rate (per minute) for this mint; not exchange-identified.
-          netInflowProxy: { short: shortRatePerMin, baseline: baselineRatePerMin, zScore: null },
+          netInflowProxy: { short: netShortRate, baseline: netBaselineRate, zScore },
+          largeTransfersProxy: { short: shortLarge / shortMinutes, baseline: baselineLarge / baselineMinutes, zScore: zLarge },
         },
         notes: ['best-effort proxy from tokenTransfers; not exchange-identified flows'],
       };
@@ -519,7 +633,7 @@ export class HeliusAdapter implements SolanaOnchainProvider {
       const note = typeof status === 'number' ? `flows:enhanced_failed_status_${status}` : 'flows:enhanced_failed';
       return {
         available: false,
-        data: { netInflowProxy: nullMetricZ() },
+        data: { netInflowProxy: nullMetricZ(), largeTransfersProxy: nullMetricZ() },
         notes: [note, 'best-effort proxy from tokenTransfers; not exchange-identified flows'],
       };
     }
@@ -556,7 +670,7 @@ export class HeliusAdapter implements SolanaOnchainProvider {
 
       return {
         available: proxyDeltaPct != null,
-        data: proxyDeltaPct == null ? {} : { liquidityDeltaPct: { short: proxyDeltaPct, baseline: 0 } },
+        data: proxyDeltaPct == null ? {} : { liquidityDeltaPct: { short: proxyDeltaPct, baseline: null } },
         notes: ['proxy based on transfer-rate, not pool liquidity'],
       };
     } catch (err) {

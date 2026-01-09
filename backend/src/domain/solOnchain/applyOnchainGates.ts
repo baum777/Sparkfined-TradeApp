@@ -68,26 +68,27 @@ export function applyOnchainGates(input: ApplyOnchainGatesInput): SetupCard[] {
   if (liquidityAvailable) baseDisclaimers.push('proxy based on transfer-rate, not pool liquidity');
 
   return input.setups.map((s) => {
-    let delta = 0;
+    let softDelta = 0;
+    let hardDelta = 0;
     const notes: string[] = [...(s.onchainGate?.notes ?? []), ...baseDisclaimers];
     let pass = s.onchainGate?.pass ?? true;
 
     const rf = input.onchain.riskFlags ?? {};
 
     if (rf.mintAuthorityActive?.value === true) {
-      delta -= riskFlagPenalty;
+      softDelta -= riskFlagPenalty;
       notes.push('risk: mint authority active');
     }
     if (rf.freezeAuthorityActive?.value === true) {
-      delta -= riskFlagPenalty;
+      softDelta -= riskFlagPenalty;
       notes.push('risk: freeze authority active');
     }
     if (rf.suddenSupplyChange?.value === true) {
-      delta -= riskFlagPenalty;
+      softDelta -= riskFlagPenalty;
       notes.push('risk: sudden supply change');
     }
     if (rf.largeHolderDominance?.value === true) {
-      delta -= Math.min(0.1, riskFlagPenalty);
+      softDelta -= Math.min(0.1, riskFlagPenalty);
       notes.push('risk: large holder dominance');
     }
 
@@ -98,10 +99,10 @@ export function applyOnchainGates(input: ApplyOnchainGatesInput): SetupCard[] {
       const baseline = f?.baseline ?? null;
       if (typeof short === 'number' && typeof baseline === 'number' && Number.isFinite(short) && Number.isFinite(baseline)) {
         if (short > baseline * 1.2) {
-          delta += 0.05;
+          softDelta += 0.05;
           notes.push('flows: transfer-rate up vs baseline (proxy)');
         } else if (short < baseline * 0.8) {
-          delta -= 0.05;
+          softDelta -= 0.05;
           notes.push('flows: transfer-rate down vs baseline (proxy)');
         }
       }
@@ -110,10 +111,10 @@ export function applyOnchainGates(input: ApplyOnchainGatesInput): SetupCard[] {
     // Liquidity proxy: sudden drop hard gate (PRO/HIGH only) with chart-context trigger.
     if (liquidityAvailable && typeof liquidityProxyDelta === 'number' && Number.isFinite(liquidityProxyDelta)) {
       if (liquidityProxyDelta < -0.2) {
-        delta -= 0.1;
+        softDelta -= 0.1;
         notes.push(`liquidity: proxy delta ${(liquidityProxyDelta * 100).toFixed(1)}% (down)`);
       } else if (liquidityProxyDelta > 0.2) {
-        delta += 0.05;
+        softDelta += 0.05;
         notes.push(`liquidity: proxy delta ${(liquidityProxyDelta * 100).toFixed(1)}% (up)`);
       }
 
@@ -121,10 +122,14 @@ export function applyOnchainGates(input: ApplyOnchainGatesInput): SetupCard[] {
       const trigger = Boolean(input.chartContext?.nearResistance) || isBreakoutRelated(s);
       if (allowHardGate && trigger && liquidityProxyDelta < liquidityDropHardGatePct) {
         pass = false;
-        delta -= 0.25;
+        hardDelta -= 0.25;
         notes.push('hard gate: suddenLiquidityDrop (proxy + chart-context)');
       }
     }
+
+    // HIGH tier: scale only soft deltas (not hard gates).
+    const softMultiplier = input.tier === 'high' ? 1.25 : 1;
+    const delta = softDelta * softMultiplier + hardDelta;
 
     const nextConfidence = clamp01(roundToStep(s.confidence + delta, 0.0001));
     const nextNotes = uniqKeepOrder(notes);

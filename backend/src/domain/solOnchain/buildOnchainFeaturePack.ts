@@ -103,15 +103,16 @@ export async function buildOnchainFeaturePackWithCacheMeta(params: BuildOnchainF
 
   // Tier/cost guardrails:
   // - FREE: no-op gating -> only allow riskFlags (info only).
-  // - STANDARD: allow low-cost blocks; disallow enhanced flows/liquidity.
-  // - PRO/HIGH: allow enhanced flows/liquidity ONLY when hasSetups=true.
-  const allowEnhanced = (params.tier === 'pro' || params.tier === 'high') && params.hasSetups;
+  // - STANDARD: allow flows (short-only, no zScore) when hasSetups=true; no liquidity.
+  // - PRO/HIGH: allow enhanced flows + liquidity ONLY when hasSetups=true.
+  const allowFlows = (params.tier === 'standard' || params.tier === 'pro' || params.tier === 'high') && params.hasSetups;
+  const allowLiquidity = (params.tier === 'pro' || params.tier === 'high') && params.hasSetups;
 
   const caps = {
     activity: params.tier === 'free' ? false : baseCaps.activity,
     holders: params.tier === 'free' ? false : baseCaps.holders,
-    flows: allowEnhanced ? baseCaps.flows : false,
-    liquidity: allowEnhanced ? baseCaps.liquidity : false,
+    flows: allowFlows ? baseCaps.flows : false,
+    liquidity: allowLiquidity ? baseCaps.liquidity : false,
     riskFlags: baseCaps.riskFlags,
   };
 
@@ -161,9 +162,24 @@ export async function buildOnchainFeaturePackWithCacheMeta(params: BuildOnchainF
 
   const activity: OnchainActivityFeatures = availability.activity ? ensureActivityShape(activityRes!.data) : nullActivity();
   const holders: OnchainHoldersFeatures = availability.holders ? ensureHoldersShape(holdersRes!.data, windows) : nullHolders(windows);
-  const flows: OnchainFlowsFeatures = availability.flows ? ensureFlowsShape(flowsRes!.data) : nullFlows();
+  let flows: OnchainFlowsFeatures = availability.flows ? ensureFlowsShape(flowsRes!.data) : nullFlows();
   const liquidity: OnchainLiquidityFeatures = availability.liquidity ? ensureLiquidityShape(liquidityRes!.data) : nullLiquidity();
   const riskFlags: OnchainRiskFlags = availability.riskFlags ? ensureRiskFlagsShape(riskRes!.data) : nullRiskFlags();
+
+  // Tier shaping (without inventing numbers):
+  // - standard: netInflowProxy short-only (baseline/zScore null), no largeTransfersProxy
+  if (params.tier === 'standard') {
+    flows = {
+      ...flows,
+      netInflowProxy: {
+        short: flows.netInflowProxy.short ?? null,
+        baseline: null,
+        zScore: null,
+      },
+      largeTransfersProxy: undefined,
+      exchangeTaggedFlowProxy: undefined,
+    };
+  }
 
   const notes = normalizeNotes([
     ...(activityRes?.notes ?? []),
