@@ -25,6 +25,8 @@ export const ErrorCodes = {
   NOT_FOUND: 'NOT_FOUND',
   BAD_REQUEST: 'BAD_REQUEST',
   UNAUTHORIZED: 'UNAUTHORIZED',
+  // New: for endpoints that distinguish "no auth" from "bad auth"
+  UNAUTHENTICATED: 'UNAUTHENTICATED',
   INVALID_JSON: 'INVALID_JSON',
   VALIDATION_FAILED: 'VALIDATION_FAILED',
   // Preferred validation code for query/body semantics that should be actionable by clients.
@@ -36,6 +38,8 @@ export const ErrorCodes = {
   METHOD_NOT_ALLOWED: 'METHOD_NOT_ALLOWED',
   RATE_LIMITED: 'RATE_LIMITED',
   BUDGET_EXCEEDED: 'BUDGET_EXCEEDED',
+  FORBIDDEN_TIER: 'FORBIDDEN_TIER',
+  GROK_DISABLED: 'GROK_DISABLED',
   
   // Journal
   JOURNAL_NOT_FOUND: 'JOURNAL_NOT_FOUND',

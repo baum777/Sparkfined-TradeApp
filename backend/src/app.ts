@@ -9,6 +9,7 @@ import {
   handleJournalArchive,
   handleJournalRestore,
   handleJournalDelete,
+  handleJournalInsights,
   handleAlertsList,
   handleAlertCreate,
   handleAlertGetById,
@@ -32,6 +33,8 @@ import {
   handleMarketDailyBias,
   handleReasoningRoute,
   handleLlmExecute,
+  handleSettingsGet,
+  handleSettingsPatch,
 } from './routes/index.js';
 
 /**
@@ -46,11 +49,16 @@ export function createApp(): Router {
   router.get('/health', handleHealth);
   router.get('/meta', handleMeta);
   router.get('/usage/summary', handleUsageSummary);
+
+  // Settings
+  router.get('/settings', handleSettingsGet);
+  router.patch('/settings', handleSettingsPatch);
   
   // Journal Routes
   router.get('/journal', handleJournalList);
   router.get('/journal/:id', handleJournalGetById);
   router.post('/journal', handleJournalCreate);
+  router.post('/journal/:id/insights', handleJournalInsights);
   router.post('/journal/:id/confirm', handleJournalConfirm);
   router.post('/journal/:id/archive', handleJournalArchive);
   router.post('/journal/:id/restore', handleJournalRestore);

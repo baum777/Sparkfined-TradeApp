@@ -1,6 +1,7 @@
 // Export all handlers
 export * from './alerts.js';
 export * from './journal.js';
+export * from './journalInsights.js';
 export * from './health.js';
 export * from './oracle.js';
 export * from './ta.js';
@@ -12,3 +13,4 @@ export * from './signals.js';
 export * from './market.js';
 export * from './reasoningRoute.js';
 export * from './llm.js';
+export * from './settings.js';

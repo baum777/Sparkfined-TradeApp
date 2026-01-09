@@ -30,6 +30,26 @@ export interface JournalEntryV1 {
   summary?: string;
   timestamp?: string;
   symbolOrAddress?: string;
+  /**
+   * Optional capture metadata (backward compatible).
+   * Facts-only: populated from ingest; do not mix narrative here.
+   */
+  capture?: {
+    source: string;
+    txSignature?: string;
+    wallet?: string;
+    actionType?: string;
+    assetMint?: string;
+    amount?: number;
+    priceHint?: number;
+    captureKey: string;
+    linkedEntryId?: string;
+  };
+  /**
+   * Optional system/user reason for the archived state.
+   * Populated only when status === 'archived' and a reason is known.
+   */
+  autoArchiveReason?: 'matched_sell' | 'user_action' | 'policy';
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -46,6 +66,15 @@ export interface JournalEntryRow {
   day_key: string; // Added for indexing
   created_at: string;
   updated_at: string;
+  capture_source?: string | null;
+  capture_key?: string | null;
+  tx_signature?: string | null;
+  wallet?: string | null;
+  action_type?: string | null;
+  asset_mint?: string | null;
+  amount?: number | null;
+  price_hint?: number | null;
+  linked_entry_id?: string | null;
 }
 
 export interface JournalConfirmationRow {
