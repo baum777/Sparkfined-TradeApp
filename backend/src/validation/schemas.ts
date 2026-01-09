@@ -24,6 +24,27 @@ export const journalListQuerySchema = z.object({
 });
 
 // ─────────────────────────────────────────────────────────────
+// SETTINGS SCHEMAS
+// ─────────────────────────────────────────────────────────────
+
+export const settingsPatchSchema = z.object({
+  ai: z
+    .object({
+      grokEnabled: z.boolean().optional(),
+    })
+    .optional(),
+});
+
+// ─────────────────────────────────────────────────────────────
+// JOURNAL INSIGHTS SCHEMAS
+// ─────────────────────────────────────────────────────────────
+
+export const journalInsightsRequestSchema = z.object({
+  kind: z.enum(['teaser', 'review', 'playbook']),
+  includeGrok: z.boolean().optional(),
+});
+
+// ─────────────────────────────────────────────────────────────
 // ALERTS SCHEMAS
 // ─────────────────────────────────────────────────────────────
 

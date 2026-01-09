@@ -77,6 +77,7 @@ beforeEach(() => {
   db.exec('DELETE FROM oracle_daily_v1');
   db.exec('DELETE FROM ta_cache_v1');
   db.exec('DELETE FROM kv_v1');
+  db.exec('DELETE FROM user_settings_v1');
   
   // Re-enable foreign keys
   db.exec('PRAGMA foreign_keys = ON');

@@ -19,12 +19,17 @@ import {
   assertUserId,
   extractDayKey,
 } from './types.js';
+import { matchPendingBuyCandidateId, type AutoArchiveReason } from './autoArchive.js';
 
 // ─────────────────────────────────────────────────────────────
 // ROW MAPPING
 // ─────────────────────────────────────────────────────────────
 
-function rowToEntryV1(row: JournalEntryRow, confirmedAt?: string, archivedAt?: string): JournalEntryV1 {
+function rowToEntryV1(
+  row: JournalEntryRow,
+  confirmedAt?: string,
+  archived?: { archivedAt?: string; reason?: string }
+): JournalEntryV1 {
   const status = row.status as JournalStatusV1;
   const entry: JournalEntryV1 = {
     id: row.id,
@@ -40,7 +45,25 @@ function rowToEntryV1(row: JournalEntryRow, confirmedAt?: string, archivedAt?: s
   }
 
   if (status === 'archived') {
-    entry.archivedAt = archivedAt || row.updated_at;
+    entry.archivedAt = archived?.archivedAt || row.updated_at;
+    const r = archived?.reason;
+    if (r === 'matched_sell' || r === 'user_action' || r === 'policy') {
+      entry.autoArchiveReason = r;
+    }
+  }
+
+  if (row.capture_key) {
+    entry.capture = {
+      source: row.capture_source || 'unknown',
+      txSignature: row.tx_signature || undefined,
+      wallet: row.wallet || undefined,
+      actionType: row.action_type || undefined,
+      assetMint: row.asset_mint || undefined,
+      amount: typeof row.amount === 'number' ? row.amount : undefined,
+      priceHint: typeof row.price_hint === 'number' ? row.price_hint : undefined,
+      captureKey: row.capture_key,
+      linkedEntryId: row.linked_entry_id || undefined,
+    };
   }
 
   return entry;
@@ -76,7 +99,9 @@ export class JournalRepoSQLite implements JournalRepo {
     const db = getDatabase();
     
     const row = db.prepare(`
-      SELECT id, user_id, side, status, timestamp, summary, day_key, created_at, updated_at
+      SELECT
+        id, user_id, side, status, timestamp, summary, day_key, created_at, updated_at,
+        capture_source, capture_key, tx_signature, wallet, action_type, asset_mint, amount, price_hint, linked_entry_id
       FROM journal_entries_v2
       WHERE user_id = ? AND id = ?
     `).get(userId, id) as JournalEntryRow | undefined;
@@ -90,12 +115,12 @@ export class JournalRepoSQLite implements JournalRepo {
     `).get(id, userId) as { confirmed_at: string } | undefined;
 
     const archivedAt = db.prepare(`
-      SELECT archived_at
+      SELECT archived_at, reason
       FROM journal_archives_v2
       WHERE entry_id = ? AND user_id = ?
-    `).get(id, userId) as { archived_at: string } | undefined;
+    `).get(id, userId) as { archived_at: string; reason: string } | undefined;
 
-    return rowToEntryV1(row, confirmedAt?.confirmed_at, archivedAt?.archived_at);
+    return rowToEntryV1(row, confirmedAt?.confirmed_at, archivedAt ? { archivedAt: archivedAt.archived_at, reason: archivedAt.reason } : undefined);
   }
 
   async putEvent(userId: string, event: JournalEntryV1): Promise<void> {
@@ -284,7 +309,9 @@ export function journalGetById(userId: string, id: string): JournalEntryV1 | nul
   const db = getDatabase();
   
   const row = db.prepare(`
-    SELECT id, user_id, side, status, timestamp, summary, day_key, created_at, updated_at
+    SELECT
+      id, user_id, side, status, timestamp, summary, day_key, created_at, updated_at,
+      capture_source, capture_key, tx_signature, wallet, action_type, asset_mint, amount, price_hint, linked_entry_id
     FROM journal_entries_v2
     WHERE user_id = ? AND id = ?
   `).get(userId, id) as JournalEntryRow | undefined;
@@ -300,12 +327,12 @@ export function journalGetById(userId: string, id: string): JournalEntryV1 | nul
   `).get(id, userId) as { confirmed_at: string } | undefined;
 
   const archivedAt = db.prepare(`
-    SELECT archived_at
+    SELECT archived_at, reason
     FROM journal_archives_v2
     WHERE entry_id = ? AND user_id = ?
-  `).get(id, userId) as { archived_at: string } | undefined;
+  `).get(id, userId) as { archived_at: string; reason: string } | undefined;
 
-  return rowToEntryV1(row, confirmedAt?.confirmed_at, archivedAt?.archived_at);
+  return rowToEntryV1(row, confirmedAt?.confirmed_at, archivedAt ? { archivedAt: archivedAt.archived_at, reason: archivedAt.reason } : undefined);
 }
 
 export function journalList(
@@ -318,7 +345,9 @@ export function journalList(
   const db = getDatabase();
   
   let query = `
-    SELECT id, user_id, side, status, timestamp, summary, day_key, created_at, updated_at
+    SELECT
+      id, user_id, side, status, timestamp, summary, day_key, created_at, updated_at,
+      capture_source, capture_key, tx_signature, wallet, action_type, asset_mint, amount, price_hint, linked_entry_id
     FROM journal_entries_v2
     WHERE user_id = ?
   `;
@@ -350,12 +379,12 @@ export function journalList(
     `).get(id, userId) as { confirmed_at: string } | undefined;
 
     const archivedAt = db.prepare(`
-      SELECT archived_at
+      SELECT archived_at, reason
       FROM journal_archives_v2
       WHERE entry_id = ? AND user_id = ?
-    `).get(id, userId) as { archived_at: string } | undefined;
+    `).get(id, userId) as { archived_at: string; reason: string } | undefined;
 
-    return rowToEntryV1(row, confirmedAt?.confirmed_at, archivedAt?.archived_at);
+    return rowToEntryV1(row, confirmedAt?.confirmed_at, archivedAt ? { archivedAt: archivedAt.archived_at, reason: archivedAt.reason } : undefined);
   });
   
   return {
@@ -438,6 +467,150 @@ export function journalArchive(userId: string, id: string): JournalEntryV1 | nul
     confirmedAt: undefined,
     archivedAt: now,
   };
+}
+
+export function journalSystemArchive(params: {
+  userId: string;
+  id: string;
+  reason: AutoArchiveReason;
+  linkedEntryId?: string;
+}): JournalEntryV1 | null {
+  assertUserId(params.userId);
+  const db = getDatabase();
+  const now = new Date().toISOString();
+
+  const entry = journalGetById(params.userId, params.id);
+  if (!entry) return null;
+
+  // System rule: only archive pending entries (idempotent if already archived).
+  if (entry.status === 'archived') return entry;
+  if (entry.status !== 'pending') return entry;
+
+  db.transaction(() => {
+    db.prepare(
+      `
+        UPDATE journal_entries_v2
+        SET status = 'archived',
+            linked_entry_id = COALESCE(?, linked_entry_id),
+            updated_at = ?
+        WHERE user_id = ? AND id = ?
+      `
+    ).run(params.linkedEntryId ?? null, now, params.userId, params.id);
+
+    db.prepare(
+      `
+        INSERT OR REPLACE INTO journal_archives_v2 (entry_id, user_id, reason, archived_at)
+        VALUES (?, ?, ?, ?)
+      `
+    ).run(params.id, params.userId, params.reason, now);
+  })();
+
+  return journalGetById(params.userId, params.id);
+}
+
+export type JournalCaptureIngest = {
+  source: string;
+  captureKey: string;
+  txSignature?: string;
+  wallet?: string;
+  actionType: 'buy' | 'sell' | 'swap';
+  assetMint: string;
+  amount?: number;
+  priceHint?: number;
+  timestampISO?: string;
+};
+
+export function journalIngestCapture(userId: string, capture: JournalCaptureIngest): JournalEntryV1 {
+  assertUserId(userId);
+  const db = getDatabase();
+
+  if (!capture.captureKey || capture.captureKey.trim() === '') {
+    throw validationError('captureKey is required', { captureKey: ['Required'] });
+  }
+  if (!capture.assetMint || capture.assetMint.trim() === '') {
+    throw validationError('assetMint is required', { assetMint: ['Required'] });
+  }
+
+  // Idempotency by (user_id, capture_key)
+  const existing = db
+    .prepare(`SELECT id FROM journal_entries_v2 WHERE user_id = ? AND capture_key = ?`)
+    .get(userId, capture.captureKey) as { id: string } | undefined;
+  if (existing?.id) {
+    const e = journalGetById(userId, existing.id);
+    if (e) return e;
+  }
+
+  const now = new Date().toISOString();
+  const timestamp = capture.timestampISO || now;
+  const dayKey = extractDayKey(timestamp);
+  const id = `cap-${Date.now()}-${randomUUID().slice(0, 8)}`;
+  const side = capture.actionType === 'sell' ? 'SELL' : 'BUY';
+  const summary = `Onchain ${capture.actionType.toUpperCase()} capture`;
+
+  try {
+    db.prepare(
+      `
+        INSERT INTO journal_entries_v2 (
+          id, user_id, side, status, timestamp, summary, day_key, created_at, updated_at,
+          capture_source, capture_key, tx_signature, wallet, action_type, asset_mint, amount, price_hint, linked_entry_id
+        )
+        VALUES (?, ?, ?, 'pending', ?, ?, ?, ?, ?,
+                ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `
+    ).run(
+      id,
+      userId,
+      side,
+      timestamp,
+      summary,
+      dayKey,
+      now,
+      now,
+      capture.source,
+      capture.captureKey,
+      capture.txSignature ?? null,
+      capture.wallet ?? null,
+      capture.actionType,
+      capture.assetMint,
+      typeof capture.amount === 'number' ? capture.amount : null,
+      typeof capture.priceHint === 'number' ? capture.priceHint : null,
+      null
+    );
+  } catch (err) {
+    // If UNIQUE (user_id, capture_key) races, fetch and return.
+    const again = db
+      .prepare(`SELECT id FROM journal_entries_v2 WHERE user_id = ? AND capture_key = ?`)
+      .get(userId, capture.captureKey) as { id: string } | undefined;
+    if (again?.id) {
+      const e = journalGetById(userId, again.id);
+      if (e) return e;
+    }
+    throw err;
+  }
+
+  const created = journalGetById(userId, id);
+  if (!created) {
+    throw new Error('Failed to ingest capture (unexpected missing row)');
+  }
+
+  // Hook: auto-archive pending BUY when a SELL capture arrives.
+  if (capture.actionType === 'sell') {
+    const candidateId = matchPendingBuyCandidateId({
+      userId,
+      assetMint: capture.assetMint,
+      sellTimestampISO: timestamp,
+    });
+    if (candidateId) {
+      journalSystemArchive({
+        userId,
+        id: candidateId,
+        reason: 'matched_sell',
+        linkedEntryId: created.id,
+      });
+    }
+  }
+
+  return journalGetById(userId, id) ?? created;
 }
 
 export function journalRestore(userId: string, id: string): JournalEntryV1 | null {
