@@ -96,5 +96,5 @@ export function isRouteActive(currentPath: string, navItem: NavItem): boolean {
 }
 
 export function isDevNavEnabled(): boolean {
-  return import.meta.env.VITE_ENABLE_DEV_NAV === "true";
+  return import.meta.env.DEV === true || import.meta.env.VITE_ENABLE_DEV_NAV === "true";
 }
