@@ -93,5 +93,37 @@ describe('Settings API (Grok toggle)', () => {
     expect(getRes.status).toBe(200);
     expect(getBody.data).toEqual({ ai: { grokEnabled: true } });
   });
+
+  it('allows disabling even if tier is missing/unknown', async () => {
+    // 1) enable with pro
+    const proToken = signToken({ userId: 'u-settings-4', tier: 'pro' });
+    const enableRes = await fetch(`${baseUrl}/api/settings`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${proToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ ai: { grokEnabled: true } }),
+    });
+    const enableBody = await readJson(enableRes);
+    expect(enableRes.status).toBe(200);
+    expect(enableBody.status).toBe('ok');
+    expect(enableBody.data).toEqual({ ai: { grokEnabled: true } });
+
+    // 2) disable with unknown tier claim (should still be allowed)
+    const unknownToken = signToken({ userId: 'u-settings-4', tier: 'bogus' });
+    const disableRes = await fetch(`${baseUrl}/api/settings`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${unknownToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ ai: { grokEnabled: false } }),
+    });
+    const disableBody = await readJson(disableRes);
+    expect(disableRes.status).toBe(200);
+    expect(disableBody.status).toBe('ok');
+    expect(disableBody.data).toEqual({ ai: { grokEnabled: false } });
+  });
 });
 

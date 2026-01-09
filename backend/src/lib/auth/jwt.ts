@@ -3,7 +3,9 @@ import { getEnv } from '../../config/env.js';
 
 export interface AuthUser {
   userId: string;
-  tier?: 'free' | 'pro' | 'vip';
+  // Accept both legacy and newer normalized tiers.
+  // Note: verifyToken casts unknown values; downstream should normalize via resolveTierFromAuthUser().
+  tier?: 'free' | 'standard' | 'pro' | 'high' | 'vip';
   // Add other claims as needed
 }
 
@@ -18,7 +20,7 @@ export function verifyToken(token: string): AuthUser | null {
       const payload = decoded as { sub: string; tier?: string };
       return {
         userId: payload.sub,
-        tier: (payload.tier as 'free' | 'pro' | 'vip') || 'free'
+        tier: (payload.tier as AuthUser['tier']) || 'free'
       };
     }
     
