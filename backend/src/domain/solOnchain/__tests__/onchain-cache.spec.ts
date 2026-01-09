@@ -103,7 +103,14 @@ describe('solOnchain cache bucketing + determinism', () => {
 
   it('produces deterministic cacheKey + featurePackHash for same inputs', async () => {
     const provider = makeMockProvider({ flipNotesOrder: true });
-    const base = { mint: 'So11111111111111111111111111111111111111112', timeframe: '15s' as const, asOfTs: 61_234, provider };
+    const base = {
+      mint: 'So11111111111111111111111111111111111111112',
+      timeframe: '15s' as const,
+      asOfTs: 61_234,
+      provider,
+      tier: 'pro' as const,
+      hasSetups: true,
+    };
 
     const r1 = await buildOnchainFeaturePackWithCacheMeta(base);
     const r2 = await buildOnchainFeaturePackWithCacheMeta(base);

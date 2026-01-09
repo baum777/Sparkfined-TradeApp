@@ -23,6 +23,8 @@ import type {
   JsonRpcResponse,
 } from './helius.types.js';
 
+const HELIUS_REST_BASE_URL = 'https://api.helius.xyz/v0';
+
 function windowIdToMs(id: OnchainWindows['short'] | OnchainWindows['baseline']): number {
   switch (id) {
     case '5m':
@@ -47,6 +49,11 @@ function isNonEmptyString(x: unknown): x is string {
 function toMsFromBlockTime(blockTime: number): number {
   // Solana blockTime is usually seconds; treat large values as already-ms.
   return blockTime < 1_000_000_000_000 ? blockTime * 1000 : blockTime;
+}
+
+function toMsFromUnixSeconds(tsSeconds: number): number {
+  // Helius enhanced tx timestamps are unix seconds.
+  return tsSeconds < 1_000_000_000_000 ? tsSeconds * 1000 : tsSeconds;
 }
 
 function parseBigIntAmount(amount: unknown): bigint | null {
@@ -137,6 +144,10 @@ function resolveHeliusConfig(): { rpcUrl: string; dasRpcUrl: string; timeoutMs: 
   return { rpcUrl, dasRpcUrl, timeoutMs };
 }
 
+function resolveHeliusApiKey(): string {
+  return getEnv().HELIUS_API_KEY;
+}
+
 async function computeTop10ConcentrationPct(input: {
   mint: string;
   rpc: HeliusRpcClient;
@@ -146,13 +157,11 @@ async function computeTop10ConcentrationPct(input: {
 
   // 1) Supply (prefer getTokenSupply)
   let supplyAmount: bigint | null = null;
-  let supplyDecimals: number | null = null;
 
   try {
     const supply = await input.rpc.call<HeliusGetTokenSupplyResult>('getTokenSupply', [input.mint]);
     const v = (supply as any)?.value;
     supplyAmount = parseBigIntAmount(v?.amount) ?? null;
-    supplyDecimals = typeof v?.decimals === 'number' ? v.decimals : null;
     if (supplyAmount == null) {
       // Sometimes only uiAmountString exists; we avoid float math and fall back to DAS.
       throw new Error('getTokenSupply missing amount');
@@ -162,7 +171,6 @@ async function computeTop10ConcentrationPct(input: {
     try {
       const asset = await input.das.call<HeliusGetAssetResult>('getAsset', { id: input.mint });
       const ti = (asset as any)?.token_info;
-      supplyDecimals = typeof ti?.decimals === 'number' ? ti.decimals : null;
       supplyAmount = parseBigIntAmount(ti?.supply) ?? null;
       if (supplyAmount == null) throw new Error('getAsset token_info missing supply');
       notes.push('holders:supply_from_das_getAsset');
@@ -198,20 +206,29 @@ async function computeTop10ConcentrationPct(input: {
 
 export class HeliusAdapter implements SolanaOnchainProvider {
   tag = 'helius';
-  version = '1.0.0';
+  version = '2.0.0';
+
+  private readonly enhancedMaxPages: number;
+  private readonly enhancedLimit: number;
+
+  constructor(opts?: { enhancedMaxPages?: number; enhancedLimit?: number }) {
+    this.enhancedMaxPages = typeof opts?.enhancedMaxPages === 'number' && Number.isFinite(opts.enhancedMaxPages) ? Math.floor(opts.enhancedMaxPages) : 6;
+    this.enhancedLimit = typeof opts?.enhancedLimit === 'number' && Number.isFinite(opts.enhancedLimit) ? Math.floor(opts.enhancedLimit) : 100;
+  }
 
   capabilities() {
     return {
       activity: true,
       holders: true,
-      flows: false,
-      liquidity: false,
+      flows: true,
+      liquidity: true,
       riskFlags: true,
     };
   }
 
   fingerprint(): string {
-    return computeProviderFingerprint({ tag: this.tag, version: this.version, capabilities: this.capabilities() });
+    // Include enhanced paging caps for deterministic cache keys.
+    return `${computeProviderFingerprint({ tag: this.tag, version: this.version, capabilities: this.capabilities() })}:enhanced_pages=${this.enhancedMaxPages}:enhanced_limit=${this.enhancedLimit}`;
   }
 
   private clients() {
@@ -372,20 +389,185 @@ export class HeliusAdapter implements SolanaOnchainProvider {
     }
   }
 
-  async getFlows(): Promise<FlowsBlockResult> {
-    return {
-      available: false,
-      data: { netInflowProxy: nullMetricZ() },
-      notes: ['flows:not_implemented_v1_planned_enhanced_transactions'],
-    };
+  private async fetchEnhancedTransactionsForAddress(input: {
+    address: string;
+    // Cutoff for the OLDEST tx we still care about (baseline).
+    baselineCutoffMs: number;
+    timeoutMs: number;
+  }): Promise<
+    Array<{
+      signature: string;
+      timestamp: number; // unix seconds
+      tokenTransfers?: Array<{ mint: string; tokenAmount: number; fromUserAccount?: string; toUserAccount?: string }>;
+    }>
+  > {
+    const apiKey = resolveHeliusApiKey();
+    const out: Array<{
+      signature: string;
+      timestamp: number;
+      tokenTransfers?: Array<{ mint: string; tokenAmount: number; fromUserAccount?: string; toUserAccount?: string }>;
+    }> = [];
+
+    let before: string | undefined;
+    for (let page = 0; page < this.enhancedMaxPages; page++) {
+      const url = new URL(`${HELIUS_REST_BASE_URL}/addresses/${input.address}/transactions`);
+      url.searchParams.set('api-key', apiKey);
+      url.searchParams.set('limit', String(this.enhancedLimit));
+      if (before) url.searchParams.set('before', before);
+
+      const reqId = getRequestId();
+      const res = await withRetry(
+        async () => {
+          const r = await fetchJson<unknown>(url.toString(), {
+            method: 'GET',
+            timeoutMs: input.timeoutMs,
+            headers: {
+              'x-request-id': reqId,
+            },
+          });
+          if (!r.ok) {
+            throw new FetchJsonError('Helius enhanced HTTP error', {
+              status: r.status,
+              bodyText: r.text,
+              responseHeaders: r.headers,
+            });
+          }
+          return r.json;
+        },
+        { maxRetries: 2, baseDelayMs: 250, maxDelayMs: 2000 },
+        {
+          getRetryAfterHint: (err: unknown) => {
+            const h = (err as any)?.responseHeaders as Headers | undefined;
+            return h ? { retryAfterHeader: h.get('retry-after') } : null;
+          },
+        }
+      );
+
+      if (!Array.isArray(res) || res.length === 0) break;
+
+      for (const row of res) {
+        if (!row || typeof row !== 'object') continue;
+        const sig = (row as any).signature;
+        const ts = (row as any).timestamp;
+        if (typeof sig !== 'string' || typeof ts !== 'number' || !Number.isFinite(ts)) continue;
+
+        const tokenTransfersRaw = (row as any).tokenTransfers;
+        const tokenTransfers = Array.isArray(tokenTransfersRaw)
+          ? tokenTransfersRaw
+              .map((t: any) => ({
+                mint: typeof t?.mint === 'string' ? t.mint : '',
+                tokenAmount: typeof t?.tokenAmount === 'number' && Number.isFinite(t.tokenAmount) ? t.tokenAmount : 0,
+                fromUserAccount: typeof t?.fromUserAccount === 'string' ? t.fromUserAccount : undefined,
+                toUserAccount: typeof t?.toUserAccount === 'string' ? t.toUserAccount : undefined,
+              }))
+              .filter(t => t.mint.length > 0)
+          : undefined;
+
+        out.push({ signature: sig, timestamp: ts, tokenTransfers });
+      }
+
+      const last = out[out.length - 1];
+      before = last?.signature;
+
+      // Stop once we have crossed the baseline cutoff (oldest tx in accumulated set).
+      const oldestMs = out.reduce<number | null>((min, tx) => {
+        const ms = toMsFromUnixSeconds(tx.timestamp);
+        return min == null ? ms : Math.min(min, ms);
+      }, null);
+      if (oldestMs != null && oldestMs < input.baselineCutoffMs) break;
+    }
+
+    return out;
   }
 
-  async getLiquidity(): Promise<LiquidityBlockResult> {
-    return {
-      available: false,
-      data: {},
-      notes: ['liquidity:not_implemented_v1_planned_enhanced_transactions'],
-    };
+  async getFlows(input: { mint: string; windows: OnchainWindows; asOfTs: number }): Promise<FlowsBlockResult> {
+    const cfg = resolveHeliusConfig();
+    const baselineMs = windowIdToMs(input.windows.baseline);
+    const shortMs = windowIdToMs(input.windows.short);
+    const baselineCutoffMs = input.asOfTs - baselineMs;
+    const shortCutoffMs = input.asOfTs - shortMs;
+
+    try {
+      const txs = await this.fetchEnhancedTransactionsForAddress({
+        address: input.mint,
+        baselineCutoffMs,
+        timeoutMs: cfg.timeoutMs,
+      });
+
+      let baselineTransfers = 0;
+      let shortTransfers = 0;
+      for (const tx of txs) {
+        const ms = toMsFromUnixSeconds(tx.timestamp);
+        const transfers = (tx.tokenTransfers ?? []).filter(t => t.mint === input.mint);
+        if (ms >= baselineCutoffMs) baselineTransfers += transfers.length;
+        if (ms >= shortCutoffMs) shortTransfers += transfers.length;
+      }
+
+      const shortRatePerMin = shortTransfers / Math.max(1, shortMs / 60_000);
+      const baselineRatePerMin = baselineTransfers / Math.max(1, baselineMs / 60_000);
+
+      return {
+        available: true,
+        data: {
+          // Proxy: transfer-rate (per minute) for this mint; not exchange-identified.
+          netInflowProxy: { short: shortRatePerMin, baseline: baselineRatePerMin, zScore: null },
+        },
+        notes: ['best-effort proxy from tokenTransfers; not exchange-identified flows'],
+      };
+    } catch (err) {
+      const status = (err as any)?.status;
+      const note = typeof status === 'number' ? `flows:enhanced_failed_status_${status}` : 'flows:enhanced_failed';
+      return {
+        available: false,
+        data: { netInflowProxy: nullMetricZ() },
+        notes: [note, 'best-effort proxy from tokenTransfers; not exchange-identified flows'],
+      };
+    }
+  }
+
+  async getLiquidity(input: { mint: string; windows: OnchainWindows; asOfTs: number }): Promise<LiquidityBlockResult> {
+    const cfg = resolveHeliusConfig();
+    const baselineMs = windowIdToMs(input.windows.baseline);
+    const shortMs = windowIdToMs(input.windows.short);
+    const baselineCutoffMs = input.asOfTs - baselineMs;
+    const shortCutoffMs = input.asOfTs - shortMs;
+
+    try {
+      const txs = await this.fetchEnhancedTransactionsForAddress({
+        address: input.mint,
+        baselineCutoffMs,
+        timeoutMs: cfg.timeoutMs,
+      });
+
+      let baselineTransfers = 0;
+      let shortTransfers = 0;
+      for (const tx of txs) {
+        const ms = toMsFromUnixSeconds(tx.timestamp);
+        const transfers = (tx.tokenTransfers ?? []).filter(t => t.mint === input.mint);
+        if (ms >= baselineCutoffMs) baselineTransfers += transfers.length;
+        if (ms >= shortCutoffMs) shortTransfers += transfers.length;
+      }
+
+      const shortRatePerMin = shortTransfers / Math.max(1, shortMs / 60_000);
+      const baselineRatePerMin = baselineTransfers / Math.max(1, baselineMs / 60_000);
+
+      const proxyDeltaPct =
+        baselineRatePerMin > 0 ? (shortRatePerMin / baselineRatePerMin - 1) : null;
+
+      return {
+        available: proxyDeltaPct != null,
+        data: proxyDeltaPct == null ? {} : { liquidityDeltaPct: { short: proxyDeltaPct, baseline: 0 } },
+        notes: ['proxy based on transfer-rate, not pool liquidity'],
+      };
+    } catch (err) {
+      const status = (err as any)?.status;
+      const note = typeof status === 'number' ? `liquidity:enhanced_failed_status_${status}` : 'liquidity:enhanced_failed';
+      return {
+        available: false,
+        data: {},
+        notes: [note, 'proxy based on transfer-rate, not pool liquidity'],
+      };
+    }
   }
 }
 
