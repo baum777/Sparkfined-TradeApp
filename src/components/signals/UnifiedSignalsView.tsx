@@ -4,6 +4,7 @@ import { FeedCardItem } from "@/components/feed/FeedCardItem";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ScreenState } from "@/components/layout/ScreenState";
 import {
   Select,
   SelectContent,
@@ -16,16 +17,16 @@ import { RefreshCw, AlertCircle } from "lucide-react";
 import { fetchUnifiedSignals, getCachedUnifiedSignals } from "@/lib/api/feed";
 import type { FeedFilter, FeedSort } from "@/types/feed";
 
-export function UnifiedSignalsView() {
+export function UnifiedSignalsView({ assetId }: { assetId: string }) {
   const [filter, setFilter] = useState<FeedFilter>("all");
   const [sort, setSort] = useState<FeedSort>("impact");
 
   // Get initial cached data
-  const [initialData] = useState(() => getCachedUnifiedSignals(filter, sort));
+  const [initialData] = useState(() => getCachedUnifiedSignals(assetId, filter, sort));
 
   const { data, isLoading, isError, isFetching, refetch } = useQuery({
-    queryKey: ["signals", "unified", filter, sort],
-    queryFn: () => fetchUnifiedSignals(filter, sort),
+    queryKey: ["signals", "unified", assetId, filter, sort],
+    queryFn: () => fetchUnifiedSignals(assetId, filter, sort),
     staleTime: 2 * 60 * 1000, // 2 minutes
     retry: 1,
     refetchOnWindowFocus: true,
@@ -48,8 +49,9 @@ export function UnifiedSignalsView() {
   const showUserSection = filter === "all" || filter === "user";
   const showMarketSection = filter === "all" || filter === "market";
 
-  const userSignals = data?.user ?? [];
-  const marketSignals = data?.market ?? [];
+  const items = data?.items ?? [];
+  const userSignals = useMemo(() => items.filter((c) => c.scope === "user"), [items]);
+  const marketSignals = useMemo(() => items.filter((c) => c.scope === "market"), [items]);
 
   // Loading skeleton
   if (isLoading && !data) {
@@ -65,6 +67,18 @@ export function UnifiedSignalsView() {
           ))}
         </div>
       </div>
+    );
+  }
+
+  // Error without usable data → standard error state with retry (no silent empty).
+  if (isError && !data) {
+    return (
+      <ScreenState
+        status="error"
+        onRetry={handleRefresh}
+        errorTitle="Failed to load signals"
+        errorMessage="Please try again."
+      />
     );
   }
 
@@ -125,26 +139,12 @@ export function UnifiedSignalsView() {
         </Select>
       </div>
 
-      {/* Error banner (keep showing cached data) */}
+      {/* Refresh error banner (cached/previous data still visible) */}
       {isError && data && (
         <Alert variant="destructive" className="py-2">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription className="text-xs">
             Failed to refresh. Showing cached data.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Error without cached data */}
-      {isError && !data && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription className="flex items-center justify-between">
-            <span>Failed to load signals.</span>
-            <Button variant="outline" size="sm" onClick={handleRefresh}>
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Retry
-            </Button>
           </AlertDescription>
         </Alert>
       )}

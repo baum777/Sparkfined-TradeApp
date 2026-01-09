@@ -126,22 +126,25 @@ export async function fetchDailyBias(): Promise<FeedCard | null> {
 
 // BACKEND HOOK
 export async function fetchUnifiedSignals(
-  filter: FeedFilter = "all",
-  sort: FeedSort = "impact"
+  assetId: string,
+  filter?: FeedFilter,
+  sort?: FeedSort
 ): Promise<UnifiedSignalsResponse> {
-  const cacheKey = `${CACHE_PREFIX}signals:unified:${filter}:${sort}`;
-  
-  try {
-    const data = await apiClient.get<UnifiedSignalsResponse>(
-      `/signals/unified?filter=${filter}&sort=${sort}`
-    );
-    setCache(cacheKey, data);
-    return data;
-  } catch (error) {
-    const cached = getCache<UnifiedSignalsResponse>(cacheKey);
-    if (cached) return cached;
-    throw error;
+  const asset = assetId?.trim();
+  if (!asset) {
+    throw new Error("Missing required asset for unified signals");
   }
+
+  const params = new URLSearchParams();
+  params.set("asset", asset);
+  if (filter && filter !== "all") params.set("filter", filter);
+  if (sort && sort !== "impact") params.set("sort", sort);
+
+  const cacheKey = `${CACHE_PREFIX}signals:unified:${params.toString()}`;
+
+  const data = await apiClient.get<UnifiedSignalsResponse>(`/signals/unified?${params.toString()}`);
+  setCache(cacheKey, data);
+  return data;
 }
 
 // Get cached data for stale-while-revalidate pattern
@@ -157,6 +160,18 @@ export function getCachedDailyBias(): FeedCard | null {
   return getCache<FeedCard>(`${CACHE_PREFIX}dailyBias`);
 }
 
-export function getCachedUnifiedSignals(filter: FeedFilter, sort: FeedSort): UnifiedSignalsResponse | null {
-  return getCache<UnifiedSignalsResponse>(`${CACHE_PREFIX}signals:unified:${filter}:${sort}`);
+export function getCachedUnifiedSignals(
+  assetId: string,
+  filter?: FeedFilter,
+  sort?: FeedSort
+): UnifiedSignalsResponse | null {
+  const asset = assetId?.trim();
+  if (!asset) return null;
+
+  const params = new URLSearchParams();
+  params.set("asset", asset);
+  if (filter && filter !== "all") params.set("filter", filter);
+  if (sort && sort !== "impact") params.set("sort", sort);
+
+  return getCache<UnifiedSignalsResponse>(`${CACHE_PREFIX}signals:unified:${params.toString()}`);
 }
