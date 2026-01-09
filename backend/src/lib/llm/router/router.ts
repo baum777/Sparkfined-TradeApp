@@ -115,15 +115,18 @@ function buildRouterUserPrompt(input: ReasoningRouteInput): string {
 
 function clampMaxTokens(value: number, maxFinalTokens?: number): number {
   const base = Number.isFinite(value) ? Math.floor(value) : 800;
-  const clamped = Math.min(Math.max(base, 16), 4096);
+  // Hard cap: never exceed canonical router/execution final cap.
+  const hardCap = 1200;
+  const clamped = Math.min(Math.max(base, 16), 4096, hardCap);
   if (typeof maxFinalTokens === 'number' && Number.isFinite(maxFinalTokens)) {
-    return Math.min(clamped, Math.max(16, Math.floor(maxFinalTokens)));
+    return Math.min(clamped, Math.max(16, Math.floor(maxFinalTokens)), hardCap);
   }
   return clamped;
 }
 
 function pickFallbackProvider(input: ReasoningRouteInput): RouterDecisionProvider {
   const env = getEnv();
+  if (env.LLM_FALLBACK_PROVIDER) return env.LLM_FALLBACK_PROVIDER;
   const msg = input.userMessage.toLowerCase();
   if (msg.includes('twitter') || msg.includes('x.com') || /\b(x|tweet|tweets)\b/.test(msg) || msg.includes('alpha')) {
     return 'grok';
