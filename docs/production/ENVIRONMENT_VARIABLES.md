@@ -43,6 +43,10 @@ Diese Datei listet **alle aktuell im Repo referenzierten** Env Vars + empfohlene
 | `API_BASE_PATH` | ✅ | ❌ | `"/api"` | Runtime | `backend/src/config/env.ts` |
 | `DATABASE_URL` | ✅ | ✅ (operationally sensitive) | `sqlite:./.data/tradeapp.sqlite` | Runtime | `backend/src/config/env.ts`, `backend/src/config/config.ts` |
 | `LOG_LEVEL` | ✅ | ❌ | `info` | Runtime | `backend/src/config/env.ts` |
+| `HELIUS_API_KEY` | ✅ (für Solana Onchain via Helius) | ✅ | — | Runtime | `backend/src/config/env.ts`, `backend/src/domain/solOnchain/adapters/helius.ts` |
+| `HELIUS_RPC_URL` | ❌ | ❌ | `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}` | Runtime | `backend/src/domain/solOnchain/adapters/helius.ts` |
+| `HELIUS_DAS_RPC_URL` | ❌ | ❌ | Default wie `HELIUS_RPC_URL` (JSON-RPC `getAsset`) | Runtime | `backend/src/domain/solOnchain/adapters/helius.ts` |
+| `HELIUS_TIMEOUT_MS` | ❌ | ❌ | Fallback `LLM_TIMEOUT_MS` | Runtime | `backend/src/domain/solOnchain/adapters/helius.ts` |
 
 ---
 
