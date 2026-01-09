@@ -93,6 +93,7 @@ export interface OnchainRiskFlags {
   suddenSupplyChange?: RiskFlag;
   largeHolderDominance?: RiskFlag;
   washLikeActivitySpike?: RiskFlag;
+  suddenLiquidityDrop?: RiskFlag;
 }
 
 /**

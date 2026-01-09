@@ -71,6 +71,12 @@ const envSchema = z.object({
   // Note: values align with RouterDecisionProvider.
   LLM_FALLBACK_PROVIDER: z.enum(['deepseek', 'openai', 'grok']).optional(),
 
+  // Solana Onchain (Helius)
+  HELIUS_API_KEY: z.string(),
+  HELIUS_RPC_URL: z.string().optional(),
+  HELIUS_DAS_RPC_URL: z.string().optional(),
+  HELIUS_TIMEOUT_MS: z.string().transform(Number).optional(),
+
   // Monitoring
   WATCHER_INTERVAL_MS: z.string().transform(Number).default('5000'),
   EVALUATION_BATCH_SIZE: z.string().transform(Number).default('200'),
