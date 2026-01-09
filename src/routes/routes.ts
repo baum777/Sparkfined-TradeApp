@@ -17,6 +17,10 @@ export interface PrimaryTab {
   pageTestId: string;
   /** Whether to show in mobile bottom nav */
   showInMobileNav?: boolean;
+  /** Deep link (for NavigationMap display) */
+  deepLink?: string;
+  /** Legacy route that redirects to this tab (for NavigationMap display) */
+  legacyRoute?: string;
 }
 
 export interface SecondaryRoute {
@@ -70,6 +74,8 @@ export const primaryTabs: PrimaryTab[] = [
     tabTestId: "tab-research",
     pageTestId: "page-research",
     showInMobileNav: true,
+    deepLink: "/research/:assetId",
+    legacyRoute: "/chart",
   },
   {
     key: "journal",
@@ -78,6 +84,8 @@ export const primaryTabs: PrimaryTab[] = [
     tabTestId: "tab-journal",
     pageTestId: "page-journal",
     showInMobileNav: true,
+    deepLink: "/journal/:entryId",
+    legacyRoute: "/learn",
   },
   {
     key: "insights",
@@ -86,6 +94,8 @@ export const primaryTabs: PrimaryTab[] = [
     tabTestId: "tab-insights",
     pageTestId: "page-insights",
     showInMobileNav: true,
+    deepLink: "/insights/:insightId",
+    legacyRoute: "/oracle",
   },
   {
     key: "alerts",
@@ -101,7 +111,8 @@ export const primaryTabs: PrimaryTab[] = [
     route: "/settings",
     tabTestId: "tab-settings",
     pageTestId: "page-settings",
-    showInMobileNav: false, // Settings not in mobile bottom nav
+    showInMobileNav: false,
+    legacyRoute: "/settings/providers",
   },
 ];
 
