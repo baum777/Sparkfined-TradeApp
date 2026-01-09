@@ -14,6 +14,14 @@ import { stableSha256Hex, stableStringify } from './hash.js';
 
 export const ONCHAIN_FEATURE_PACK_SCHEMA_VERSION = 'v1';
 
+const FLOW_PROXY_DISCLAIMER =
+  'best-effort proxy from tokenTransfers; not exchange-identified flows';
+const LIQUIDITY_PROXY_DISCLAIMER =
+  'proxy based on transfer-rate, not pool liquidity';
+
+// Guardrail: liquidity proxy is coarse; keep threshold conservative and tier-gate hard actions elsewhere.
+const LIQUIDITY_PROXY_DROP_RISKFLAG_THRESHOLD = -0.3;
+
 export function getBucketMsForTimeframe(timeframe: SolTimeframe): number {
   switch (timeframe) {
     case '15s':
@@ -205,10 +213,13 @@ export async function buildOnchainFeaturePackWithCacheMeta(params: BuildOnchainF
   }
 
   if (availability.liquidity && liqDelta != null) {
-    const drop = liqDelta < -0.2;
+    const drop = liqDelta <= LIQUIDITY_PROXY_DROP_RISKFLAG_THRESHOLD;
     riskFlags = {
       ...riskFlags,
-      suddenLiquidityDrop: { value: drop, why: `liquidityDeltaPct.short=${liqDelta.toFixed(6)}` },
+      suddenLiquidityDrop: {
+        value: drop,
+        why: `liquidityDeltaPct.short=${liqDelta.toFixed(6)} (proxy; threshold=${LIQUIDITY_PROXY_DROP_RISKFLAG_THRESHOLD})`,
+      },
     };
   }
 
@@ -218,6 +229,8 @@ export async function buildOnchainFeaturePackWithCacheMeta(params: BuildOnchainF
     ...(flowsRes?.notes ?? []),
     ...(liquidityRes?.notes ?? []),
     ...(riskRes?.notes ?? []),
+    availability.flows ? FLOW_PROXY_DISCLAIMER : undefined,
+    availability.liquidity ? LIQUIDITY_PROXY_DISCLAIMER : undefined,
   ]);
 
   const pack: OnchainFeaturePack = {

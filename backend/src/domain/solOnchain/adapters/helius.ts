@@ -171,6 +171,27 @@ function resolveHeliusApiKey(): string {
   return getEnv().HELIUS_API_KEY;
 }
 
+function resolveEnhancedCaps(): { maxPages: number; pageLimit: number } {
+  const env = getEnv();
+  const maxPagesRaw = env.HELIUS_ENHANCED_MAX_PAGES;
+  const limitRaw = env.HELIUS_ENHANCED_LIMIT;
+
+  const maxPages =
+    typeof maxPagesRaw === 'number' && Number.isFinite(maxPagesRaw) && maxPagesRaw > 0
+      ? Math.floor(maxPagesRaw)
+      : 6;
+  const pageLimit =
+    typeof limitRaw === 'number' && Number.isFinite(limitRaw) && limitRaw > 0
+      ? Math.floor(limitRaw)
+      : 100;
+
+  // Guardrails: keep within sane hard caps for determinism/cost.
+  return {
+    maxPages: Math.min(20, Math.max(1, maxPages)),
+    pageLimit: Math.min(200, Math.max(1, pageLimit)),
+  };
+}
+
 async function computeTop10ConcentrationPct(input: {
   mint: string;
   rpc: HeliusRpcClient;
@@ -180,13 +201,11 @@ async function computeTop10ConcentrationPct(input: {
 
   // 1) Supply (prefer getTokenSupply)
   let supplyAmount: bigint | null = null;
-  let supplyDecimals: number | null = null;
 
   try {
     const supply = await input.rpc.call<HeliusGetTokenSupplyResult>('getTokenSupply', [input.mint]);
     const v = (supply as any)?.value;
     supplyAmount = parseBigIntAmount(v?.amount) ?? null;
-    supplyDecimals = typeof v?.decimals === 'number' ? v.decimals : null;
     if (supplyAmount == null) {
       // Sometimes only uiAmountString exists; we avoid float math and fall back to DAS.
       throw new Error('getTokenSupply missing amount');
@@ -196,7 +215,6 @@ async function computeTop10ConcentrationPct(input: {
     try {
       const asset = await input.das.call<HeliusGetAssetResult>('getAsset', { id: input.mint });
       const ti = (asset as any)?.token_info;
-      supplyDecimals = typeof ti?.decimals === 'number' ? ti.decimals : null;
       supplyAmount = parseBigIntAmount(ti?.supply) ?? null;
       if (supplyAmount == null) throw new Error('getAsset token_info missing supply');
       notes.push('holders:supply_from_das_getAsset');
@@ -355,7 +373,8 @@ export class HeliusAdapter implements SolanaOnchainProvider {
 
   fingerprint(): string {
     // Explicitly include flows mapping version for cache key clarity.
-    return `${computeProviderFingerprint({ tag: this.tag, version: this.version, capabilities: this.capabilities() })}:flows:v2`;
+    const caps = resolveEnhancedCaps();
+    return `${computeProviderFingerprint({ tag: this.tag, version: this.version, capabilities: this.capabilities() })}:flows:v2:enhanced:pages=${caps.maxPages},limit=${caps.pageLimit}`;
   }
 
   private clients() {
@@ -524,8 +543,7 @@ export class HeliusAdapter implements SolanaOnchainProvider {
     const shortCutoff = input.asOfTs - shortMs;
     const baselineCutoff = input.asOfTs - baselineMs;
 
-    const maxPages = 6;
-    const pageLimit = 100;
+    const { maxPages, pageLimit } = resolveEnhancedCaps();
 
     try {
       // Fetch enhanced tx only once for baseline coverage; then compute both windows deterministically.
@@ -706,8 +724,7 @@ export class HeliusAdapter implements SolanaOnchainProvider {
     const shortCutoff = input.asOfTs - shortMs;
     const baselineCutoff = input.asOfTs - baselineMs;
 
-    const maxPages = 6;
-    const pageLimit = 100;
+    const { maxPages, pageLimit } = resolveEnhancedCaps();
 
     try {
       const { txs, notes: txNotes } = await collectEnhancedTransactionsInRange({

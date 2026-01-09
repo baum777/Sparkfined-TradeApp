@@ -76,6 +76,12 @@ const envSchema = z.object({
   HELIUS_RPC_URL: z.string().optional(),
   HELIUS_DAS_RPC_URL: z.string().optional(),
   HELIUS_TIMEOUT_MS: z.string().transform(Number).optional(),
+  // Enhanced Transactions API caps (Phase-2 cost control + cache fingerprint stability)
+  HELIUS_ENHANCED_MAX_PAGES: z.string().transform(Number).optional(),
+  HELIUS_ENHANCED_LIMIT: z.string().transform(Number).optional(),
+
+  // Onchain gating tuning
+  ONCHAIN_TUNING_PROFILE: z.enum(['default', 'conservative', 'aggressive']).default('default'),
 
   // Monitoring
   WATCHER_INTERVAL_MS: z.string().transform(Number).default('5000'),

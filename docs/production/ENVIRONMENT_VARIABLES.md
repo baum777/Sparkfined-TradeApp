@@ -47,6 +47,9 @@ Diese Datei listet **alle aktuell im Repo referenzierten** Env Vars + empfohlene
 | `HELIUS_RPC_URL` | ❌ | ❌ | `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}` | Runtime | `backend/src/domain/solOnchain/adapters/helius.ts` |
 | `HELIUS_DAS_RPC_URL` | ❌ | ❌ | Default wie `HELIUS_RPC_URL` (JSON-RPC `getAsset`) | Runtime | `backend/src/domain/solOnchain/adapters/helius.ts` |
 | `HELIUS_TIMEOUT_MS` | ❌ | ❌ | Fallback `LLM_TIMEOUT_MS` | Runtime | `backend/src/domain/solOnchain/adapters/helius.ts` |
+| `HELIUS_ENHANCED_MAX_PAGES` | ❌ | ❌ | `6` | Runtime | `backend/src/domain/solOnchain/adapters/helius.ts` |
+| `HELIUS_ENHANCED_LIMIT` | ❌ | ❌ | `100` | Runtime | `backend/src/domain/solOnchain/adapters/helius.ts` |
+| `ONCHAIN_TUNING_PROFILE` | ❌ | ❌ | `default` | Runtime | `backend/src/config/env.ts`, `backend/src/domain/solChartTa/onchainTuning.ts` |
 
 ---
 

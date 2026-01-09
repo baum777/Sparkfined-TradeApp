@@ -23,6 +23,18 @@ function clamp01(n: number): number {
   return n;
 }
 
+export type OnchainGatingTuning = {
+  /**
+   * Hard-gate threshold for liquidity proxy drop (short window).
+   * Note: This is a proxy and MUST be treated conservatively.
+   */
+  liquidityDropHardThreshold: number; // e.g. -0.30
+};
+
+export const DEFAULT_ONCHAIN_GATING_TUNING: OnchainGatingTuning = {
+  liquidityDropHardThreshold: -0.3,
+};
+
 function nearResistance(chart: ChartFeaturePack): boolean {
   const last = chart.ohlcvSummary.lastPrice;
   if (!Number.isFinite(last) || last <= 0) return false;
@@ -63,18 +75,24 @@ export function applyOnchainGates(input: {
   chart: ChartFeaturePack;
   onchain: OnchainFeaturePack;
   setups: SetupCard[];
+  tuning?: Partial<OnchainGatingTuning>;
 }): SetupCard[] {
   // Frozen policy: FREE gets no flows/liquidity gates.
   if (input.tier === 'free') return input.setups;
+
+  const tuning: OnchainGatingTuning = {
+    ...DEFAULT_ONCHAIN_GATING_TUNING,
+    ...(input.tuning ?? {}),
+  };
 
   const scale = input.tier === 'high' ? 1.25 : 1.0;
 
   const netZ = getNum(input.onchain, ['flows', 'netInflowProxy', 'zScore']);
   const largeZ = getNum(input.onchain, ['flows', 'largeTransfersProxy', 'zScore']);
+  const liqDelta = getNum(input.onchain, ['liquidity', 'liquidityDeltaPct', 'short']);
   const nearRes = nearResistance(input.chart);
 
   const largeHolderDominance = getBoolFlag(input.onchain, 'largeHolderDominance');
-  const suddenLiquidityDrop = getBoolFlag(input.onchain, 'suddenLiquidityDrop');
 
   return input.setups.map(s0 => {
     const notes: string[] = [];
@@ -102,16 +120,23 @@ export function applyOnchainGates(input: {
     }
 
     // (4) Liquidity Risk
-    if (suddenLiquidityDrop === true) {
-      confidence -= 0.2 * scale;
-      pass = false;
-      notes.push('Liquidity risk: sudden liquidity drop detected');
+    // Guardrails (Phase-2):
+    // - Only PRO/HIGH may hard-gate on liquidity proxy
+    // - Proxy delta must be <= threshold (default -30%)
+    // - Require chart-context trigger: near resistance OR breakout-related setup
+    if (input.tier === 'pro' || input.tier === 'high') {
+      const ctxTrigger = nearRes || isBreakoutOrRetest(s0);
+      if (liqDelta != null && liqDelta <= tuning.liquidityDropHardThreshold && ctxTrigger) {
+        confidence -= 0.2 * scale;
+        pass = false;
+        notes.push('Liquidity risk: proxy drop detected (requires chart-context trigger)');
+      }
     }
 
     // Missing-data notes (best-effort, deterministic)
     if (netZ == null) notes.push('Onchain flows zScore unavailable');
     if (largeZ == null) notes.push('Onchain largeTransfers zScore unavailable');
-    if (suddenLiquidityDrop == null) notes.push('Onchain liquidity risk flag unavailable');
+    if (liqDelta == null) notes.push('Onchain liquidity proxy delta unavailable');
 
     confidence = clamp01(confidence);
 

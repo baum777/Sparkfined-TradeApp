@@ -35,7 +35,7 @@ function baseOnchain(): OnchainFeaturePack {
       netInflowProxy: { short: 1, baseline: 1, zScore: -1.5 },
       largeTransfersProxy: { short: 1, baseline: 1, zScore: 1.3 },
     },
-    liquidity: { liquidityDeltaPct: { short: -0.25, baseline: null } },
+    liquidity: { liquidityDeltaPct: { short: -0.31, baseline: null } },
     riskFlags: {
       largeHolderDominance: { value: true, why: 'test' },
       suddenLiquidityDrop: { value: true, why: 'test' },
@@ -77,7 +77,7 @@ describe('applyOnchainGates (decision-grade gating) - unit', () => {
     // Starting 0.8:
     // (1) netZ=-1.5 & near resistance & long => -0.15
     // (3) largeZ=1.3 & largeHolderDominance=true => -0.10
-    // (4) suddenLiquidityDrop=true => -0.20 and pass=false
+    // (4) liquidityDeltaPct.short=-0.31 & (nearRes || breakout) => -0.20 and pass=false
     // (2) netZ>1.0 does NOT apply (netZ is negative)
     expect(out.confidence).toBeCloseTo(0.35, 6);
     expect(out.onchainGate.pass).toBe(false);

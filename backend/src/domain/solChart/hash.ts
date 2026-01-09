@@ -4,7 +4,8 @@ type JsonValue = null | boolean | number | string | JsonObject | JsonValue[];
 type JsonObject = { [k: string]: JsonValue };
 
 function stable(value: JsonValue): JsonValue {
-  if (value === null) return null;
+  // Treat missing/undefined as null to keep hashing deterministic across omit-vs-undefined.
+  if (value === null || (value as any) === undefined) return null;
   if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return value;
   if (Array.isArray(value)) return value.map(v => stable(v));
   const obj = value as JsonObject;
