@@ -39,8 +39,8 @@ describe('Theme Group 5: Missing/Expected Endpoints (Feeds & Signals)', () => {
     const body = await readJson(res);
  
     expect(res.status).toBe(200);
+    expect(body).toHaveProperty('status', 'ok');
     expect(body).toHaveProperty('data');
-    expect(body).toHaveProperty('status', 200);
     expect(Array.isArray(body.data)).toBe(true);
   });
  
@@ -49,8 +49,8 @@ describe('Theme Group 5: Missing/Expected Endpoints (Feeds & Signals)', () => {
     const body = await readJson(res);
  
     expect(res.status).toBe(200);
+    expect(body).toHaveProperty('status', 'ok');
     expect(body).toHaveProperty('data');
-    expect(body).toHaveProperty('status', 200);
     expect(body.data).toHaveProperty('assetResolved');
     expect(body.data.assetResolved).toHaveProperty('kind', 'address');
     expect(body.data).toHaveProperty('snapshot');
@@ -63,8 +63,8 @@ describe('Theme Group 5: Missing/Expected Endpoints (Feeds & Signals)', () => {
     const body = await readJson(res);
 
     expect(res.status).toBe(200);
+    expect(body).toHaveProperty('status', 'ok');
     expect(body).toHaveProperty('data');
-    expect(body).toHaveProperty('status', 200);
     expect(body.data).toHaveProperty('assetResolved');
     expect(body.data.assetResolved).toHaveProperty('kind', 'ticker');
     expect(body.data.assetResolved).toHaveProperty('symbol', 'SOL');
@@ -76,6 +76,7 @@ describe('Theme Group 5: Missing/Expected Endpoints (Feeds & Signals)', () => {
     const body = await readJson(res);
 
     expect(res.status).toBe(400);
+    expect(body).toHaveProperty('status', 'error');
     expect(body).toHaveProperty('error');
     expect(body.error).toHaveProperty('code', 'VALIDATION_ERROR');
   });
@@ -85,6 +86,7 @@ describe('Theme Group 5: Missing/Expected Endpoints (Feeds & Signals)', () => {
     const body = await readJson(res);
 
     expect(res.status).toBe(404);
+    expect(body).toHaveProperty('status', 'error');
     expect(body).toHaveProperty('error');
     expect(body.error).toHaveProperty('code', 'NOT_FOUND');
   });
@@ -94,8 +96,8 @@ describe('Theme Group 5: Missing/Expected Endpoints (Feeds & Signals)', () => {
     const body = await readJson(res);
  
     expect(res.status).toBe(200);
+    expect(body).toHaveProperty('status', 'ok');
     expect(body).toHaveProperty('data');
-    expect(body).toHaveProperty('status', 200);
     expect(body.data).toHaveProperty('items');
     expect(Array.isArray(body.data.items)).toBe(true);
   });
@@ -105,8 +107,8 @@ describe('Theme Group 5: Missing/Expected Endpoints (Feeds & Signals)', () => {
     const body = await readJson(res);
  
     expect(res.status).toBe(200);
+    expect(body).toHaveProperty('status', 'ok');
     expect(body).toHaveProperty('data');
-    expect(body).toHaveProperty('status', 200);
     expect(body.data).toHaveProperty('pinned');
     expect(body.data).toHaveProperty('insights');
   });
@@ -116,6 +118,7 @@ describe('Theme Group 5: Missing/Expected Endpoints (Feeds & Signals)', () => {
     const body = await readJson(res);
  
     expect(res.status).toBe(400);
+    expect(body).toHaveProperty('status', 'error');
     expect(body).toHaveProperty('error');
     expect(body.error).toHaveProperty('code');
     expect(body.error).toHaveProperty('message');

@@ -15,6 +15,7 @@ describe('LLM Reasoning Router (DeepSeek) - unit', () => {
     process.env.DEEPSEEK_BASE_URL = 'https://api.deepseek.test';
     process.env.LLM_MAX_RETRIES = '0';
     process.env.LLM_TIMEOUT_MS = '1000';
+    process.env.LLM_TIER_DEFAULT = 'standard';
     resetEnvCache();
   });
 
@@ -29,7 +30,7 @@ describe('LLM Reasoning Router (DeepSeek) - unit', () => {
           {
             message: {
               content: JSON.stringify({
-                decision: { provider: 'openai', reason: 'needs quality', maxTokens: 5000, temperature: 0 },
+                decision: { provider: 'openai', reason: 'needs quality', maxTokens: 5000 },
                 compressedPrompt: 'Do the thing.',
                 mustInclude: ['A'],
                 redactions: [],
@@ -44,6 +45,8 @@ describe('LLM Reasoning Router (DeepSeek) - unit', () => {
     const out = await routeAndCompress(
       {
         mode: 'route_compress',
+        tier: 'standard',
+        taskKind: 'general',
         userMessage: 'Hello',
         constraints: { maxFinalTokens: 900 },
       },
@@ -67,13 +70,15 @@ describe('LLM Reasoning Router (DeepSeek) - unit', () => {
     const out = await routeAndCompress(
       {
         mode: 'route_compress',
+        tier: 'standard',
+        taskKind: 'general',
         userMessage: 'Write a plan',
       },
       'req-2'
     );
 
     expect(out.requestId).toBe('req-2');
-    expect(['openai', 'grok']).toContain(out.decision.provider);
+    expect(out.decision.provider).toBe('deepseek');
     expect(out.decision.reason).toBe('router_fallback');
     expect(typeof out.compressedPrompt).toBe('string');
   });

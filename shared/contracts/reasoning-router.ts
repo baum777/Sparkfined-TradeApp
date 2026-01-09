@@ -1,21 +1,26 @@
 /**
  * Reasoning Router Contracts - Shared types between frontend and backend
  * --------------------------------------------------------------------
- * Goal:
- * - DeepSeek R1 (thinking) does routing + compression
- * - Expensive providers (OpenAI/Grok) are called only with compressed prompts
+ * FROZEN CONTRACT (Spec-driven).
  *
- * IMPORTANT:
- * - Do NOT persist or log raw `reasoning_content` in production.
- * - Keep these shapes stable (contract-first).
+ * - DeepSeek R1 routes + compresses before expensive providers are called.
+ * - OpenAI / Grok must only receive `compressedPrompt + mustInclude` (+ minimal constraints),
+ *   never the full raw context.
+ * - Never persist or log DeepSeek `reasoning_content` by default.
  */
 
-export type LlmProvider = 'deepseek' | 'openai' | 'grok';
+export type Tier = 'free' | 'standard' | 'pro' | 'high';
 
-// Provider selected for the "final" call after routing/compression.
-export type RouterDecisionProvider = 'none' | 'openai' | 'grok';
+export type RouterDecisionProvider = 'none' | 'deepseek' | 'openai' | 'grok';
 
 export type RouterMode = 'route_compress' | 'postprocess';
+
+export type LlmTaskKind =
+  | 'general'
+  | 'journal_teaser'
+  | 'chart_teaser'
+  | 'chart_analysis'
+  | 'sentiment_alpha';
 
 export type RouterMessageRole = 'system' | 'user' | 'assistant';
 
@@ -25,18 +30,18 @@ export interface RouterContextMessage {
 }
 
 export interface ReasoningRouteRequest {
-  taskId?: string;
-  mode: RouterMode;
+  mode: 'route_compress';
+  tier?: Tier;
+  taskKind?: LlmTaskKind;
   userMessage: string;
   context?: {
     conversationId?: string;
     messages?: RouterContextMessage[];
-    metadata?: Record<string, unknown>;
+    metadata?: Record<string, any>;
   };
   constraints?: {
     maxFinalTokens?: number;
     latencyBudgetMs?: number;
-    costBudget?: 'low' | 'medium' | 'high';
     safety?: 'default' | 'strict';
   };
 }
@@ -47,19 +52,17 @@ export interface ReasoningRouteResponse {
     provider: RouterDecisionProvider;
     reason: string;
     maxTokens: number;
-    temperature?: number;
   };
   compressedPrompt: string;
   mustInclude: string[];
   redactions: string[];
-  debug?: {
-    routerModel: string;
-    routerLatencyMs: number;
-  };
+  tierApplied: Tier;
+  taskKindApplied: LlmTaskKind;
 }
 
 export interface LlmExecuteRequest {
-  taskId?: string;
+  tier?: Tier;
+  taskKind?: LlmTaskKind;
   userMessage: string;
   context?: ReasoningRouteRequest['context'];
   constraints?: ReasoningRouteRequest['constraints'];
@@ -67,20 +70,15 @@ export interface LlmExecuteRequest {
 
 export interface LlmExecuteResponse {
   requestId: string;
-  provider: LlmProvider;
+  providerUsed: 'deepseek' | 'openai' | 'grok';
   text: string;
-  debug?: {
-    routerProviderDecision?: RouterDecisionProvider;
-    routerLatencyMs?: number;
-  };
+  meta?: { latencyMs: number; tokensIn?: number; tokensOut?: number };
 }
 
-// Canonical error shape used across APIs.
-export interface ApiErrorResponse {
-  error: {
-    code: string;
-    message: string;
-    details?: unknown;
-  };
-}
+export type ApiOk<T> = { status: 'ok'; data: T };
+
+export type ApiError = {
+  status: 'error';
+  error: { code: string; message: string; details?: any };
+};
 

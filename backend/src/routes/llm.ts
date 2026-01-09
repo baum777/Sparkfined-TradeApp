@@ -9,9 +9,13 @@ import { callDeepSeek } from '../lib/llm/providers/deepseek.js';
 import { callOpenAI } from '../lib/llm/providers/openai.js';
 import { callGrok } from '../lib/llm/providers/grok.js';
 import type { LlmMessage } from '../lib/llm/types.js';
+import { getTierSettings, type LlmTaskKind, type Tier } from '../lib/llm/tierPolicy.js';
 
 const executeRequestSchema = z.object({
-  taskId: z.string().min(1).optional(),
+  tier: z.enum(['free', 'standard', 'pro', 'high']).optional(),
+  taskKind: z
+    .enum(['general', 'journal_teaser', 'chart_teaser', 'chart_analysis', 'sentiment_alpha'])
+    .optional(),
   userMessage: z.string().min(1).max(20000),
   context: z
     .object({
@@ -31,7 +35,6 @@ const executeRequestSchema = z.object({
     .object({
       maxFinalTokens: z.number().int().min(16).max(4096).optional(),
       latencyBudgetMs: z.number().int().min(250).max(120000).optional(),
-      costBudget: z.enum(['low', 'medium', 'high']).optional(),
       safety: z.enum(['default', 'strict']).optional(),
     })
     .optional(),
@@ -74,18 +77,22 @@ export const handleLlmExecute: RouteHandler = async (req, res) => {
   const parsed = executeRequestSchema.safeParse(req.body ?? {});
   if (!parsed.success) {
     throw new AppError('Validation failed', 400, ErrorCodes.VALIDATION_ERROR, {
-      requestId: [getRequestId()],
+      requestId: getRequestId(),
     });
   }
 
   const requestId = getRequestId();
   const safety = parsed.data.constraints?.safety ?? 'default';
+  const tier = (parsed.data.tier ?? env.LLM_TIER_DEFAULT) as Tier;
+  const taskKind = (parsed.data.taskKind ?? 'general') as LlmTaskKind;
+  const tierSettings = getTierSettings(tier);
 
   const routing = env.LLM_ROUTER_ENABLED
     ? await routeAndCompress(
         {
-          taskId: parsed.data.taskId,
           mode: 'route_compress',
+          tier,
+          taskKind,
           userMessage: parsed.data.userMessage,
           context: parsed.data.context,
           constraints: parsed.data.constraints,
@@ -95,18 +102,19 @@ export const handleLlmExecute: RouteHandler = async (req, res) => {
     : {
         requestId,
         decision: {
-          provider: 'openai' as const,
+          provider: 'deepseek' as const,
           reason: 'router_disabled',
-          maxTokens: Math.min(1200, parsed.data.constraints?.maxFinalTokens ?? 1200),
-          temperature: 0,
+          maxTokens: Math.min(tierSettings.finalMaxTokens, parsed.data.constraints?.maxFinalTokens ?? tierSettings.finalMaxTokens),
         },
         compressedPrompt: parsed.data.userMessage,
         mustInclude: [],
         redactions: [],
+        tierApplied: tier,
+        taskKindApplied: taskKind,
       };
 
   const maxTokens = routing.decision.maxTokens;
-  const temperature = routing.decision.temperature ?? 0;
+  const temperature = 0;
 
   const messages = buildFinalMessages({
     compressedPrompt: routing.compressedPrompt,
@@ -114,43 +122,55 @@ export const handleLlmExecute: RouteHandler = async (req, res) => {
     mustInclude: routing.mustInclude,
   });
 
-  type DecisionProvider = 'none' | 'openai' | 'grok';
+  type DecisionProvider = 'none' | 'deepseek' | 'openai' | 'grok';
+
+  const timeoutMs = Math.min(
+    tierSettings.timeoutMs,
+    env.LLM_TIMEOUT_MS,
+    typeof parsed.data.constraints?.latencyBudgetMs === 'number' && Number.isFinite(parsed.data.constraints.latencyBudgetMs)
+      ? Math.max(250, Math.floor(parsed.data.constraints.latencyBudgetMs))
+      : tierSettings.timeoutMs
+  );
+  const maxRetries = Math.min(env.LLM_MAX_RETRIES, tierSettings.retries);
 
   async function callProvider(provider: DecisionProvider) {
     // Execute chosen provider, but never send the full context to OpenAI/Grok.
-    if (provider === 'none') {
+    if (provider === 'none' || provider === 'deepseek') {
       return await callDeepSeek({
         requestId,
-        timeoutMs: env.LLM_TIMEOUT_MS,
+        timeoutMs,
         model: env.DEEPSEEK_MODEL_ANSWER || 'deepseek-chat',
         messages,
         temperature,
         maxTokens,
         jsonOnly: false,
+        maxRetries,
       });
     }
 
     if (provider === 'openai') {
       return await callOpenAI({
         requestId,
-        timeoutMs: env.LLM_TIMEOUT_MS,
+        timeoutMs,
         model: env.OPENAI_MODEL_INSIGHTS || 'gpt-4o-mini',
         messages,
         temperature,
         maxTokens,
         jsonOnly: false,
+        maxRetries,
       });
     }
 
     // grok
     return await callGrok({
       requestId,
-      timeoutMs: env.LLM_TIMEOUT_MS,
+      timeoutMs,
       model: 'grok-beta',
       messages,
       temperature,
       maxTokens,
       jsonOnly: false,
+      maxRetries,
     });
   }
 
@@ -164,34 +184,24 @@ export const handleLlmExecute: RouteHandler = async (req, res) => {
   }
 
   const primary = routing.decision.provider;
-  let usedProvider: DecisionProvider = primary;
   let result: Awaited<ReturnType<typeof callProvider>>;
   try {
     result = await callProvider(primary);
   } catch (err) {
     const fallback = pickExecuteFallback(primary);
     if (!fallback || fallback === primary) throw err;
-    usedProvider = fallback;
     result = await callProvider(fallback);
   }
 
-  return sendJson(
-    res,
-    {
-      requestId,
-      provider: result.provider,
-      text: result.text,
-      ...(env.LLM_ROUTER_DEBUG
-        ? {
-            debug: {
-              routerProviderDecision: primary,
-              executedProviderDecision: usedProvider,
-              routerLatencyMs: routing.debug?.routerLatencyMs,
-            },
-          }
-        : {}),
+  return sendJson(res, {
+    requestId,
+    providerUsed: result.provider,
+    text: result.text,
+    meta: {
+      latencyMs: result.latencyMs,
+      tokensIn: result.usage?.promptTokens,
+      tokensOut: result.usage?.completionTokens,
     },
-    200
-  );
+  }, 200);
 };
 

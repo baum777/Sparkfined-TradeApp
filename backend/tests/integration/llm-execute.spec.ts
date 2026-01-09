@@ -130,6 +130,7 @@ describe('POST /api/llm/execute (router + provider)', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     const { status, text } = await postJson(`${baseUrl}/api/llm/execute`, {
+        tier: 'standard',
         userMessage: 'User question',
         context: {
           messages: [
@@ -148,13 +149,76 @@ describe('POST /api/llm/execute (router + provider)', () => {
     })();
 
     expect(status).toBe(200);
+    expect(body).toHaveProperty('status', 'ok');
     expect(body).toHaveProperty('data');
     expect(body.data).toHaveProperty('text', 'FINAL_ANSWER');
-    expect(body.data).toHaveProperty('provider', 'openai');
+    expect(body.data).toHaveProperty('providerUsed', 'openai');
 
     // Ensure DeepSeek router was called first, then OpenAI.
     expect(calls[0]?.url).toContain('api.deepseek.test/chat/completions');
     expect(calls[1]?.url).toContain('api.openai.test/v1/chat/completions');
+  });
+
+  it('free tier overrides disallowed OpenAI (non-teaser) to DeepSeek', async () => {
+    const calls: Array<{ url: string; body?: any }> = [];
+
+    const fetchMock = vi.fn(async (url: any, init?: any) => {
+      const urlStr = String(url);
+      const bodyText = init?.body ? String(init.body) : '';
+      const body = bodyText ? JSON.parse(bodyText) : undefined;
+      calls.push({ url: urlStr, body });
+
+      if (urlStr.startsWith('https://api.deepseek.test/chat/completions')) {
+        // First call: router. Second call: answer (DeepSeek chat).
+        const isRouter = body?.model === 'deepseek-reasoner' || body?.max_tokens === 900;
+        if (isRouter) {
+          return jsonResponse({
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify({
+                    decision: { provider: 'openai', reason: 'router_selected_openai', maxTokens: 600 },
+                    compressedPrompt: 'COMPRESSED_FOR_CHART_ANALYSIS',
+                    mustInclude: [],
+                    redactions: [],
+                  }),
+                },
+              },
+            ],
+          });
+        }
+
+        return jsonResponse({
+          choices: [{ message: { content: 'DEEPSEEK_FINAL' } }],
+          usage: { prompt_tokens: 5, completion_tokens: 7, total_tokens: 12 },
+        });
+      }
+
+      if (urlStr.startsWith('https://api.openai.test/v1/chat/completions')) {
+        throw new Error('OpenAI should not be called in free tier for chart_analysis');
+      }
+
+      throw new Error(`Unexpected fetch url: ${urlStr}`);
+    });
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { status, text } = await postJson(`${baseUrl}/api/llm/execute`, {
+      tier: 'free',
+      taskKind: 'chart_analysis',
+      userMessage: 'Analyze this chart fully',
+      constraints: { maxFinalTokens: 800 },
+    });
+
+    const body = JSON.parse(text);
+    expect(status).toBe(200);
+    expect(body).toHaveProperty('status', 'ok');
+    expect(body.data).toHaveProperty('providerUsed', 'deepseek');
+    expect(body.data).toHaveProperty('text', 'DEEPSEEK_FINAL');
+
+    // Ensure only DeepSeek endpoints were called.
+    expect(calls.some(c => c.url.includes('api.openai.test'))).toBe(false);
+    expect(calls.filter(c => c.url.includes('api.deepseek.test')).length).toBe(2);
   });
 });
 

@@ -65,6 +65,7 @@ Diese Datei listet **alle aktuell im Repo referenzierten** Env Vars + empfohlene
 | `LLM_TIMEOUT_MS` | ❌ | ❌ | `20000` | Runtime | `backend/src/config/env.ts` |
 | `LLM_MAX_RETRIES` | ❌ | ❌ | `2` | Runtime | `backend/src/config/env.ts` |
 | `LLM_BUDGET_DEFAULT` | ❌ | ❌ | `low` | Runtime | `backend/src/config/env.ts` |
+| `LLM_TIER_DEFAULT` | ❌ | ❌ | `free` | Runtime | `backend/src/config/env.ts`, `backend/src/lib/llm/tierPolicy.ts` |
 
 **Wichtige Production-Hinweise**
 - **`DATABASE_URL`**:
@@ -72,6 +73,20 @@ Diese Datei listet **alle aktuell im Repo referenzierten** Env Vars + empfohlene
   - Für Production muss eine persistente DB gewählt werden; das wird voraussichtlich neue/andere Env Vars erfordern (z.B. `POSTGRES_URL`, `DATABASE_URL` im Postgres-Format etc.).
 - **`BACKEND_PORT`**:
   - Für Vercel Functions i.d.R. irrelevant (kein `listen()`), für extern gehosteten Server relevant.
+
+---
+
+## Tier Policy (LLM) — Kurzüberblick
+
+Das Backend unterstützt ein **striktes Tier-System** zur Kontrolle von **Kosten, Latenz, Token-Limits und Provider-Rechten**:
+
+- **Tiers**: `free`, `standard`, `pro`, `high`
+- **Default**: `LLM_TIER_DEFAULT` (falls Request kein `tier` setzt)
+- **Wichtig (free)**:
+  - **OpenAI** ist **nur** erlaubt für `taskKind in ["journal_teaser","chart_teaser"]` und wird auf **S/R + Stoploss** (Bullet-Liste) begrenzt.
+  - **Grok** ist **nur** erlaubt für `taskKind="sentiment_alpha"` und wird **kurz** gehalten (<= 200 Tokens).
+- **Hinweis zu `LLM_TIMEOUT_MS` / `LLM_MAX_RETRIES`**:
+  - Werden server-seitig als **globale Kappen/Overrides** verwendet; zusätzlich greifen tier-spezifische Defaults.
 
 ---
 

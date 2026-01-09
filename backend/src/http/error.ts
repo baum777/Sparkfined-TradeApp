@@ -4,16 +4,17 @@ import { getRequestId } from './requestId.js';
 /**
  * Standardized Error Response
  * Canonical contract:
- *   { error: { code: string, message: string, details?: object } }
+ *   { status: "error", error: { code: string, message: string, details?: any } }
  *
  * HTTP status code remains authoritative for semantics.
  */
 
 export interface ErrorResponseBody {
+  status: 'error';
   error: {
     code: string;
     message: string;
-    details?: Record<string, string[]>;
+    details?: unknown;
   };
 }
 
@@ -53,13 +54,13 @@ export type ErrorCode = typeof ErrorCodes[keyof typeof ErrorCodes];
 export class AppError extends Error {
   readonly status: number;
   readonly code: ErrorCode;
-  readonly details?: Record<string, string[]>;
+  readonly details?: Record<string, unknown>;
 
   constructor(
     message: string,
     status: number,
     code: ErrorCode,
-    details?: Record<string, string[]>
+    details?: Record<string, unknown>
   ) {
     super(message);
     this.name = 'AppError';
@@ -70,6 +71,7 @@ export class AppError extends Error {
 
   toResponse(): ErrorResponseBody {
     return {
+      status: 'error',
       error: {
         code: this.code,
         message: this.message,
@@ -90,19 +92,19 @@ export function unauthorized(message = 'Unauthorized'): AppError {
 
 export function badRequest(
   message: string,
-  details?: Record<string, string[]>
+  details?: Record<string, unknown>
 ): AppError {
   return new AppError(message, 400, ErrorCodes.VALIDATION_FAILED, details);
 }
 
 export function validationError(
   message: string,
-  details?: Record<string, string[]>
+  details?: Record<string, unknown>
 ): AppError {
   return new AppError(message, 400, ErrorCodes.VALIDATION_ERROR, details);
 }
 
-export function badRequestCode(message: string, code: ErrorCode, details?: Record<string, string[]>): AppError {
+export function badRequestCode(message: string, code: ErrorCode, details?: Record<string, unknown>): AppError {
   return new AppError(message, 400, code, details);
 }
 
@@ -129,12 +131,17 @@ export function internalError(message = 'Internal server error'): AppError {
 export function sendError(res: ServerResponse, error: AppError): void {
   const requestId = getRequestId();
   const base = error.toResponse();
-  const details: Record<string, string[]> = {
-    ...(base.error.details ?? {}),
-    // Canonical: always echo request id into the error payload for correlation.
-    requestId: [requestId],
-  };
+
+  const baseDetails =
+    base.error.details && typeof base.error.details === 'object' && !Array.isArray(base.error.details)
+      ? (base.error.details as Record<string, unknown>)
+      : {};
+
+  // Canonical: always echo request id into the error payload for correlation.
+  const details = { ...baseDetails, requestId };
+
   const body = JSON.stringify({
+    status: 'error',
     error: {
       ...base.error,
       details,

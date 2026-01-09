@@ -3,13 +3,20 @@ import { logger } from '../../../observability/logger.js';
 import { callDeepSeek } from '../providers/deepseek.js';
 import type { LlmMessage } from '../types.js';
 import { routerOutputSchema, type RouterOutput } from './schema.js';
+import {
+  enforcePermissions,
+  getTierSettings,
+  type LlmTaskKind,
+  type RouterDecisionProvider,
+  type Tier,
+} from '../tierPolicy.js';
 
 export type RouterMode = 'route_compress' | 'postprocess';
-export type RouterDecisionProvider = 'none' | 'openai' | 'grok';
 
 export interface ReasoningRouteInput {
-  taskId?: string;
   mode: RouterMode;
+  tier?: Tier;
+  taskKind?: LlmTaskKind;
   userMessage: string;
   context?: {
     conversationId?: string;
@@ -19,7 +26,6 @@ export interface ReasoningRouteInput {
   constraints?: {
     maxFinalTokens?: number;
     latencyBudgetMs?: number;
-    costBudget?: 'low' | 'medium' | 'high';
     safety?: 'default' | 'strict';
   };
 }
@@ -30,12 +36,12 @@ export interface ReasoningRouteResult {
     provider: RouterDecisionProvider;
     reason: string;
     maxTokens: number;
-    temperature?: number;
   };
   compressedPrompt: string;
   mustInclude: string[];
   redactions: string[];
-  debug?: { routerModel: string; routerLatencyMs: number };
+  tierApplied: Tier;
+  taskKindApplied: LlmTaskKind;
 }
 
 function truncate(s: string, max: number): string {
@@ -48,7 +54,7 @@ function redactSecrets(text: string): string {
   return text
     .replace(/(authorization\s*:\s*)(.+)/gi, '$1[REDACTED]')
     .replace(/(cookie\s*:\s*)(.+)/gi, '$1[REDACTED]')
-    .replace(/(bearer\s+)[a-z0-9_\-\.]+/gi, '$1[REDACTED]')
+    .replace(/(bearer\s+)[a-z0-9_.-]+/gi, '$1[REDACTED]')
     .replace(/(sk-[a-z0-9]{16,})/gi, '[REDACTED]')
     .replace(/(xai-[a-z0-9]{16,})/gi, '[REDACTED]')
     .replace(/(ds-[a-z0-9]{16,})/gi, '[REDACTED]');
@@ -70,7 +76,7 @@ function buildRouterSystemPrompt(): string {
     '',
     'You MUST output a single JSON object with exactly this shape:',
     '{',
-    '  "decision": { "provider": "none|openai|grok", "reason": "…", "maxTokens": 800, "temperature": 0 },',
+    '  "decision": { "provider": "none|deepseek|openai|grok", "reason": "…", "maxTokens": 800 },',
     '  "compressedPrompt": "…",',
     '  "mustInclude": ["…"],',
     '  "redactions": ["…"]',
@@ -81,6 +87,7 @@ function buildRouterSystemPrompt(): string {
     '- Never include secrets: API keys, tokens, cookies, Authorization/Bearer headers. If present in input, add them to redactions and omit from compressedPrompt.',
     '- decision.provider:',
     '  - "none" if DeepSeek can cheaply produce the final answer from compressedPrompt.',
+    '  - "deepseek" if DeepSeek Answer model should be used explicitly.',
     '  - "openai" for higher-quality long-form writing, complex structured outputs, or when accuracy matters most.',
     '  - "grok" for X/Twitter style, snappy "alpha" phrasing, or realtime/social-sentiment flavor.',
     '- decision.maxTokens should be appropriate for the final answer (not the router).',
@@ -95,8 +102,9 @@ function buildRouterUserPrompt(input: ReasoningRouteInput): string {
   }));
 
   const payload = {
-    taskId: input.taskId,
     mode: input.mode,
+    tier: input.tier,
+    taskKind: input.taskKind,
     userMessage: truncate(redactSecrets(input.userMessage), 8000),
     context: {
       conversationId: input.context?.conversationId,
@@ -113,35 +121,7 @@ function buildRouterUserPrompt(input: ReasoningRouteInput): string {
   ].join('\n');
 }
 
-function clampMaxTokens(value: number, maxFinalTokens?: number): number {
-  const base = Number.isFinite(value) ? Math.floor(value) : 800;
-  // Hard cap: never exceed canonical router/execution final cap.
-  const hardCap = 1200;
-  const clamped = Math.min(Math.max(base, 16), 4096, hardCap);
-  if (typeof maxFinalTokens === 'number' && Number.isFinite(maxFinalTokens)) {
-    return Math.min(clamped, Math.max(16, Math.floor(maxFinalTokens)), hardCap);
-  }
-  return clamped;
-}
-
-function pickFallbackProvider(input: ReasoningRouteInput): RouterDecisionProvider {
-  const env = getEnv();
-  if (env.LLM_FALLBACK_PROVIDER) return env.LLM_FALLBACK_PROVIDER;
-  const msg = input.userMessage.toLowerCase();
-  if (msg.includes('twitter') || msg.includes('x.com') || /\b(x|tweet|tweets)\b/.test(msg) || msg.includes('alpha')) {
-    return 'grok';
-  }
-  if (msg.includes('grok')) return 'grok';
-  if (msg.includes('creative') || msg.includes('poem') || msg.includes('tone') || msg.includes('story')) return 'openai';
-
-  // Deterministic default based on configured budget tier.
-  if (env.LLM_BUDGET_DEFAULT === 'high') return 'openai';
-  if (env.LLM_BUDGET_DEFAULT === 'medium') return 'openai';
-  return 'openai';
-}
-
 function fallbackCompressedPrompt(input: ReasoningRouteInput): string {
-  const budget = input.constraints?.costBudget ?? getEnv().LLM_BUDGET_DEFAULT;
   const safety = input.constraints?.safety ?? 'default';
   const maxFinalTokens = input.constraints?.maxFinalTokens;
   return [
@@ -149,7 +129,6 @@ function fallbackCompressedPrompt(input: ReasoningRouteInput): string {
     redactSecrets(input.userMessage),
     '',
     'CONSTRAINTS:',
-    `- costBudget: ${budget}`,
     `- safety: ${safety}`,
     ...(typeof maxFinalTokens === 'number' ? [`- maxFinalTokens: ${Math.floor(maxFinalTokens)}`] : []),
   ].join('\n');
@@ -157,13 +136,17 @@ function fallbackCompressedPrompt(input: ReasoningRouteInput): string {
 
 export async function routeAndCompress(input: ReasoningRouteInput, requestId: string): Promise<ReasoningRouteResult> {
   const env = getEnv();
+  const tier = (input.tier ?? env.LLM_TIER_DEFAULT) as Tier;
+  const taskKind = (input.taskKind ?? 'general') as LlmTaskKind;
+  const tierSettings = getTierSettings(tier);
 
   const routerModel = env.DEEPSEEK_MODEL_ROUTER || env.DEEPSEEK_MODEL_REASONING || 'deepseek-reasoner';
   const routerTimeoutMs = Math.min(
+    tierSettings.timeoutMs,
     env.LLM_TIMEOUT_MS,
     typeof input.constraints?.latencyBudgetMs === 'number' && Number.isFinite(input.constraints.latencyBudgetMs)
       ? Math.max(1000, Math.floor(input.constraints.latencyBudgetMs))
-      : env.LLM_TIMEOUT_MS
+      : tierSettings.timeoutMs
   );
 
   const started = Date.now();
@@ -171,7 +154,7 @@ export async function routeAndCompress(input: ReasoningRouteInput, requestId: st
   try {
     const messages: LlmMessage[] = [
       { role: 'system', content: buildRouterSystemPrompt() },
-      { role: 'user', content: buildRouterUserPrompt(input) },
+      { role: 'user', content: buildRouterUserPrompt({ ...input, tier, taskKind }) },
     ];
 
     const r = await callDeepSeek({
@@ -180,64 +163,79 @@ export async function routeAndCompress(input: ReasoningRouteInput, requestId: st
       model: routerModel,
       messages,
       temperature: 0,
-      maxTokens: 1200,
+      maxTokens: tierSettings.routerMaxTokens,
       jsonOnly: true,
+      maxRetries: Math.min(env.LLM_MAX_RETRIES, tierSettings.retries),
     });
 
     const raw = parseFirstJsonObject(r.text);
     const parsed: RouterOutput = routerOutputSchema.parse(raw);
 
-    const maxTokens = clampMaxTokens(parsed.decision.maxTokens, input.constraints?.maxFinalTokens);
-
-    const out: ReasoningRouteResult = {
-      requestId,
-      decision: {
+    const enforced = enforcePermissions({
+      tier,
+      taskKind,
+      routerDecision: {
         provider: parsed.decision.provider,
         reason: parsed.decision.reason,
-        maxTokens,
-        temperature: parsed.decision.temperature,
+        maxTokens: parsed.decision.maxTokens,
       },
       compressedPrompt: redactSecrets(parsed.compressedPrompt),
       mustInclude: parsed.mustInclude ?? [],
+      constraints: { maxFinalTokens: input.constraints?.maxFinalTokens },
+    });
+
+    const out: ReasoningRouteResult = {
+      requestId,
+      decision: enforced.decision,
+      compressedPrompt: enforced.compressedPrompt,
+      mustInclude: enforced.mustInclude,
       redactions: parsed.redactions ?? [],
-      ...(env.LLM_ROUTER_DEBUG
-        ? { debug: { routerModel, routerLatencyMs: Date.now() - started } }
-        : {}),
+      tierApplied: enforced.tierApplied,
+      taskKindApplied: enforced.taskKindApplied,
     };
 
     if (env.LLM_ROUTER_DEBUG) {
       logger.debug('Router decision', {
+        requestId,
+        tier: out.tierApplied,
+        taskKind: out.taskKindApplied,
         provider: out.decision.provider,
         maxTokens: out.decision.maxTokens,
-        routerLatencyMs: out.debug?.routerLatencyMs,
+        routerLatencyMs: Date.now() - started,
+        compressedPromptPreview: truncate(out.compressedPrompt, 200),
       });
     }
 
     return out;
   } catch (err) {
-    const provider = pickFallbackProvider(input);
-    const maxTokens = clampMaxTokens(800, input.constraints?.maxFinalTokens);
     const routerLatencyMs = Date.now() - started;
 
     // Do not log raw router model output; keep minimal.
     logger.warn('Router failed; using deterministic fallback', {
-      provider,
+      requestId,
+      tier,
+      taskKind,
       routerLatencyMs,
       error: err instanceof Error ? err.message : String(err),
     });
 
+    const enforced = enforcePermissions({
+      tier,
+      taskKind,
+      routerDecision: { provider: 'deepseek', reason: 'router_fallback', maxTokens: tierSettings.finalMaxTokens },
+      compressedPrompt: fallbackCompressedPrompt({ ...input, tier, taskKind }),
+      mustInclude: [],
+      constraints: { maxFinalTokens: input.constraints?.maxFinalTokens },
+    });
+
     return {
       requestId,
-      decision: {
-        provider,
-        reason: 'router_fallback',
-        maxTokens,
-        temperature: 0,
-      },
-      compressedPrompt: fallbackCompressedPrompt(input),
-      mustInclude: [],
+      decision: enforced.decision,
+      compressedPrompt: enforced.compressedPrompt,
+      mustInclude: enforced.mustInclude,
       redactions: [],
-      ...(env.LLM_ROUTER_DEBUG ? { debug: { routerModel, routerLatencyMs } } : {}),
+      tierApplied: enforced.tierApplied,
+      taskKindApplied: enforced.taskKindApplied,
     };
   }
 }
