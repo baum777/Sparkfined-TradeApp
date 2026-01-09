@@ -1,4 +1,4 @@
-import type { JournalEntryLocal } from "@/services/journal/types";
+import type { JournalEntryStub } from "@/stubs/contracts";
 import type { JournalInsightV1, Finding, Improvement } from "./types";
 
 /**
@@ -12,7 +12,7 @@ function generateInsightId(): string {
  * Local heuristic-based insight engine
  * Deterministically analyzes entry and produces JournalInsightV1
  */
-export function generateLocalInsight(entry: JournalEntryLocal): JournalInsightV1 {
+export function generateLocalInsight(entry: JournalEntryStub): JournalInsightV1 {
   const startTime = performance.now();
   
   const findings: Finding[] = [];

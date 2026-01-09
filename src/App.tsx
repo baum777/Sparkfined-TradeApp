@@ -15,7 +15,6 @@ import Insights from "@/pages/Insights";
 import Alerts from "@/pages/Alerts";
 import SettingsPage from "@/pages/SettingsPage";
 import NotFound from "@/pages/NotFound";
-import NavigationMap from "@/pages/NavigationMap";
 
 // Journal queue sync runner
 import { startJournalQueueSync } from "@/services/journal/queueStore";
@@ -200,9 +199,6 @@ const App = () => {
               {/* Existing experiments page is also legacy -> section param */}
               <Route path="/settings/experiments" element={<SettingsSectionRedirect section="experiments" />} />
             </Route>
-
-            {/* Dev utility (gated inside component) */}
-            <Route path="/navigation" element={<NavigationMap />} />
 
             {/* 404 outside AppShell */}
             <Route path="*" element={<NotFound />} />

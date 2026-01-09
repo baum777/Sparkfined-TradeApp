@@ -1,1 +1,1 @@
-// Trading services - placeholder for future trading-specific services
+export * from './journal.service';

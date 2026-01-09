@@ -26,7 +26,7 @@ describe('HeliusAdapter (SolanaOnchainProvider) - unit', () => {
 
   it('fingerprint is stable and cache-friendly', () => {
     const p = new HeliusAdapter();
-    expect(p.fingerprint()).toBe('helius@2.0.0:a=1,h=1,f=1,l=1,r=1:flows:v2');
+    expect(p.fingerprint()).toBe('helius@1.0.0:a=1,h=1,f=0,l=0,r=1');
   });
 
   it('getRiskFlags maps mint/freeze authority from DAS getAsset (and best-effort largeHolderDominance)', async () => {
@@ -156,92 +156,6 @@ describe('HeliusAdapter (SolanaOnchainProvider) - unit', () => {
     expect(out.data.txCount.baseline).toBe(3);
     expect(out.data.uniqueWallets.short).toBeNull();
     expect(fetchMock).toHaveBeenCalledTimes(2);
-  });
-
-  it('getFlows computes netInflowProxy and largeTransfersProxy from enhanced tokenTransfers (user-side heuristic)', async () => {
-    const asOfTs = 1_700_000_000_000;
-    // windows: short=5m, baseline=1h
-    // Create transfers such that:
-    // - inflow (toUserAccount only): +100 within short
-    // - outflow (fromUserAccount only): -40 within short
-    // baseline also contains an older outflow -10 (still within 1h)
-    const enhancedPage1 = [
-      {
-        signature: 'sig1',
-        timestamp: Math.floor((asOfTs - 60_000) / 1000),
-        tokenTransfers: [{ mint, tokenAmount: 100, toUserAccount: 'u1' }],
-      },
-      {
-        signature: 'sig2',
-        timestamp: Math.floor((asOfTs - 120_000) / 1000),
-        tokenTransfers: [{ mint, tokenAmount: 40, fromUserAccount: 'u2' }],
-      },
-      {
-        signature: 'sig3',
-        timestamp: Math.floor((asOfTs - 3_000_000) / 1000),
-        tokenTransfers: [{ mint, tokenAmount: 10, fromUserAccount: 'u3' }],
-      },
-    ];
-
-    const fetchMock = vi.fn(async (url: any, init?: any) => {
-      const u = String(url);
-      if (u.startsWith('https://api.helius.xyz/v0/addresses/') && u.includes('/transactions?')) {
-        // Return one page, then empty (simulates pagination end once "before" cursor is used).
-        if (u.includes('before=')) return jsonResponse([]);
-        return jsonResponse(enhancedPage1);
-      }
-      const body = init?.body ? JSON.parse(init.body) : null;
-      if (u === 'https://rpc.test' && body?.method === 'getTokenSupply') {
-        return jsonResponse({
-          jsonrpc: '2.0',
-          id: '1',
-          result: { value: { amount: '100000', decimals: 0, uiAmountString: '100000' } },
-        });
-      }
-      throw new Error(`Unexpected fetch: ${u}`);
-    });
-    vi.stubGlobal('fetch', fetchMock);
-
-    const p = new HeliusAdapter();
-    const out = await p.getFlows({ mint, windows: { short: '5m', baseline: '1h' }, asOfTs });
-    expect(out.available).toBe(true);
-    expect(out.data.netInflowProxy.short).toBe(60); // 100 - 40
-    expect(out.data.netInflowProxy.baseline).toBe(50); // (100) - (40+10)
-    // Large transfers threshold: max(0.5% supply=500, p95=100) => 500, so 0 large transfers.
-    expect(out.data.largeTransfersProxy?.short).toBe(0);
-    expect(out.data.largeTransfersProxy?.baseline).toBe(0);
-  });
-
-  it('getLiquidity returns best-effort liquidityDeltaPct proxy from transfer volume rate', async () => {
-    const asOfTs = 1_700_000_000_000;
-    // baseline window 1h: include 2 directional transfers totaling 100 (baseline)
-    // short window 5m: include 1 directional transfer totaling 50 (short)
-    const enhancedPage1 = [
-      {
-        signature: 'sig1',
-        timestamp: Math.floor((asOfTs - 60_000) / 1000),
-        tokenTransfers: [{ mint, tokenAmount: 50, toUserAccount: 'u1' }],
-      },
-      {
-        signature: 'sig2',
-        timestamp: Math.floor((asOfTs - 3_000_000) / 1000),
-        tokenTransfers: [{ mint, tokenAmount: 50, fromUserAccount: 'u2' }],
-      },
-    ];
-
-    const fetchMock = vi.fn(async (url: any) => {
-      const u = String(url);
-      if (u.startsWith('https://api.helius.xyz/v0/addresses/') && u.includes('/transactions?')) {
-        return jsonResponse(enhancedPage1);
-      }
-      throw new Error(`Unexpected fetch: ${u}`);
-    });
-    vi.stubGlobal('fetch', fetchMock);
-
-    const p = new HeliusAdapter();
-    const out = await p.getLiquidity({ mint, windows: { short: '5m', baseline: '1h' }, asOfTs });
-    expect(out.available).toBe(true);
-    expect(out.data.liquidityDeltaPct?.short).not.toBeNull();
   });
 });
 

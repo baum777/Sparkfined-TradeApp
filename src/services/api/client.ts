@@ -75,10 +75,10 @@ function isSuccessEnvelope(value: unknown): value is ApiSuccessEnvelope<unknown>
 function parseCanonicalErrorBody(value: unknown): ApiErrorBody | null {
   if (!isObject(value)) return null;
   if (!('error' in value)) return null;
-  const err = (value as Record<string, unknown>).error;
+  const err = (value as any).error;
   if (!isObject(err)) return null;
   if (typeof err.code !== 'string' || typeof err.message !== 'string') return null;
-  return value as unknown as ApiErrorBody;
+  return value as ApiErrorBody;
 }
 
 function parseLegacyErrorBody(value: unknown): { code?: string; message?: string; details?: unknown } | null {

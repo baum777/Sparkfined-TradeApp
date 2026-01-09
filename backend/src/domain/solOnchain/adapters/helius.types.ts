@@ -63,18 +63,3 @@ export type HeliusGetTransactionsForAddressResult = {
   paginationToken?: string | null;
 };
 
-export type HeliusEnhancedTokenTransfer = {
-  mint: string;
-  tokenAmount: number;
-  fromUserAccount?: string;
-  toUserAccount?: string;
-};
-
-export type HeliusEnhancedTransaction = {
-  signature: string;
-  timestamp: number; // unix seconds
-  tokenTransfers?: HeliusEnhancedTokenTransfer[];
-  source?: string;
-  // Keep optional/loose: we only use a minimal subset.
-};
-

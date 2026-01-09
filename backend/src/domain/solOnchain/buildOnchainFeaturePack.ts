@@ -77,11 +77,6 @@ export type BuildOnchainFeaturePackParams = {
   /** If omitted, uses current time (then bucketed). */
   asOfTs?: number;
   provider: SolanaOnchainProvider;
-  /**
-   * Phase-2 cost control: only fetch flows/liquidity when there is at least
-   * one setup to evaluate (caller knows this).
-   */
-  hasSetups?: boolean;
   /** Reserved for future gating/notes behavior; not used yet. */
   tier?: 'free' | 'standard' | 'pro' | 'high';
 };
@@ -102,20 +97,7 @@ export async function buildOnchainFeaturePackWithCacheMeta(params: BuildOnchainF
   const windows = getOnchainWindowsForTimeframe(params.timeframe);
   const asOfBucket = bucketAsOfTs(params.timeframe, params.asOfTs ?? Date.now());
 
-  const providerCaps = params.provider.capabilities();
-  const tier = params.tier;
-  const hasSetups = Boolean(params.hasSetups);
-  // Tier-gated onchain surface (frozen policy):
-  // - free: riskFlags only
-  // - standard: activity + holders + flows (short only, no zScore), no liquidity, no largeTransfersProxy
-  // - pro/high: full flows + liquidity when provider supports
-  const caps = {
-    activity: tier === 'free' ? false : providerCaps.activity,
-    holders: tier === 'free' ? false : providerCaps.holders,
-    flows: !hasSetups ? false : tier === 'free' ? false : tier === 'standard' ? providerCaps.flows : providerCaps.flows,
-    liquidity: !hasSetups ? false : tier === 'free' ? false : tier === 'standard' ? false : providerCaps.liquidity,
-    riskFlags: providerCaps.riskFlags,
-  };
+  const caps = params.provider.capabilities();
 
   // If provider is entirely non-functional, return a deterministic empty pack
   // (still includes provider fingerprint in cacheKey so caches don't collide).
@@ -161,56 +143,9 @@ export async function buildOnchainFeaturePackWithCacheMeta(params: BuildOnchainF
 
   const activity: OnchainActivityFeatures = availability.activity ? ensureActivityShape(activityRes!.data) : nullActivity();
   const holders: OnchainHoldersFeatures = availability.holders ? ensureHoldersShape(holdersRes!.data, windows) : nullHolders(windows);
-  let flows: OnchainFlowsFeatures = availability.flows ? ensureFlowsShape(flowsRes!.data) : nullFlows();
-  let liquidity: OnchainLiquidityFeatures = availability.liquidity ? ensureLiquidityShape(liquidityRes!.data) : nullLiquidity();
-  let riskFlags: OnchainRiskFlags = availability.riskFlags ? ensureRiskFlagsShape(riskRes!.data) : nullRiskFlags();
-
-  // Tier projection: remove fields that are not allowed at lower tiers (keep deterministic nulls).
-  if (tier === 'standard') {
-    const projected: any = {
-      ...flows,
-      // short only, no baseline/zScore
-      netInflowProxy: { short: flows.netInflowProxy.short, baseline: null, zScore: null },
-    };
-    // standard: no largeTransfersProxy
-    delete projected.largeTransfersProxy;
-    flows = projected as OnchainFlowsFeatures;
-    liquidity = {}; // standard: no liquidity
-  }
-  if (tier === 'free') {
-    flows = nullFlows();
-    liquidity = nullLiquidity();
-  }
-
-  // Cross-block riskFlags best-effort (deterministic):
-  // - washLikeActivitySpike: high txCount zScore but near-zero net inflow zScore (suggests noise/wash)
-  // - suddenLiquidityDrop: liquidityDeltaPct short < -20% (proxy)
-  const txZ = activity.txCount.zScore;
-  const inflowZ = flows.netInflowProxy?.zScore ?? null;
-  const liqDelta = liquidity.liquidityDeltaPct?.short ?? null;
-
-  if (availability.activity && availability.flows && txZ != null) {
-    if (inflowZ == null) {
-      riskFlags = {
-        ...riskFlags,
-        washLikeActivitySpike: { value: null, why: 'netInflowProxy zScore unavailable' },
-      };
-    } else {
-      const wash = txZ > 2 && Math.abs(inflowZ) < 0.2;
-      riskFlags = {
-        ...riskFlags,
-        washLikeActivitySpike: { value: wash, why: `txCount.z=${txZ.toFixed(3)}, netInflowProxy.z=${inflowZ.toFixed(3)}` },
-      };
-    }
-  }
-
-  if (availability.liquidity && liqDelta != null) {
-    const drop = liqDelta < -0.2;
-    riskFlags = {
-      ...riskFlags,
-      suddenLiquidityDrop: { value: drop, why: `liquidityDeltaPct.short=${liqDelta.toFixed(6)}` },
-    };
-  }
+  const flows: OnchainFlowsFeatures = availability.flows ? ensureFlowsShape(flowsRes!.data) : nullFlows();
+  const liquidity: OnchainLiquidityFeatures = availability.liquidity ? ensureLiquidityShape(liquidityRes!.data) : nullLiquidity();
+  const riskFlags: OnchainRiskFlags = availability.riskFlags ? ensureRiskFlagsShape(riskRes!.data) : nullRiskFlags();
 
   const notes = normalizeNotes([
     ...(activityRes?.notes ?? []),
@@ -341,7 +276,6 @@ function stableParseRiskFlags(data: any): OnchainRiskFlags {
     suddenSupplyChange: mk(data?.suddenSupplyChange),
     largeHolderDominance: mk(data?.largeHolderDominance),
     washLikeActivitySpike: mk(data?.washLikeActivitySpike),
-    suddenLiquidityDrop: mk(data?.suddenLiquidityDrop),
   };
 }
 

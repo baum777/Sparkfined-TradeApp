@@ -49,4 +49,5 @@ export {
   type UseSettingsStubReturn,
   type SettingsState,
   type DemoControls,
+  type ConfirmPayload,
 } from './hooks';
