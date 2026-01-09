@@ -1,4 +1,4 @@
-import type { InputCandle, PivotPoint } from './types.js';
+import type { PivotPoint } from './types.js';
 import { clamp01, mean, safeDiv } from './math.js';
 
 export interface MarketStructureCounts {
