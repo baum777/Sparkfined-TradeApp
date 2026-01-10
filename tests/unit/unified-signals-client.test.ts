@@ -24,7 +24,7 @@ describe("fetchUnifiedSignals (canonical /signals/unified contract)", () => {
       makeResponse({
         ok: true,
         status: 200,
-        body: { data: { items: [] }, status: 200 },
+        body: { status: "ok", data: { items: [] } },
       })
     );
     vi.stubGlobal("fetch", fetchMock as any);
@@ -44,7 +44,7 @@ describe("fetchUnifiedSignals (canonical /signals/unified contract)", () => {
       makeResponse({
         ok: true,
         status: 200,
-        body: { data: { items: [] }, status: 200 },
+        body: { status: "ok", data: { items: [] } },
       })
     );
     vi.stubGlobal("fetch", fetchMock as any);
