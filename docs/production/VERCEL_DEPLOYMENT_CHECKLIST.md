@@ -47,7 +47,7 @@ Ziel: Ein **fail-safe** Deployment auf Vercel, ohne “unknown unknowns”.
 Wählt passend zur Topologie:
 
 **Option A (Backend extern):**
-- **[ ]** `/api/(.*)` → Rewrite zu externer Backend-Base (z.B. `https://api.example.com/api/$1`), **oder**
+- **[ ]** `/api/(.*)` → Rewrite zu externer Backend-Base (z.B. `https://<YOUR_RAILWAY_DOMAIN>/api/$1`), **oder**
 - **[ ]** `VITE_API_URL` direkt auf externe Base setzen und zusätzlich sicherstellen, dass der Service Worker ebenfalls korrekt zur API kommt (siehe SW-Punkt).
 
 **Production Safety Rule (P0):**
@@ -59,7 +59,7 @@ Wählt passend zur Topologie:
 - **[ ]** API-Routes als Vercel Functions implementieren (nicht im Scope dieses Audits).
 
 ### Service Worker Cache-Control (kritisch)
-- **[ ]** Header für `sw.js` setzen: `Cache-Control: no-cache, no-store, must-revalidate`
+- **[ ]** Header für `sw.js` + `service-worker.js` setzen: `Cache-Control: public, max-age=0, must-revalidate`
 - **[ ]** Verifizieren: Nach Deploy nimmt der Client zuverlässig den neuen SW (kein “stuck on old SW”).
 
 ### Minimum Security Headers (v1)
@@ -75,10 +75,11 @@ Wählt passend zur Topologie:
 
 ### Production (pflicht)
 - **[ ]** Wenn `/api/*` per Rewrite auf ein externes Backend zeigen soll (siehe `vercel.json`):
-  - **[ ]** `VERCEL_BACKEND_URL` setzen (**nur Hostname**, ohne `https://` und ohne `/api`), z.B. `my-backend.up.railway.app`
-  - **[ ]** `VITE_API_URL="/api"` lassen/setzen (same-origin), damit App + Service Worker zuverlässig über den Rewrite gehen
+  - **[ ]** `VITE_API_URL="/api"` setzen (same-origin), damit App + Service Worker zuverlässig über den Rewrite gehen
+  - **[ ]** In `vercel.json` **vor Deploy** die Placeholder-Domain durch die echte Railway-Domain ersetzen (kein Guessing)
 - **[ ]** Alternative (ohne Rewrite): `VITE_API_URL` direkt auf externe Base setzen, z.B. `https://api.example.com/api`
 - **[ ]** `VITE_ENABLE_DEV_NAV="false"` (fail-safe: Dev UI nicht exponieren)
+- **[ ]** Keine Secrets im Repo: Env Vars nur in Vercel/Railway UI pflegen
 
 ### Production (optional, aber kontrolliert)
 - **[ ]** `VITE_ENABLE_ANALYTICS` nur aktivieren, wenn Privacy/Consent geklärt ist
@@ -154,4 +155,3 @@ Diese Checks gelten unabhängig von Hosting (extern oder Functions).
 - **[ ]** Datenkompatibilität geprüft:
   - **[ ]** App N und N-1 funktionieren gegen DB Schema N (oder klarer Migrations-Plan)
 - **[ ]** “Kill switch” vorhanden (z.B. Feature-Flag, um teure Pfade wie TA zu deaktivieren)
-
