@@ -10,12 +10,12 @@ import { resolveTierFromAuthUser } from '../domain/settings/tier.js';
 import { getSettings } from '../domain/settings/settings.service.js';
 import { classifyPulseAsset, resolvePulseAsset } from '../domain/grokPulse/assetResolver.js';
 import * as grokPulseAdapter from '../domain/grokPulse/grokPulseAdapter.js';
+import { buildInsightContext } from '../domain/insights/context.js';
+import { generateInsights, getHighestTierModule } from '../domain/insights/index.js';
+import type { InsightSnapshot } from '../domain/insights/types.js';
 
 type JournalInsightsResponse = {
-  kind: 'teaser' | 'review' | 'playbook';
-  facts: {
-    entry: unknown;
-  };
+  insights: InsightSnapshot[];
   narrative?: {
     source: 'grok_pulse_snapshot';
     pulse: unknown | null;
@@ -52,13 +52,19 @@ export async function handleJournalInsights(req: ParsedRequest, res: ServerRespo
     }
   }
 
+  // Build insight context (tier-gated data assembly)
+  const context = await buildInsightContext(req.userId, entry, tier);
+
+  // Generate insights using selected modules for tier
+  const insights = await generateInsights(tier, context);
+
   const response: JournalInsightsResponse = {
-    kind: body.kind,
-    facts: { entry },
+    insights,
   };
 
+  // Add Grok narrative if requested and allowed
   if (includeGrok) {
-    const asset = (entry as any)?.capture?.assetMint || (entry as any)?.symbolOrAddress;
+    const asset = entry.capture?.assetMint || entry.symbolOrAddress;
     const classified = typeof asset === 'string' ? classifyPulseAsset(asset) : null;
     const resolved = typeof asset === 'string' && classified ? resolvePulseAsset(asset) : null;
     response.narrative = {

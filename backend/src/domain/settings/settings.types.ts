@@ -1,3 +1,5 @@
+import type { ResolvedTier } from '../../config/tiers.js';
+
 export type UserAiSettings = {
   grokEnabled: boolean;
 };
@@ -12,5 +14,6 @@ export type UserSettingsPatch = {
   };
 };
 
-export type ResolvedTier = 'free' | 'standard' | 'pro' | 'high' | null;
+// Re-export ResolvedTier for backward compatibility
+export type { ResolvedTier };
 
