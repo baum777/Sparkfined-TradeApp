@@ -39,7 +39,6 @@ describe('Settings API (Grok toggle)', () => {
     const res = await fetch(`${baseUrl}/api/settings`);
     const body = await readJson(res);
     expect(res.status).toBe(401);
-    expect(body.status).toBe('error');
     expect(body.error.code).toBe('UNAUTHENTICATED');
   });
 
@@ -66,7 +65,6 @@ describe('Settings API (Grok toggle)', () => {
     });
     const body = await readJson(res);
     expect(res.status).toBe(403);
-    expect(body.status).toBe('error');
     expect(body.error.code).toBe('FORBIDDEN_TIER');
   });
 

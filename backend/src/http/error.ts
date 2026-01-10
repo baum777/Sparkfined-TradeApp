@@ -4,13 +4,12 @@ import { getRequestId } from './requestId.js';
 /**
  * Standardized Error Response
  * Canonical contract:
- *   { status: "error", error: { code: string, message: string, details?: any } }
+ *   { error: { code: string, message: string, details?: any } }
  *
  * HTTP status code remains authoritative for semantics.
  */
 
 export interface ErrorResponseBody {
-  status: 'error';
   error: {
     code: string;
     message: string;
@@ -75,7 +74,6 @@ export class AppError extends Error {
 
   toResponse(): ErrorResponseBody {
     return {
-      status: 'error',
       error: {
         code: this.code,
         message: this.message,
@@ -145,7 +143,6 @@ export function sendError(res: ServerResponse, error: AppError): void {
   const details = { ...baseDetails, requestId };
 
   const body = JSON.stringify({
-    status: 'error',
     error: {
       ...base.error,
       details,

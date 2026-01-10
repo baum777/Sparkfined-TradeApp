@@ -51,7 +51,7 @@ Konsequenz:
 - Persistenz: SQLite default (`DATABASE_URL`), Migrations unter `backend/migrations/`
 - Background/Intervals: Cleanup via `setInterval(...)` + Scheduler (`backend/src/jobs/scheduler.ts`)
 - Response-Envelope: **`{ status: "ok", data: T }`** (siehe `backend/src/http/response.ts`)
-- Error-Envelope: **`{ status: "error", error: { code, message, details? } }`** (siehe `backend/src/http/error.ts`)
+- Error-Envelope: **`{ error: { code, message, details? } }`** (siehe `backend/src/http/error.ts`)
 - Auth: Optional (wenn `Authorization: Bearer <jwt>` vorhanden, wird `userId=sub` extrahiert; sonst `userId="anon"`; siehe `backend/src/http/router.ts`)
 
 ### 2) `api/` (Vercel Serverless Functions)
@@ -86,5 +86,5 @@ Beispiele:
 - Frontend importiert Contracts direkt (z.B. `src/services/api/grokPulse.ts` importiert `shared/contracts/grokPulse`).
 - Backend nutzt teils eigene Domain-Typen; Contract-Alignment ist nicht überall erzwungen.
 
-**TODO (wichtig):** Die Response‑Envelope‑Form ist derzeit **nicht** zwischen `backend/` und Frontend-`ApiClient` konsistent (siehe `shared/docs/API_CONTRACTS.md`).
+**Resolved:** Frontend-`ApiClient` und kanonisches `backend/` nutzen dasselbe Success-Envelope `{status:"ok",data}` (siehe `shared/docs/API_CONTRACTS.md`).
 

@@ -2,6 +2,7 @@ import type { ServerResponse } from 'http';
 import type { ParsedRequest } from '../http/router.js';
 import { sendJson, setCacheHeaders } from '../http/response.js';
 import { AppError, ErrorCodes, notFound } from '../http/error.js';
+import { requireAuth } from '../http/auth.js';
 import { validateBody } from '../validation/validate.js';
 import { journalInsightsRequestSchema } from '../validation/schemas.js';
 import { journalGetById } from '../domain/journal/repo.js';
@@ -26,9 +27,7 @@ function tierAllowsGrok(tier: ReturnType<typeof resolveTierFromAuthUser>): boole
 }
 
 export async function handleJournalInsights(req: ParsedRequest, res: ServerResponse): Promise<void> {
-  if (req.userId === 'anon') {
-    throw new AppError('Unauthenticated', 401, ErrorCodes.UNAUTHENTICATED);
-  }
+  requireAuth(req);
 
   const { id } = req.params;
   const body = validateBody(journalInsightsRequestSchema, req.body);

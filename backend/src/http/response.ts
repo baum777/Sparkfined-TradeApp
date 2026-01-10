@@ -4,7 +4,7 @@ import { getRequestId } from './requestId.js';
 /**
  * Standardized API Response (FROZEN)
  * Success: { "status": "ok", "data": <T> }
- * Error:   { "status": "error", "error": { code, message, details? } }
+ * Error:   { "error": { code, message, details? } }
  *
  * Always include `x-request-id` response header.
  */

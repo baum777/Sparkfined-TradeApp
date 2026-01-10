@@ -88,7 +88,6 @@ export interface LlmExecuteResponse {
 export type ApiOk<T> = { status: 'ok'; data: T };
 
 export type ApiError = {
-  status: 'error';
   error: { code: string; message: string; details?: any };
 };
 

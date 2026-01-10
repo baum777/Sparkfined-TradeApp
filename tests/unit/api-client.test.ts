@@ -17,7 +17,7 @@ describe('apiClient envelope handling', () => {
 
   it('unwraps canonical success envelope by default', async () => {
     const fetchMock = vi.fn(async () =>
-      makeResponse({ ok: true, status: 200, body: { data: { ok: true }, status: 200 } })
+      makeResponse({ ok: true, status: 200, body: { status: 'ok', data: { ok: true } } })
     );
     vi.stubGlobal('fetch', fetchMock as any);
 
