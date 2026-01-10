@@ -35,7 +35,7 @@ Quelle: `railway.toml` (Repo Root)
 ### `api/` (Vercel Functions Backend)
 
 - Im Repo implementiert, aber durch die Vercel Rewrite‑Policy des Frontend-Projekts in Production **nicht automatisch** als `/api/*` aktiv.
-- Kann als eigenes Vercel-Projekt deployt werden (**TODO:** gewünschte Ziel-Topologie dokumentieren).
+- Kann als eigenes Vercel-Projekt deployt werden, ist aber **nicht kanonisch** für dieses Frontend-Projekt solange `vercel.json` `/api/*` auf `VERCEL_BACKEND_URL` rewritet.
 
 ## Guardrails gegen API Drift
 
@@ -60,6 +60,5 @@ Ziel:
 
 ## TODOs (bewusst offen)
 
-- **TODO:** Welche Backend-Implementierung ist langfristig kanonisch: `backend/` (Server) oder `api/` (Functions)?
-- **TODO:** Response Envelope Konsolidierung (Frontend `ApiClient` vs `backend/` Response) – siehe `shared/docs/API_CONTRACTS.md`.
+- **TODO:** Ziel-Topologie dokumentieren, falls `api/` jemals als eigenes Backend-Projekt produktiv genutzt wird (separates Deployment/Domain; nicht über dieses Frontend `/api/*`).
 

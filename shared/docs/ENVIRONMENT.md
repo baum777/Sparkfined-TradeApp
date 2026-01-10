@@ -32,6 +32,7 @@ Ziel: Vollständige Liste aller im Repo **referenzierten** Environment Variables
 ## Backend: `backend/` (Always-on Node Server) — runtime env
 
 Quelle: `backend/src/config/env.ts` (Zod Schema).
+Beispiel-Konfiguration: `backend/.env.example`.
 
 | Variable | Secret | Required | Default | Zweck |
 |---|---:|---:|---|---|

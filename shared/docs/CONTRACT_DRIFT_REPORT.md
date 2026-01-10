@@ -6,19 +6,19 @@ Ziel: Pro Endpoint dokumentieren, was **Contract** (Baseline: `shared/contracts/
 
 ### Envelope Drift (systemweit)
 
-- **Contract-Baseline (in `shared/contracts/*`)** ist uneinheitlich, aber enthält explizit Envelope-Formen wie:
+- **Contract-Baseline (in `shared/contracts/*`)** enthält explizite Envelope-Formen wie:
   - `shared/contracts/sol-chart-ta-journal.ts`: `ResponseEnvelope<T> = { status: "ok", data: T }`
-  - `shared/contracts/reasoning-router.ts`: `ApiOk<T> = { status: "ok", data: T }` und `ApiError = { status: "error", error: ... }`
+  - `shared/contracts/reasoning-router.ts`: `ApiOk<T> = { status: "ok", data: T }` und `ApiError = { error: ... }`
 - **Frontend `ApiClient` (Default Mode)** erwartet dagegen:
-  - Success: `{ data: T, status: number, message?: string }`
+  - Success: `{ status: "ok", data: T }`
   - Error: `{ error: { code, message, details? } }`
   - Quelle: `src/services/api/client.ts`
 - **Kanonisches Backend `backend/`** liefert:
   - Success: `{ status: "ok", data: T }`
-  - Error: `{ status: "error", error: { code, message, details? } }`
+  - Error: `{ error: { code, message, details? } }`
   - Quelle: `backend/src/http/response.ts`, `backend/src/http/error.ts`
 
-**Konsequenz:** Jeder Frontend-Call über `apiClient.get/post/...` kann im Ist‑Zustand mit `ApiContractError` scheitern, wenn er das `backend/` trifft (statt einer `api/`-Function, die das `{data,status:number}` Envelope liefert).
+**Status:** ✅ Resolved (Frontend-Client und kanonisches Backend verwenden dasselbe Envelope).
 
 ### Multiple Backend Implementierungen
 
@@ -85,9 +85,9 @@ Einige Features verhalten sich abhängig von Env/Providern:
   - `history` ist im Backend aktuell Stub (leeres Array) (Quelle: `backend/src/domain/grokPulse/grokPulseAdapter.ts`).
 
 ### Drift summary
-- **❌**
+- **✅ (Envelope resolved) / ⚠️ (Payload shape weiterhin prüfen)**
 - **Mismatch**:
-  - **Envelope**: Frontend erwartet `{ data, status:number }`, Backend liefert `{ status:"ok", data }`.
+  - **Envelope**: **resolved** (Frontend erwartet `{status:"ok",data}`).
   - **Snapshot shape**: Frontend erwartet `shared/contracts/grokPulse.ts` Snapshot (z.B. `source: "grok" | "keyword_fallback"`), Backend speichert/serviert `backend` Snapshot (z.B. `source: "grok" | "fallback"`, `low_confidence` vs `low_confidence?`, zusätzliche Felder).
 
 ### Risk
@@ -129,7 +129,7 @@ Einige Features verhalten sich abhängig von Env/Providern:
   - Quelle: `backend/src/routes/chartAnalysis.ts`, `backend/src/http/response.ts`
 - **Status codes used**:
   - Success: 200
-  - Validation: 400 (via schema validation; Fehlerformat im Backend: `{status:"error", error:{...}}`)
+  - Validation: 400 (via schema validation; Fehlerformat im Backend: `{error:{...}}`)
 - **Notes**:
   - Payload-Felder müssen gegen `AnalysisResult` Contract geprüft werden. Der Handler liefert `out` aus `analyzeChartWithOnchainGating(...)`.
   - **TODO:** Vollständige Feld-1:1 Prüfung (AnalysisResult vs tatsächliches `out`) wurde für diesen Report nicht vollständig expandiert (keine vollständige Payload-Definition im Handler sichtbar).
@@ -322,7 +322,7 @@ Einige Features verhalten sich abhängig von Env/Providern:
   - Response: `ReasoningRouteResponse`
   - Optional Envelopes in Contract:
     - `ApiOk<T> = { status:"ok", data:T }`
-    - `ApiError = { status:"error", error:{code,message,details?} }`
+    - `ApiError = { error:{code,message,details?} }`
   - Quelle: `shared/contracts/reasoning-router.ts`
 - **Error shape**:
   - Siehe `ApiError` oben.
@@ -343,7 +343,7 @@ Einige Features verhalten sich abhängig von Env/Providern:
     - `sendJson(res, out, 200)` → `{ status:"ok", data: out }`
 - **Status codes used**:
   - Success: 200
-  - Validation: 400 (Backend Error Envelope `{status:"error", error:{...}}`)
+  - Validation: 400 (Backend Error Envelope `{error:{...}}`)
 - **Notes**:
   - `out` ist direkt das Ergebnis von `routeAndCompress`, was semantisch zu `ReasoningRouteResponse` passt.
   - **TODO:** 1:1 Feldprüfung `ReasoningRouteResponse` vs `out` (im Report nicht vollständig expandiert).

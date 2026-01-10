@@ -1,16 +1,15 @@
 import type { ReasoningResponse } from '@/lib/reasoning/types';
 
-interface ApiEnvelope<T> {
+interface ApiOkEnvelope<T> {
+  status: 'ok';
   data: T;
-  status: number;
-  message?: string;
 }
 
 interface ErrorBody {
   error: {
     code: string;
     message: string;
-    details?: Record<string, string[]>;
+    details?: unknown;
   };
 }
 
@@ -18,7 +17,7 @@ export class ReasoningHttpError extends Error {
   readonly status: number;
   readonly code?: string;
   readonly requestId?: string;
-  readonly details?: Record<string, string[]>;
+  readonly details?: unknown;
 
   constructor(message: string, status: number, info?: Partial<Pick<ReasoningHttpError, 'code' | 'requestId' | 'details'>>) {
     super(message);
@@ -40,11 +39,11 @@ export class ReasoningContractError extends Error {
 }
 
 function unwrapEnvelopeStrict<T>(json: unknown, endpoint: string): T {
-  if (json && typeof json === 'object' && 'data' in json && 'status' in json) {
-    return (json as ApiEnvelope<T>).data;
+  if (json && typeof json === 'object' && 'data' in json && (json as any).status === 'ok') {
+    return (json as ApiOkEnvelope<T>).data;
   }
   throw new ReasoningContractError(
-    `Non-canonical response shape for ${endpoint}: expected { data, status, message? } envelope`,
+    `Non-canonical response shape for ${endpoint}: expected { status: "ok", data } envelope`,
     endpoint
   );
 }
