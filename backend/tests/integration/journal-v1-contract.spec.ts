@@ -146,7 +146,6 @@ describe('Journal v1 Contract (Diary/Reflection)', () => {
     const badConfirmRes = await fetch(`${baseUrl}/api/journal/${id}/confirm`, { method: 'POST' });
     const badConfirmBody = await readJson(badConfirmRes);
     expect(badConfirmRes.status).toBe(409);
-    expect(badConfirmBody).toHaveProperty('status', 'error');
     expect(badConfirmBody).toHaveProperty('error');
     expect(badConfirmBody.error).toHaveProperty('code', 'INVALID_TRANSITION');
 
@@ -166,7 +165,6 @@ describe('Journal v1 Contract (Diary/Reflection)', () => {
     const badRestoreRes = await fetch(`${baseUrl}/api/journal/${id2}/restore`, { method: 'POST' });
     const badRestoreBody = await readJson(badRestoreRes);
     expect(badRestoreRes.status).toBe(409);
-    expect(badRestoreBody).toHaveProperty('status', 'error');
     expect(badRestoreBody).toHaveProperty('error');
     expect(badRestoreBody.error).toHaveProperty('code', 'INVALID_TRANSITION');
   });

@@ -7,6 +7,8 @@
 
 ## Quickstart: Frontend + kanonisches Backend (`backend/`)
 
+**Frontend = Repo-Root** (dieser Ordner): `vite.config.ts`, `src/`, `playwright.config.ts`, Root-`package.json`.
+
 ### 1) Env-Dateien anlegen
 
 - Frontend: `.env.local` (Vite) mit mindestens:
@@ -20,6 +22,12 @@
 
 ```bash
 pnpm install
+```
+
+### Acceptance / Verifikation (schnell)
+
+```bash
+npm run verify
 ```
 
 ### 3) Backend starten (Port 3000)
@@ -66,13 +74,10 @@ Im Repo gibt es `api/` als Vercel‑Functions Implementierung. Für lokale Entwi
 
 ### 1) API-Response Envelope passt nicht zum Frontend
 
-- Frontend `ApiClient` erwartet standardmäßig **`{ data, status:number, message? }`**.
-- `backend/` liefert standardmäßig **`{ status:"ok", data }`**.
+- Frontend `ApiClient` erwartet kanonisch **`{ status:"ok", data }`**.
+- `backend/` liefert standardmäßig **`{ status:"ok", data }`** (Success) und **`{ error:{...} }`** (Error).
 
-Konsequenz:
-- Frontend wirft `ApiContractError` („Non-canonical response shape...“).
-
-**TODO:** Kanonisches Envelope zwischen Frontend und dem tatsächlich genutzten Backend konsolidieren (siehe `shared/docs/API_CONTRACTS.md`).
+Wenn Frontend `ApiContractError` wirft: prüfe, ob du wirklich das kanonische Backend triffst (Local: Vite Proxy; Prod: Vercel Rewrite) und siehe `shared/docs/API_CONTRACTS.md`.
 
 ### 2) Port / Proxy passt nicht
 

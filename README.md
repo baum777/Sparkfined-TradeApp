@@ -6,7 +6,7 @@ Dieses Repo implementiert ein Trading/Journal/Signals Frontend (SPA) plus mehrer
 
 ## Repo-Struktur (Frontend / Backend / Shared)
 
-- **Frontend**: `src/` (Vite/React SPA) + `src/sw/` (Service Worker)
+- **Frontend = Repo-Root**: `/` (Vite/React SPA) mit `src/` + `src/sw/` (Service Worker) und `vite.config.ts`
 - **Kanonisches Node Backend (Always-on)**: `backend/` (HTTP Server, SQLite default, Jobs/Intervals)
 - **Alternative Vercel Serverless Backend**: `api/` (Vercel Functions + `_lib`)
 - **Separater Alerts-Service**: `apps/backend-alerts/` (Express + Postgres + Push/SSE)
@@ -23,6 +23,12 @@ Dieses Repo implementiert ein Trading/Journal/Signals Frontend (SPA) plus mehrer
 
 ```bash
 pnpm install
+```
+
+### Acceptance / Verifikation
+
+```bash
+npm run verify
 ```
 
 ### Backend starten (`backend/`)
@@ -86,11 +92,11 @@ Zusätzlich existiert `api/` als Serverless‑Backend mit eigener Implementierun
 
 ### 2) Contract Drift: Response Envelope
 
-Es existieren zwei Envelope-Standards:
-- `backend/`: `{ status:"ok", data }`
-- Frontend ApiClient + `api/`: `{ data, status:number, message? }`
+Kanonisch (Production + Local Dev via `backend/`):
+- Success: `{ status:"ok", data }`
+- Error: `{ error: { code, message, details? } }`
 
-Wenn Frontend API Calls mit `ApiContractError` fehlschlagen: siehe `shared/docs/API_CONTRACTS.md`.
+Wenn API Calls fehlschlagen: siehe `shared/docs/API_CONTRACTS.md`.
 
 ### 3) Backend startet nicht (Env Validation)
 

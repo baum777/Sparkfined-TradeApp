@@ -10,10 +10,9 @@ export interface ApiClientConfig {
   headers: Record<string, string>;
 }
 
-export interface ApiSuccessEnvelope<T> {
+export interface ApiOkEnvelope<T> {
+  status: 'ok';
   data: T;
-  status: number;
-  message?: string;
 }
 
 export interface ApiErrorBody {
@@ -63,12 +62,12 @@ function parseJsonSafely(text: string): unknown {
   }
 }
 
-function isSuccessEnvelope(value: unknown): value is ApiSuccessEnvelope<unknown> {
+function isOkEnvelope(value: unknown): value is ApiOkEnvelope<unknown> {
   return (
     isObject(value) &&
+    (value as any).status === 'ok' &&
     'data' in value &&
-    'status' in value &&
-    typeof (value as any).status === 'number'
+    'status' in value
   );
 }
 
@@ -200,15 +199,15 @@ class ApiClient {
     }
   }
 
-  private async requestEnvelope<T>(endpoint: string, options?: RequestInit): Promise<ApiSuccessEnvelope<T>> {
-    const json = await this.requestJson<ApiSuccessEnvelope<T> | T>(endpoint, options);
-    if (isSuccessEnvelope(json)) {
-      return json as ApiSuccessEnvelope<T>;
+  private async requestEnvelope<T>(endpoint: string, options?: RequestInit): Promise<ApiOkEnvelope<T>> {
+    const json = await this.requestJson<ApiOkEnvelope<T> | T>(endpoint, options);
+    if (isOkEnvelope(json)) {
+      return json as ApiOkEnvelope<T>;
     }
 
     // Defensive parsing to catch drift early. Use raw mode to opt in to non-enveloped payloads.
     throw new ApiContractError(
-      `Non-canonical response shape for ${endpoint}: expected { data, status, message? } envelope`,
+      `Non-canonical response shape for ${endpoint}: expected { status: "ok", data } envelope`,
       endpoint,
       'Use apiClient.raw.* to access the raw JSON during migration, or fix the backend to return the canonical envelope.'
     );

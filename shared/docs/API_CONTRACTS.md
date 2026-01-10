@@ -75,19 +75,19 @@ Diese Endpoints sind im `backend/` Router registriert:
 
 Zusätzlich existieren weitere Endpoints in `api/` (Vercel Functions), u.a. Cron/Wallet/Profile. Diese sind im Repo implementiert, aber **nicht** automatisch Production‑kanonisch, solange `/api/*` per Vercel Rewrite auf das externe Backend zeigt (siehe `shared/docs/DEPLOYMENT.md`).
 
-## Response Envelope & Error Model (aktuelle Realität)
+## Response Envelope & Error Model (kanonisch)
 
-Es existieren **zwei** unterschiedliche Envelope-Standards im Repo:
+Kanonische Regel (Production `/api/*` via `backend/`):
 
 ### A) `backend/` Envelope (Node Server)
 
 Quelle: `backend/src/http/response.ts` und `backend/src/http/error.ts`.
 
 - **Success**: `{ "status": "ok", "data": <T> }`
-- **Error**: `{ "status": "error", "error": { "code": string, "message": string, "details"?: any } }`
+- **Error**: `{ "error": { "code": string, "message": string, "details"?: any } }`
 - Response Header: `x-request-id`
 
-### B) `api/` Envelope (Vercel Functions)
+### B) `api/` Envelope (Vercel Functions) — Legacy / non‑canonical
 
 Quelle: `api/_lib/response.ts`.
 
@@ -99,7 +99,7 @@ Quelle: `api/_lib/response.ts`.
 
 Quelle: `src/services/api/client.ts`.
 
-- Standard-Mode (`apiClient.get/post/...`) erwartet Envelope **B** (`{ data, status:number, message? }`).
+- Standard-Mode (`apiClient.get/post/...`) erwartet das **kanonische** `backend/` Envelope (`{ status:"ok", data }`).
 - Raw-Mode (`apiClient.raw.*`) akzeptiert beliebige JSON Shapes (für Migration/Legacy).
 
 ## Contract Drift Risiken (explizit)
@@ -107,9 +107,8 @@ Quelle: `src/services/api/client.ts`.
 - **R1: Envelope-Mismatch zwischen Production-Backend und Frontend**
   - Repo-Guardrails behaupten: Production `/api/*` kommt vom Node Backend.
   - Node Backend liefert Envelope **A**.
-  - Frontend erwartet Envelope **B**.
-  - Ergebnis: Frontend kann bei API Calls mit `ApiContractError` scheitern.
-  - **TODO:** Kanonisches Envelope festlegen und Frontend/Backend angleichen.
+  - Frontend erwartet Envelope **A**.
+  - Ergebnis: **resolved** (kein `ApiContractError` mehr durch Envelope-Mismatch).
 
 - **R2: Auth-Policy drift**
   - `api/` verlangt JWT standardmäßig.
@@ -118,9 +117,9 @@ Quelle: `src/services/api/client.ts`.
   - **TODO:** Einheitliches Auth‑Verhalten pro Deployment definieren.
 
 - **R3: Error-Shape drift**
-  - `backend/` Errors haben `{status:"error", error:{...}}`
+  - `backend/` Errors haben `{error:{...}}`
   - `api/` Errors haben `{error:{...}}`
-  - Frontend Error Parsing versucht beide Varianten, aber primär `{ error: {...} }`.
+  - Frontend Error Parsing ist konsistent auf `{ error: {...} }`.
 
 ## Idempotency / Header Contracts
 
