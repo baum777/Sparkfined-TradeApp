@@ -5,12 +5,16 @@
  * Per SW_SPEC.md
  */
 
+import { cleanupOutdatedCaches, precacheAndRoute } from "workbox-precaching";
 import { initSwStorage, cleanupDedupe } from './sw-storage';
 import { pollAlertEvents } from './sw-alerts';
 import { pollOracleDaily } from './sw-oracle';
 import type { SwMessage, SwNotificationData, SwStatusMessage } from './sw-contracts';
 
 declare const self: ServiceWorkerGlobalScope & typeof globalThis;
+
+cleanupOutdatedCaches();
+precacheAndRoute(self.__WB_MANIFEST);
 
 const ENABLE_AUTH = import.meta.env.VITE_ENABLE_AUTH === 'true';
 
