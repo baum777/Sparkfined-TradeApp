@@ -12,29 +12,38 @@
     ]
   },
   "scripts": {
-    "dev": "./node_modules/.bin/vite",
+    "dev": "pnpm exec vite",
     "dev:backend": "pnpm -C apps/backend-alerts dev",
-    "dev:all": "bash -lc 'pnpm -C apps/backend-alerts dev & ./node_modules/.bin/vite'",
-    "build": "./node_modules/.bin/vite build",
-    "build:dev": "./node_modules/.bin/vite build --mode development",
+    "dev:all": "bash -lc 'pnpm -C apps/backend-alerts dev & pnpm exec vite'",
+
+    "build": "pnpm exec vite build",
+    "build:dev": "pnpm exec vite build --mode development",
+
     "build:backend": "pnpm -C apps/backend-alerts build",
     "start:backend": "pnpm -C apps/backend-alerts start",
-    "lint": "./node_modules/.bin/eslint .",
+
+    "lint": "pnpm exec eslint .",
     "lint:api": "pnpm -C api run typecheck",
     "lint:backend": "pnpm -C backend run typecheck",
-    "typecheck": "./node_modules/.bin/tsc --noEmit",
-    "preview": "./node_modules/.bin/vite preview",
-    "test": "./node_modules/.bin/vitest run",
-    "test:watch": "./node_modules/.bin/vitest",
-    "test:e2e": "./node_modules/.bin/playwright test",
-    "test:e2e:ui": "./node_modules/.bin/playwright test --ui",
-    "test:e2e:headed": "./node_modules/.bin/playwright test --headed",
-    "test:e2e:debug": "./node_modules/.bin/playwright test --debug",
-    "test:e2e:report": "./node_modules/.bin/playwright show-report",
+
+    "typecheck": "pnpm exec tsc --noEmit",
+
+    "preview": "pnpm exec vite preview",
+
+    "test": "pnpm exec vitest run",
+    "test:watch": "pnpm exec vitest",
+
+    "test:e2e": "pnpm exec playwright test",
+    "test:e2e:ui": "pnpm exec playwright test --ui",
+    "test:e2e:headed": "pnpm exec playwright test --headed",
+    "test:e2e:debug": "pnpm exec playwright test --debug",
+    "test:e2e:report": "pnpm exec playwright show-report",
+
     "test:api": "pnpm -C api run test",
     "test:backend": "pnpm -C backend run test",
     "migrate": "pnpm -C backend run migrate",
-    "verify": "pnpm install && pnpm -C backend install && pnpm -C backend run typecheck && pnpm -C backend run build && pnpm -C backend run test && pnpm run typecheck && pnpm run build && pnpm run test"
+
+    "verify": "pnpm -C backend install && pnpm -C backend run typecheck && pnpm -C backend run build && pnpm -C backend run test && pnpm install && pnpm exec tsc --noEmit && pnpm exec vite build && pnpm exec vitest run"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
