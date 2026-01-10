@@ -17,35 +17,13 @@ describe('Validation Schemas', () => {
   describe('journalCreateRequestSchema', () => {
     it('accepts valid input', () => {
       const result = journalCreateRequestSchema.safeParse({
-        side: 'BUY',
-        summary: 'Test trade',
+        summary: 'Test entry',
       });
       expect(result.success).toBe(true);
-    });
-
-    it('normalizes lowercase side to uppercase', () => {
-      const result = journalCreateRequestSchema.safeParse({
-        side: 'buy',
-        summary: 'Test trade',
-      });
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.data.side).toBe('BUY');
-      }
-
-      const result2 = journalCreateRequestSchema.safeParse({
-        side: 'sell',
-        summary: 'Test trade',
-      });
-      expect(result2.success).toBe(true);
-      if (result2.success) {
-        expect(result2.data.side).toBe('SELL');
-      }
     });
 
     it('rejects missing summary', () => {
       const result = journalCreateRequestSchema.safeParse({
-        side: 'BUY',
       });
       expect(result.success).toBe(false);
       if (!result.success) {
@@ -53,18 +31,9 @@ describe('Validation Schemas', () => {
       }
     });
 
-    it('rejects invalid side', () => {
-      const result = journalCreateRequestSchema.safeParse({
-        side: 'INVALID',
-        summary: 'Test trade',
-      });
-      expect(result.success).toBe(false);
-    });
-
     it('accepts optional timestamp', () => {
       const result = journalCreateRequestSchema.safeParse({
-        side: 'SELL',
-        summary: 'Test trade',
+        summary: 'Test entry',
         timestamp: '2025-12-31T12:00:00.000Z',
       });
       expect(result.success).toBe(true);

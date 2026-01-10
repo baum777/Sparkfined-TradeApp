@@ -4,11 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, FileText, Check, Circle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { OracleStub } from "@/stubs/contracts";
+import type { OracleInsight } from "@/services/oracle/types";
 import { routeHelpers } from "@/routes/routes";
 
 interface InsightCardProps {
-  insight: OracleStub;
+  insight: OracleInsight;
   onToggleRead: (id: string) => void;
 }
 

@@ -24,7 +24,7 @@ export { JournalInboxView } from './JournalInboxView';
 export { JournalMiniReflection, type ReflectionData } from './JournalMiniReflection';
 export { JournalLearnView } from './JournalLearnView';
 export { JournalTimelineView } from './JournalTimelineView';
-export { JournalTradeCard } from './JournalTradeCard';
+export { JournalEntryCard } from './JournalEntryCard';
 export { JournalDiaryCard } from './JournalDiaryCard';
 export { JournalInsightTimelineCard } from './JournalInsightTimelineCard';
 

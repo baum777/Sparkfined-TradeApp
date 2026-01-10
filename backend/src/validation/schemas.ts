@@ -9,23 +9,11 @@ import { z } from 'zod';
 // JOURNAL SCHEMAS
 // ─────────────────────────────────────────────────────────────
 
-export const journalEntrySideSchema = z.enum(['BUY', 'SELL']);
 export const journalEntryStatusSchema = z.enum(['pending', 'confirmed', 'archived']);
 
 export const journalCreateRequestSchema = z.object({
-  side: journalEntrySideSchema,
   summary: z.string().min(1, 'Summary is required').max(1000),
   timestamp: z.string().datetime().optional(),
-});
-
-export const journalConfirmPayloadSchema = z.object({
-  mood: z.string().min(1, 'Mood is required'),
-  note: z.string(),
-  tags: z.array(z.string()),
-});
-
-export const journalArchiveRequestSchema = z.object({
-  reason: z.string().min(1, 'Reason is required'),
 });
 
 export const journalListQuerySchema = z.object({
@@ -33,6 +21,27 @@ export const journalListQuerySchema = z.object({
   status: journalEntryStatusSchema.optional(),
   limit: z.coerce.number().int().min(1).max(200).optional().default(50),
   cursor: z.string().optional(),
+});
+
+// ─────────────────────────────────────────────────────────────
+// SETTINGS SCHEMAS
+// ─────────────────────────────────────────────────────────────
+
+export const settingsPatchSchema = z.object({
+  ai: z
+    .object({
+      grokEnabled: z.boolean().optional(),
+    })
+    .optional(),
+});
+
+// ─────────────────────────────────────────────────────────────
+// JOURNAL INSIGHTS SCHEMAS
+// ─────────────────────────────────────────────────────────────
+
+export const journalInsightsRequestSchema = z.object({
+  kind: z.enum(['teaser', 'review', 'playbook']),
+  includeGrok: z.boolean().optional(),
 });
 
 // ─────────────────────────────────────────────────────────────
@@ -144,6 +153,24 @@ export const oracleBulkReadStateRequestSchema = z.object({
 });
 
 // ─────────────────────────────────────────────────────────────
+// FEEDS & SIGNALS SCHEMAS (Theme Group 5)
+// ─────────────────────────────────────────────────────────────
+
+export const feedOracleQuerySchema = z.object({
+  asset: z.string().min(1, 'asset is required'),
+});
+
+export const feedPulseQuerySchema = z.object({
+  asset: z.string().min(1, 'asset is required'),
+});
+
+export const signalsUnifiedQuerySchema = z.object({
+  asset: z.string().min(1, 'asset is required'),
+  filter: z.string().optional(),
+  sort: z.string().optional(),
+});
+
+// ─────────────────────────────────────────────────────────────
 // CHART TA SCHEMAS
 // ─────────────────────────────────────────────────────────────
 
@@ -154,12 +181,47 @@ export const taRequestSchema = z.object({
 });
 
 // ─────────────────────────────────────────────────────────────
+// SOL CHART ANALYSIS (JSON+Text) — Phase-2 onchain gating
+// ─────────────────────────────────────────────────────────────
+
+const solTimeframeSchema = z.enum(['15s', '30s', '1m', '5m', '15m', '30m', '1h', '4h']);
+const analysisTierSchema = z.enum(['free', 'standard', 'pro', 'high']);
+const chartTaskKindSchema = z.enum([
+  'chart_teaser_free',
+  'chart_setups',
+  'chart_patterns_validate',
+  'chart_confluence_onchain',
+  'chart_microstructure',
+]);
+
+const inputCandleSchema = z.object({
+  ts: z.number().int().nonnegative(),
+  open: z.number(),
+  high: z.number(),
+  low: z.number(),
+  close: z.number(),
+  volume: z.number(),
+});
+
+export const chartAnalysisRequestSchema = z.object({
+  mint: z.string().min(1),
+  symbol: z.string().min(1).optional(),
+  timeframe: solTimeframeSchema,
+  candles: z.array(inputCandleSchema).min(20),
+  tier: analysisTierSchema.optional(),
+  taskKind: chartTaskKindSchema.optional(),
+  chartContext: z
+    .object({
+      nearResistance: z.boolean().optional(),
+    })
+    .optional(),
+});
+
+// ─────────────────────────────────────────────────────────────
 // TYPE EXPORTS
 // ─────────────────────────────────────────────────────────────
 
 export type JournalCreateRequest = z.infer<typeof journalCreateRequestSchema>;
-export type JournalConfirmPayload = z.infer<typeof journalConfirmPayloadSchema>;
-export type JournalArchiveRequest = z.infer<typeof journalArchiveRequestSchema>;
 export type JournalListQuery = z.infer<typeof journalListQuerySchema>;
 
 export type CreateAlertRequest = z.infer<typeof createAlertRequestSchema>;
@@ -171,4 +233,9 @@ export type OracleDailyQuery = z.infer<typeof oracleDailyQuerySchema>;
 export type OracleReadStateRequest = z.infer<typeof oracleReadStateRequestSchema>;
 export type OracleBulkReadStateRequest = z.infer<typeof oracleBulkReadStateRequestSchema>;
 
+export type FeedOracleQuery = z.infer<typeof feedOracleQuerySchema>;
+export type FeedPulseQuery = z.infer<typeof feedPulseQuerySchema>;
+export type SignalsUnifiedQuery = z.infer<typeof signalsUnifiedQuerySchema>;
+
 export type TARequest = z.infer<typeof taRequestSchema>;
+export type ChartAnalysisRequest = z.infer<typeof chartAnalysisRequestSchema>;

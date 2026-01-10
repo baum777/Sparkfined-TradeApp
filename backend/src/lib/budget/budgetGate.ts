@@ -1,6 +1,6 @@
 import { getKV } from '../kv/store.js';
 import { usageTracker } from '../usage/usageTracker.js';
-import { AppSettingsV1, BudgetCheckParams, BudgetResult, TIER_LIMITS, Tier } from './types.js';
+import { BudgetCheckParams, BudgetResult, TIER_LIMITS } from './types.js';
 
 class BudgetGate {
   private static instance: BudgetGate;

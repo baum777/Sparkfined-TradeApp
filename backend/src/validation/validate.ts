@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { badRequest, invalidQuery } from '../http/error.js';
+import { invalidQuery, validationError } from '../http/error.js';
 
 /**
  * Validation Helpers
@@ -24,7 +24,8 @@ export function validateBody<T>(schema: z.Schema<T>, body: unknown): T {
   const result = schema.safeParse(body);
   
   if (!result.success) {
-    throw badRequest('Validation failed', zodErrorToDetails(result.error));
+    // Canonical client-actionable validation error shape/code.
+    throw validationError('Validation failed', zodErrorToDetails(result.error));
   }
   
   return result.data;

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { logger } from '../observability/logger.js';
 import { runOracleDailyJob } from './oracleDaily.js';
 import { runJournalEnrichJob } from './journalEnrich.js';
@@ -64,5 +65,20 @@ export function startScheduledJobs(): { stop: () => void } {
   };
 
   return { stop };
+=======
+/**
+ * Minimal scheduler stub.
+ *
+ * The backend uses this to start/stop periodic jobs.
+ * In this repo, most periodic work is implemented as interval-based jobs in `server.ts`.
+ */
+
+export function startScheduledJobs(): { stop: () => void } {
+  return {
+    stop: () => {
+      // no-op
+    },
+  };
+>>>>>>> d9074af39364962f005189d37a941b5b89934b39
 }
 

@@ -8,71 +8,53 @@
  */
 
 // ─────────────────────────────────────────────────────────────
-// STATUS ENUM (uppercase for consistency)
+// API CONTRACT: JournalEntryV1 (Diary/Reflection semantics)
 // ─────────────────────────────────────────────────────────────
 
-export type JournalStatus = 'PENDING' | 'CONFIRMED' | 'ARCHIVED';
+export type JournalStatusV1 = 'pending' | 'confirmed' | 'archived';
 
-// Legacy status mapping for backward compatibility
-export type LegacyJournalStatus = 'pending' | 'confirmed' | 'archived';
-
-// Mapping from legacy lowercase to new uppercase
-export function normalizeStatus(status: string): JournalStatus {
-  const upper = status.toUpperCase();
-  if (upper === 'PENDING' || upper === 'CONFIRMED' || upper === 'ARCHIVED') {
-    return upper;
-  }
-  throw new Error(`Invalid journal status: ${status}`);
-}
-
-// Convert to legacy lowercase (for DB compatibility during migration)
-export function toLegacyStatus(status: JournalStatus): LegacyJournalStatus {
-  return status.toLowerCase() as LegacyJournalStatus;
-}
-
-// ─────────────────────────────────────────────────────────────
-// JOURNAL EVENT TYPE
-// ─────────────────────────────────────────────────────────────
-
-export type JournalEntrySide = 'BUY' | 'SELL';
-
-export interface JournalEvent {
+/**
+ * Frozen v1 contract returned to the frontend.
+ * - No trading fields
+ * - `confirmedAt` only when status === "confirmed"
+ * - `archivedAt` only when status === "archived"
+ */
+export interface JournalEntryV1 {
   id: string;
-  userId: string; // REQUIRED - no fallback
-  side: JournalEntrySide;
-  status: JournalStatus;
-  timestamp: string; // ISO 8601 - when the trade occurred
-  summary: string;
-  dayKey: string; // YYYY-MM-DD - derived from timestamp, stored for indexing
+  status: JournalStatusV1;
   createdAt: string; // ISO 8601
   updatedAt: string; // ISO 8601
-  
-  // Optional confirmation data
-  confirmData?: {
-    mood: string;
-    note: string;
-    tags: string[];
-    confirmedAt: string;
+  confirmedAt?: string; // ISO 8601
+  archivedAt?: string; // ISO 8601
+  // Optional diary fields (non-trading)
+  summary?: string;
+  timestamp?: string;
+  symbolOrAddress?: string;
+  /**
+   * Optional capture metadata (backward compatible).
+   * Facts-only: populated from ingest; do not mix narrative here.
+   */
+  capture?: {
+    source: string;
+    txSignature?: string;
+    wallet?: string;
+    actionType?: string;
+    assetMint?: string;
+    amount?: number;
+    priceHint?: number;
+    captureKey: string;
+    linkedEntryId?: string;
   };
-  
-  // Optional archive data
-  archiveData?: {
-    reason: string;
-    archivedAt: string;
-  };
+  /**
+   * Optional system/user reason for the archived state.
+   * Populated only when status === 'archived' and a reason is known.
+   */
+  autoArchiveReason?: 'matched_sell' | 'user_action' | 'policy';
 }
 
 // ─────────────────────────────────────────────────────────────
-// LEGACY TYPES (for compatibility with existing DB schema)
+// LEGACY DB ROW TYPES (SQLite schema compatibility)
 // ─────────────────────────────────────────────────────────────
-
-export interface JournalEntry {
-  id: string;
-  side: JournalEntrySide;
-  status: LegacyJournalStatus;
-  timestamp: string;
-  summary: string;
-}
 
 export interface JournalEntryRow {
   id: string;
@@ -84,19 +66,22 @@ export interface JournalEntryRow {
   day_key: string; // Added for indexing
   created_at: string;
   updated_at: string;
+  capture_source?: string | null;
+  capture_key?: string | null;
+  tx_signature?: string | null;
+  wallet?: string | null;
+  action_type?: string | null;
+  asset_mint?: string | null;
+  amount?: number | null;
+  price_hint?: number | null;
+  linked_entry_id?: string | null;
 }
 
 export interface JournalConfirmationRow {
-  entry_id: string;
-  mood: string;
-  note: string;
-  tags_json: string;
   confirmed_at: string;
 }
 
 export interface JournalArchiveRow {
-  entry_id: string;
-  reason: string;
   archived_at: string;
 }
 
@@ -105,23 +90,13 @@ export interface JournalArchiveRow {
 // ─────────────────────────────────────────────────────────────
 
 export interface JournalCreateRequest {
-  side: JournalEntrySide;
   summary: string;
   timestamp?: string; // defaults to now
-}
-
-export interface JournalConfirmPayload {
-  mood: string;
-  note: string;
-  tags: string[];
-}
-
-export interface JournalArchiveRequest {
-  reason: string;
+  symbolOrAddress?: string; // accepted by contract, not currently persisted in SQLite v2
 }
 
 export interface JournalListResponse {
-  items: JournalEvent[];
+  items: JournalEntryV1[];
   nextCursor?: string;
 }
 
@@ -136,7 +111,7 @@ export interface JournalRepo {
    * @param userId - REQUIRED, no fallback
    * @param id - event id
    */
-  getEvent(userId: string, id: string): Promise<JournalEvent | null>;
+  getEvent(userId: string, id: string): Promise<JournalEntryV1 | null>;
 
   /**
    * Store/update an event
@@ -144,7 +119,7 @@ export interface JournalRepo {
    * @param userId - REQUIRED, no fallback
    * @param event - event to store
    */
-  putEvent(userId: string, event: JournalEvent): Promise<void>;
+  putEvent(userId: string, event: JournalEntryV1): Promise<void>;
 
   /**
    * Delete an event permanently
@@ -171,17 +146,17 @@ export interface JournalRepo {
   /**
    * List all event IDs with a specific status
    * @param userId - REQUIRED, no fallback
-   * @param status - PENDING | CONFIRMED | ARCHIVED
+   * @param status - pending | confirmed | archived
    */
-  listStatusIds(userId: string, status: JournalStatus): Promise<string[]>;
+  listStatusIds(userId: string, status: JournalStatusV1): Promise<string[]>;
 
   /**
    * Set the event IDs for a specific status
    * @param userId - REQUIRED, no fallback
-   * @param status - PENDING | CONFIRMED | ARCHIVED
+   * @param status - pending | confirmed | archived
    * @param ids - list of event IDs
    */
-  setStatusIds(userId: string, status: JournalStatus, ids: string[]): Promise<void>;
+  setStatusIds(userId: string, status: JournalStatusV1, ids: string[]): Promise<void>;
 
   /**
    * Get the last update timestamp for this user's journal

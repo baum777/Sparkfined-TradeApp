@@ -17,7 +17,8 @@ import { shouldPoll, recordPollSuccess, recordPollFailure, handleRateLimit } fro
 declare const self: ServiceWorkerGlobalScope & typeof globalThis;
 
 const ALERTS_LAST_SINCE_KEY = 'alerts:lastSince';
-const API_BASE = '/api';
+const API_BASE = import.meta.env.VITE_API_URL || '/api';
+const ENABLE_AUTH = import.meta.env.VITE_ENABLE_AUTH === 'true';
 
 /**
  * Get notification title for alert event
@@ -86,7 +87,7 @@ export async function pollAlertEvents(accessToken: string | null): Promise<void>
       'Content-Type': 'application/json',
     };
     
-    if (accessToken) {
+    if (ENABLE_AUTH && accessToken) {
       headers['Authorization'] = `Bearer ${accessToken}`;
     }
     
@@ -99,8 +100,12 @@ export async function pollAlertEvents(accessToken: string | null): Promise<void>
     }
     
     if (response.status === 401 || response.status === 403) {
-      // Auth required - handled by caller
-      throw new Error('AUTH_REQUIRED');
+      // Auth is intentionally disabled by default. Only treat 401/403 as "auth required"
+      // if auth is enabled AND we attempted an authenticated call.
+      if (ENABLE_AUTH && accessToken) {
+        throw new Error('AUTH_REQUIRED');
+      }
+      throw new Error(`HTTP ${response.status}`);
     }
     
     if (!response.ok) {

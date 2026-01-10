@@ -2,27 +2,24 @@ import type { ServerResponse } from 'http';
 import { getRequestId } from './requestId.js';
 
 /**
- * Standardized API Response
- * Matches API_SPEC.md ApiResponse contract
+ * Standardized API Response (FROZEN)
+ * Success: { "status": "ok", "data": <T> }
+ * Error:   { "status": "error", "error": { code, message, details? } }
+ *
+ * Always include `x-request-id` response header.
  */
 
-export interface ApiResponse<T> {
+export interface ApiOkResponse<T> {
+  status: 'ok';
   data: T;
-  status: number;
-  message?: string;
 }
 
 export function sendJson<T>(
   res: ServerResponse,
   data: T,
-  status = 200,
-  message?: string
+  status = 200
 ): void {
-  const response: ApiResponse<T> = {
-    data,
-    status,
-    message,
-  };
+  const response: ApiOkResponse<T> = { status: 'ok', data };
 
   const body = JSON.stringify(response);
   
@@ -34,14 +31,13 @@ export function sendJson<T>(
 }
 
 export function sendNoContent(res: ServerResponse): void {
-  res.writeHead(204, {
-    'x-request-id': getRequestId(),
-  });
-  res.end();
+  // Canonical envelope even for "no content" semantics.
+  // Note: HTTP 204 traditionally has an empty body; we keep status=204 but still return the envelope.
+  sendJson(res, null, 204);
 }
 
-export function sendCreated<T>(res: ServerResponse, data: T, message?: string): void {
-  sendJson(res, data, 201, message);
+export function sendCreated<T>(res: ServerResponse, data: T): void {
+  sendJson(res, data, 201);
 }
 
 export interface CacheOptions {

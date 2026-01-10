@@ -28,9 +28,7 @@ export type FeedCard = {
 };
 
 export type UnifiedSignalsResponse = {
-  user: FeedCard[];
-  market: FeedCard[];
-  asOf: string;
+  items: FeedCard[];
 };
 
 export type FeedFilter = "all" | "user" | "market";

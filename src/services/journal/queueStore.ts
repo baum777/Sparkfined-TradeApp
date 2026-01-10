@@ -16,9 +16,12 @@ import {
   archiveJournalEntry,
   restoreJournalEntry,
   deleteJournalEntry,
-  isNetworkError,
   isOffline,
 } from './api';
+import {
+  applyRetryPolicyToFailure,
+  getDefaultOfflineQueuePolicy,
+} from '@/services/sync/queuePolicy';
 import type {
   JournalQueueItem,
   JournalQueueOperation,
@@ -31,9 +34,8 @@ import type {
 // Constants
 // ─────────────────────────────────────────────────────────────
 
-const MAX_RETRIES = 5;
-const RETRY_DELAYS = [1000, 2000, 5000, 10000, 30000]; // Exponential backoff
 const SYNC_INTERVAL = 30000; // 30s periodic sync
+const JOURNAL_QUEUE_POLICY = getDefaultOfflineQueuePolicy();
 
 // ─────────────────────────────────────────────────────────────
 // Store State
@@ -58,7 +60,7 @@ interface JournalQueueStore {
     idempotencyKey?: string
   ) => Promise<JournalQueueItem>;
   dequeue: (id: string) => Promise<void>;
-  processQueue: () => Promise<{ syncedCount: number; needsRefetch: boolean }>;
+  processQueue: (opts?: { forceNow?: boolean }) => Promise<{ syncedCount: number; needsRefetch: boolean }>;
   getQueueItem: (entryId: string) => JournalQueueItem | undefined;
   getSyncState: () => SyncState;
   clearError: () => void;
@@ -74,10 +76,9 @@ function generateIdempotencyKey(): string {
   return `idem-${crypto.randomUUID()}`;
 }
 
-// P0.2: Calculate next attempt time based on retry count
-function calculateNextAttemptAt(retryCount: number): number {
-  const delay = RETRY_DELAYS[Math.min(retryCount, RETRY_DELAYS.length - 1)];
-  return Date.now() + delay;
+function computeGlobalLastError(queue: JournalQueueItem[]): string | null {
+  const failed = queue.find(q => q.status === 'failed' && q.lastError);
+  return failed?.lastError ?? null;
 }
 
 export const useJournalQueueStore = create<JournalQueueStore>((set, get) => ({
@@ -90,7 +91,7 @@ export const useJournalQueueStore = create<JournalQueueStore>((set, get) => ({
   loadQueue: async () => {
     try {
       const items = await dbService.getJournalQueue();
-      set({ queue: items });
+      set({ queue: items, lastError: computeGlobalLastError(items) });
     } catch (err) {
       console.error('[JournalQueue] Failed to load queue:', err);
     }
@@ -108,27 +109,35 @@ export const useJournalQueueStore = create<JournalQueueStore>((set, get) => ({
       createdAt: Date.now(),
       retryCount: 0,
       nextAttemptAt: Date.now(), // Ready to process immediately
+      status: 'pending',
     };
 
     await dbService.addJournalQueueItem(item);
-    set(state => ({ queue: [...state.queue, item] }));
+    set(state => {
+      const next = [...state.queue, item];
+      return { queue: next, lastError: computeGlobalLastError(next) };
+    });
 
     return item;
   },
 
   dequeue: async (id: string) => {
     await dbService.removeJournalQueueItem(id);
-    set(state => ({ queue: state.queue.filter(item => item.id !== id) }));
+    set(state => {
+      const next = state.queue.filter(item => item.id !== id);
+      return { queue: next, lastError: computeGlobalLastError(next) };
+    });
   },
 
-  processQueue: async () => {
+  processQueue: async (opts) => {
     const { queue, isSyncing } = get();
+    const forceNow = !!opts?.forceNow;
     
     if (isSyncing || isOffline() || queue.length === 0) {
       return { syncedCount: 0, needsRefetch: false };
     }
 
-    set({ isSyncing: true, lastError: null });
+    set({ isSyncing: true });
     let syncedCount = 0;
     const completedClientIds: string[] = [];
     const now = Date.now();
@@ -138,8 +147,13 @@ export const useJournalQueueStore = create<JournalQueueStore>((set, get) => ({
       const sorted = [...queue].sort((a, b) => a.createdAt - b.createdAt);
 
       for (const item of sorted) {
+        // Failed items do not auto-retry unless manually forced.
+        if (item.status === 'failed' && !forceNow) {
+          continue;
+        }
+
         // P0.2: Skip items that are not ready for retry yet
-        if (item.nextAttemptAt && item.nextAttemptAt > now) {
+        if (!forceNow && item.nextAttemptAt && item.nextAttemptAt > now) {
           continue;
         }
 
@@ -156,38 +170,29 @@ export const useJournalQueueStore = create<JournalQueueStore>((set, get) => ({
           await get().dequeue(item.id);
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-          
-          // Check if retryable
-          if (isNetworkError(error) && item.retryCount < MAX_RETRIES) {
-            // P0.2: Update with nextAttemptAt for backoff
-            const newRetryCount = item.retryCount + 1;
-            const updatedItem: JournalQueueItem = {
-              ...item,
-              retryCount: newRetryCount,
-              lastError: errorMessage,
-              lastAttemptAt: now,
-              nextAttemptAt: calculateNextAttemptAt(newRetryCount),
+
+          // Apply strict retry policy (429/5xx/network retryable; 4xx permanent; maxRetries terminal)
+          const updatedFields = applyRetryPolicyToFailure({
+            item,
+            error,
+            now,
+            policy: JOURNAL_QUEUE_POLICY,
+          });
+          const updatedItem: JournalQueueItem = {
+            ...item,
+            ...updatedFields,
+            // Ensure we always persist the visible error message
+            lastError: updatedFields.lastError ?? errorMessage,
+          };
+
+          await dbService.updateJournalQueueItem(updatedItem);
+          set(state => {
+            const nextQueue = state.queue.map(q => q.id === item.id ? updatedItem : q);
+            return {
+              queue: nextQueue,
+              lastError: computeGlobalLastError(nextQueue),
             };
-            await dbService.updateJournalQueueItem(updatedItem);
-            set(state => ({
-              queue: state.queue.map(q => q.id === item.id ? updatedItem : q),
-              lastError: errorMessage,
-            }));
-          } else {
-            // Non-retryable or max retries - keep in queue with error
-            const updatedItem: JournalQueueItem = {
-              ...item,
-              lastError: errorMessage,
-              lastAttemptAt: now,
-              // Set far future nextAttemptAt to stop auto-retry
-              nextAttemptAt: now + 86400000, // 24 hours
-            };
-            await dbService.updateJournalQueueItem(updatedItem);
-            set(state => ({
-              queue: state.queue.map(q => q.id === item.id ? updatedItem : q),
-              lastError: errorMessage,
-            }));
-          }
+          });
         }
       }
 

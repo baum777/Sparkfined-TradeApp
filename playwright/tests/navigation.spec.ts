@@ -34,20 +34,41 @@ async function stubApi(page: import('@playwright/test').Page) {
     const req = route.request();
     const url = new URL(req.url());
     const path = url.pathname;
+    const nowIso = new Date().toISOString();
 
     if (path === '/api/journal' && req.method() === 'GET') {
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ items: [] }),
+        body: JSON.stringify({ data: { items: [] }, status: 200 }),
       });
     }
 
+    if (path === '/api/feed/pulse' && req.method() === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            assetResolved: {
+              input: url.searchParams.get('asset') ?? 'SOL',
+              kind: 'ticker',
+              symbol: 'SOL',
+              address: 'So11111111111111111111111111111111111111112',
+            },
+            snapshot: null,
+            history: [],
+            updatedAt: nowIso,
+          },
+          status: 200,
+        }),
+      });
+    }
     if (path.startsWith('/api/feed/') && req.method() === 'GET') {
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify([]),
+        body: JSON.stringify({ data: [], status: 200 }),
       });
     }
 
@@ -55,7 +76,7 @@ async function stubApi(page: import('@playwright/test').Page) {
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ user: [], market: [], asOf: new Date().toISOString() }),
+        body: JSON.stringify({ data: { user: [], market: [], asOf: nowIso }, status: 200 }),
       });
     }
 
@@ -63,36 +84,14 @@ async function stubApi(page: import('@playwright/test').Page) {
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ card: stubFeedCard(), asOf: new Date().toISOString() }),
-      });
-    }
-
-    if (path === '/api/grok-pulse/meta/last-run' && req.method() === 'GET') {
-      return route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ lastRun: null }),
-      });
-    }
-    if (path.startsWith('/api/grok-pulse/snapshot/') && req.method() === 'GET') {
-      return route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ snapshot: null }),
-      });
-    }
-    if (path.startsWith('/api/grok-pulse/history/') && req.method() === 'GET') {
-      return route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ history: [] }),
+        body: JSON.stringify({ data: { card: stubFeedCard(), asOf: nowIso }, status: 200 }),
       });
     }
 
     return route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({}),
+      body: JSON.stringify({ data: {}, status: 200 }),
     });
   });
 }

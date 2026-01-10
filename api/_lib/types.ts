@@ -7,34 +7,20 @@
 // JOURNAL TYPES
 // ─────────────────────────────────────────────────────────────
 
-export type JournalEntrySide = 'BUY' | 'SELL';
 export type JournalEntryStatus = 'pending' | 'confirmed' | 'archived';
 
 export interface JournalEntry {
   id: string;
-  side: JournalEntrySide;
   status: JournalEntryStatus;
   timestamp: string; // ISO
   summary: string;
 }
-
-export interface JournalConfirmData {
-  mood: string;
-  note: string;
-  tags: string[];
-  confirmedAt: string;
-}
-
-export interface JournalArchiveData {
-  reason: string;
-  archivedAt: string;
-}
-
+ 
 export interface JournalEntryFull extends JournalEntry {
-  confirmData?: JournalConfirmData;
-  archiveData?: JournalArchiveData;
   createdAt: string;
   updatedAt: string;
+  confirmedAt?: string;
+  archivedAt?: string;
 }
 
 // ─────────────────────────────────────────────────────────────

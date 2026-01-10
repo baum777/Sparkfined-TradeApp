@@ -1,12 +1,10 @@
 import type { ServerResponse } from 'http';
 import type { ParsedRequest } from '../http/router.js';
 import { sendJson, sendCreated, sendNoContent, setCacheHeaders } from '../http/response.js';
-import { notFound, conflict, ErrorCodes } from '../http/error.js';
+import { notFound, conflict, validationError, ErrorCodes } from '../http/error.js';
 import { validateBody, validateQuery } from '../validation/validate.js';
 import {
   journalCreateRequestSchema,
-  journalConfirmPayloadSchema,
-  journalArchiveRequestSchema,
   journalListQuerySchema,
 } from '../validation/schemas.js';
 import {
@@ -61,8 +59,13 @@ export function handleJournalGetById(req: ParsedRequest, res: ServerResponse): v
 export function handleJournalCreate(req: ParsedRequest, res: ServerResponse): void {
   const body = validateBody(journalCreateRequestSchema, req.body);
   
-  // Check for idempotency key
-  const idempotencyKey = req.query['idempotency-key'] as string | undefined;
+  // Check for idempotency key (header is canonical)
+  const idempotencyKey = req.headers['idempotency-key'] as string | undefined;
+  if (!idempotencyKey || idempotencyKey.trim() === '') {
+    throw validationError('Idempotency-Key header is required', {
+      'Idempotency-Key': ['Required'],
+    });
+  }
   
   // userId is now REQUIRED for all journal operations (multitenancy)
   const entry = journalCreate(req.userId, body, idempotencyKey);
@@ -73,7 +76,6 @@ export function handleJournalCreate(req: ParsedRequest, res: ServerResponse): vo
 
 export function handleJournalConfirm(req: ParsedRequest, res: ServerResponse): void {
   const { id } = req.params;
-  const payload = validateBody(journalConfirmPayloadSchema, req.body);
   
   // userId is now REQUIRED for all journal operations (multitenancy)
   // First check if entry exists
@@ -82,15 +84,15 @@ export function handleJournalConfirm(req: ParsedRequest, res: ServerResponse): v
     throw notFound(`Journal entry not found: ${id}`, ErrorCodes.JOURNAL_NOT_FOUND);
   }
   
-  // Check for invalid state (can't confirm archived)
-  if (existing.status === 'ARCHIVED') {
+  // Check for invalid transition
+  if (existing.status === 'archived') {
     throw conflict(
       'Cannot confirm an archived entry',
-      ErrorCodes.JOURNAL_INVALID_STATE
+      ErrorCodes.INVALID_TRANSITION
     );
   }
   
-  const entry = journalConfirm(req.userId, id, payload);
+  const entry = journalConfirm(req.userId, id);
   
   setCacheHeaders(res, { noStore: true });
   sendJson(res, entry);
@@ -98,7 +100,6 @@ export function handleJournalConfirm(req: ParsedRequest, res: ServerResponse): v
 
 export function handleJournalArchive(req: ParsedRequest, res: ServerResponse): void {
   const { id } = req.params;
-  const body = validateBody(journalArchiveRequestSchema, req.body);
   
   // userId is now REQUIRED for all journal operations (multitenancy)
   const existing = journalGetById(req.userId, id);
@@ -106,7 +107,8 @@ export function handleJournalArchive(req: ParsedRequest, res: ServerResponse): v
     throw notFound(`Journal entry not found: ${id}`, ErrorCodes.JOURNAL_NOT_FOUND);
   }
   
-  const entry = journalArchive(req.userId, id, body.reason);
+  // Idempotent no-op is allowed when already archived.
+  const entry = journalArchive(req.userId, id);
   
   setCacheHeaders(res, { noStore: true });
   sendJson(res, entry);
@@ -119,6 +121,11 @@ export function handleJournalRestore(req: ParsedRequest, res: ServerResponse): v
   const existing = journalGetById(req.userId, id);
   if (!existing) {
     throw notFound(`Journal entry not found: ${id}`, ErrorCodes.JOURNAL_NOT_FOUND);
+  }
+
+  // Only archived -> pending is a valid transition (pending is idempotent).
+  if (existing.status === 'confirmed') {
+    throw conflict('Cannot restore a confirmed entry', ErrorCodes.INVALID_TRANSITION);
   }
   
   const entry = journalRestore(req.userId, id);

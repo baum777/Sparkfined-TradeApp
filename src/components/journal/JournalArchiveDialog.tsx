@@ -26,9 +26,8 @@ import type { JournalEntryLocal } from "@/services/journal/types";
 // POST /api/journal/:id/archive sends NO request body per CONTRACTS.md.
 // The reason is collected for potential future use or local analytics only.
 const ARCHIVE_REASONS = [
-  { value: "market_changed", label: "Market conditions changed" },
-  { value: "invalid_setup", label: "Invalid setup" },
-  { value: "missed_entry", label: "Missed entry" },
+  { value: "no_longer_relevant", label: "No longer relevant" },
+  { value: "resolved", label: "Resolved / processed" },
   { value: "duplicate", label: "Duplicate entry" },
   { value: "other", label: "Other" },
 ];
@@ -37,7 +36,7 @@ interface JournalArchiveDialogProps {
   entry: JournalEntryLocal | null;
   isOpen: boolean;
   onClose: () => void;
-  onArchive: (id: string, reason: string) => void;
+  onArchive: (id: string) => void;
 }
 
 export function JournalArchiveDialog({
@@ -47,12 +46,14 @@ export function JournalArchiveDialog({
   onArchive,
 }: JournalArchiveDialogProps) {
   const { isOnline } = useOffline();
-  const [reason, setReason] = useState("market_changed");
+  const [reason, setReason] = useState("no_longer_relevant");
 
   const handleArchive = () => {
     if (!entry || !isOnline) return;
-    onArchive(entry.id, reason);
-    setReason("market_changed");
+    // Local-only reason (not sent to backend).
+    void reason;
+    onArchive(entry.id);
+    setReason("no_longer_relevant");
     onClose();
   };
 

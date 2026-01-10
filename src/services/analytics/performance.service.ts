@@ -4,7 +4,7 @@
  * Verwaltet Performance-Metriken und Analysen
  */
 
-import { apiClient, type ApiResponse } from '../api/client';
+import { apiClient } from '../api/client';
 
 export interface PerformanceMetrics {
   period: {
@@ -81,7 +81,7 @@ class PerformanceService {
   /**
    * Holt Performance-Metriken für einen bestimmten Zeitraum
    */
-  async getMetrics(dateRange?: DateRange): Promise<ApiResponse<PerformanceMetrics>> {
+  async getMetrics(dateRange?: DateRange): Promise<PerformanceMetrics> {
     const queryParams = new URLSearchParams();
     
     if (dateRange) {
@@ -101,7 +101,7 @@ class PerformanceService {
   async getPerformanceByPeriod(
     period: 'daily' | 'weekly' | 'monthly',
     dateRange?: DateRange
-  ): Promise<ApiResponse<PerformanceByPeriod>> {
+  ): Promise<PerformanceByPeriod> {
     const queryParams = new URLSearchParams({ period });
     
     if (dateRange) {
@@ -119,7 +119,7 @@ class PerformanceService {
    */
   async getPerformanceByStrategy(
     dateRange?: DateRange
-  ): Promise<ApiResponse<PerformanceByStrategy[]>> {
+  ): Promise<PerformanceByStrategy[]> {
     const queryParams = new URLSearchParams();
     
     if (dateRange) {
@@ -140,7 +140,7 @@ class PerformanceService {
    */
   async getPerformanceBySymbol(
     dateRange?: DateRange
-  ): Promise<ApiResponse<PerformanceBySymbol[]>> {
+  ): Promise<PerformanceBySymbol[]> {
     const queryParams = new URLSearchParams();
     
     if (dateRange) {
@@ -241,12 +241,10 @@ class PerformanceService {
       ? `${this.basePath}/export/pdf?${query}` 
       : `${this.basePath}/export/pdf`;
 
-    const response = await fetch(
-      `${apiClient['config'].baseURL}${endpoint}`,
-      {
-        headers: apiClient['config'].headers,
-      }
-    );
+    // Use raw fetch for file download.
+    const response = await fetch(`${(apiClient as any)['config'].baseURL}${endpoint}`, {
+      headers: (apiClient as any)['config'].headers,
+    });
 
     if (!response.ok) {
       throw new Error('Report export failed');

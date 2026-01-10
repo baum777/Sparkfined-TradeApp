@@ -9,6 +9,7 @@ import {
   handleJournalArchive,
   handleJournalRestore,
   handleJournalDelete,
+  handleJournalInsights,
   handleAlertsList,
   handleAlertCreate,
   handleAlertGetById,
@@ -20,15 +21,20 @@ import {
   handleOracleReadState,
   handleOracleBulkReadState,
   handleTAAnalysis,
+  handleChartAnalyze,
   handleReasoningTradeReview,
   handleReasoningSessionReview,
   handleReasoningBoardScenarios,
   handleReasoningInsightCritic,
-  handleGrokPulseSnapshot,
-  handleGrokPulseHistory,
-  handleGrokPulseMeta,
-  handleGrokPulseRun,
   handleUsageSummary,
+  handleFeedOracle,
+  handleFeedPulse,
+  handleSignalsUnified,
+  handleMarketDailyBias,
+  handleReasoningRoute,
+  handleLlmExecute,
+  handleSettingsGet,
+  handleSettingsPatch,
 } from './routes/index.js';
 
 /**
@@ -43,11 +49,16 @@ export function createApp(): Router {
   router.get('/health', handleHealth);
   router.get('/meta', handleMeta);
   router.get('/usage/summary', handleUsageSummary);
+
+  // Settings
+  router.get('/settings', handleSettingsGet);
+  router.patch('/settings', handleSettingsPatch);
   
   // Journal Routes
   router.get('/journal', handleJournalList);
   router.get('/journal/:id', handleJournalGetById);
   router.post('/journal', handleJournalCreate);
+  router.post('/journal/:id/insights', handleJournalInsights);
   router.post('/journal/:id/confirm', handleJournalConfirm);
   router.post('/journal/:id/archive', handleJournalArchive);
   router.post('/journal/:id/restore', handleJournalRestore);
@@ -66,21 +77,31 @@ export function createApp(): Router {
   router.get('/oracle/daily', handleOracleDaily);
   router.put('/oracle/read-state', handleOracleReadState);
   router.post('/oracle/read-state/bulk', handleOracleBulkReadState);
+  // Alias: allow PUT as well as POST (contract allows POST/PUT).
+  router.put('/oracle/read-state/bulk', handleOracleBulkReadState);
   
   // Chart TA Route
   router.post('/chart/ta', handleTAAnalysis);
+  // SOL Chart Analysis (JSON+Text) with Phase-2 onchain gating
+  router.post('/chart/analyze', handleChartAnalyze);
 
   // Reasoning Routes
   router.post('/reasoning/trade-review', handleReasoningTradeReview);
   router.post('/reasoning/session-review', handleReasoningSessionReview);
   router.post('/reasoning/board-scenarios', handleReasoningBoardScenarios);
   router.post('/reasoning/insight-critic', handleReasoningInsightCritic);
+  router.post('/reasoning/route', handleReasoningRoute);
 
-  // Grok Pulse Routes
-  router.get('/grok-pulse/snapshot/:address', handleGrokPulseSnapshot);
-  router.get('/grok-pulse/history/:address', handleGrokPulseHistory);
-  router.get('/grok-pulse/meta/last-run', handleGrokPulseMeta);
-  router.post('/grok-pulse/run', handleGrokPulseRun);
+  // LLM Execute (router + provider)
+  router.post('/llm/execute', handleLlmExecute);
+
+  // Canonical Feeds & Signals (Theme Group 5)
+  router.get('/feed/oracle', handleFeedOracle);
+  router.get('/feed/pulse', handleFeedPulse);
+  router.get('/signals/unified', handleSignalsUnified);
+
+  // Market Aliases
+  router.get('/market/daily-bias', handleMarketDailyBias);
   
   return router;
 }

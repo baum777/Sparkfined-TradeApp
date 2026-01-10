@@ -25,37 +25,27 @@ import {
   OracleSkeleton,
   type OracleFilter,
 } from "@/components/oracle";
-import { GrokPulseLastRunWidget } from "@/components/grokPulse";
 import { UnifiedSignalsView } from "@/components/signals";
 import { toast } from "@/hooks/use-toast";
 import { usePageState } from "@/stubs/pageState";
+import { resolveContextAsset } from "@/lib/asset/resolveContextAsset";
 import { makeOracle } from "@/stubs/fixtures";
-import type { OracleStub } from "@/stubs/contracts";
+import type { OracleInsight } from "@/services/oracle/types";
+import { fetchOracleDaily, putOracleReadState, bulkOracleReadState } from "@/services/oracle/api";
+import type { StorageLike } from "@/services/oracle/readStateQueue";
+import {
+  enqueueOracleMarkRead,
+  getOverlayReadIds,
+  loadOracleReadStateQueue,
+  mergeOracleFeedWithOverlay,
+  syncOracleReadStateQueue,
+} from "@/services/oracle/readStateQueue";
+import { loadOracleReadCache, updateOracleReadCache } from "@/services/oracle/readStateCache";
 
-const READ_STATE_KEY = "sparkfined_oracle_read_v1";
 const TAKEAWAY_ID = "today-takeaway";
 
-// Load read states from localStorage
-function loadReadStates(): Record<string, boolean> {
-  try {
-    const stored = localStorage.getItem(READ_STATE_KEY);
-    if (stored) {
-      return JSON.parse(stored);
-    }
-  } catch {
-    // Ignore parse errors
-  }
-  return {};
-}
-
-// Save read states to localStorage
-function saveReadStates(states: Record<string, boolean>) {
-  try {
-    localStorage.setItem(READ_STATE_KEY, JSON.stringify(states));
-  } catch {
-    // Ignore storage errors
-  }
-  // BACKEND HOOK (unchanged): persist read state per user
+function getStorage(): StorageLike {
+  return localStorage as unknown as StorageLike;
 }
 
 export default function Insights() {
@@ -63,6 +53,8 @@ export default function Insights() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { insightId } = useParams<{ insightId?: string }>();
   const pageState = usePageState("ready");
+  const storage = getStorage();
+  const [signalsAsset, setSignalsAsset] = useState<string | null>(() => resolveContextAsset());
 
   // URL state
   const urlFilter = searchParams.get("filter") as OracleFilter | null;
@@ -70,20 +62,21 @@ export default function Insights() {
   const isStatusMode = urlMode === "status";
 
   // Insights with read state from localStorage
-  // BACKEND HOOK (unchanged)
-  const [insights, setInsights] = useState<OracleStub[]>(() => {
-    const baseInsights = makeOracle(10);
-    const readStates = loadReadStates();
+  const [insights, setInsights] = useState<OracleInsight[]>(() => {
+    const baseInsights = makeOracle(10) as unknown as OracleInsight[];
+    const cache = loadOracleReadCache(storage);
+    const overlay = getOverlayReadIds(loadOracleReadStateQueue(storage));
     return baseInsights.map((insight) => ({
       ...insight,
-      isRead: readStates[insight.id] ?? insight.isRead,
+      isRead: (cache[insight.id] ?? insight.isRead) || overlay.has(insight.id),
     }));
   });
 
   // Takeaway read state
   const [takeawayRead, setTakeawayRead] = useState(() => {
-    const readStates = loadReadStates();
-    return readStates[TAKEAWAY_ID] ?? false;
+    const cache = loadOracleReadCache(storage);
+    const overlay = getOverlayReadIds(loadOracleReadStateQueue(storage));
+    return (cache[TAKEAWAY_ID] ?? false) || overlay.has(TAKEAWAY_ID);
   });
 
   // Filter + search state
@@ -143,54 +136,113 @@ export default function Insights() {
     return result;
   }, [insights, filter, searchQuery]);
 
-  // Save read states when they change
-  useEffect(() => {
-    const readStates: Record<string, boolean> = {
-      [TAKEAWAY_ID]: takeawayRead,
-    };
-    insights.forEach((i) => {
-      readStates[i.id] = i.isRead;
+  const refreshFromServer = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      const feed = await fetchOracleDaily();
+      updateOracleReadCache(storage, {
+        [feed.pinned.id]: feed.pinned.isRead,
+        ...Object.fromEntries(feed.insights.map((i) => [i.id, i.isRead])),
+      });
+      const overlay = getOverlayReadIds(loadOracleReadStateQueue(storage));
+      const merged = mergeOracleFeedWithOverlay(feed, overlay);
+      setInsights(merged.insights);
+      setTakeawayRead(merged.pinned.isRead);
+    } catch {
+      // Keep local/stub state when offline or unauthenticated.
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [storage]);
+
+  const syncPending = useCallback(async () => {
+    await syncOracleReadStateQueue({
+      storage,
+      isOnline: navigator.onLine,
+      bulkApi: bulkOracleReadState,
     });
-    saveReadStates(readStates);
-  }, [insights, takeawayRead]);
+  }, [storage]);
+
+  useEffect(() => {
+    syncPending().finally(() => {
+      if (navigator.onLine) refreshFromServer();
+    });
+
+    const onOnline = () => {
+      syncPending().finally(() => refreshFromServer());
+    };
+    window.addEventListener("online", onOnline);
+    return () => window.removeEventListener("online", onOnline);
+  }, [refreshFromServer, syncPending]);
 
   const handleToggleRead = useCallback((id: string) => {
-    setInsights((prev) =>
-      prev.map((insight) =>
+    setInsights((prev) => {
+      const next = prev.map((insight) =>
         insight.id === id ? { ...insight, isRead: !insight.isRead } : insight
-      )
-    );
-  }, []);
+      );
+
+      const updated = next.find((i) => i.id === id);
+      if (!updated) return next;
+
+      const desiredIsRead = updated.isRead;
+
+      if (!navigator.onLine) {
+        if (desiredIsRead) enqueueOracleMarkRead(storage, id);
+        return next;
+      }
+
+      putOracleReadState({ id, isRead: desiredIsRead })
+        .then(() => updateOracleReadCache(storage, { [id]: desiredIsRead }))
+        .catch(() => {
+          if (desiredIsRead) enqueueOracleMarkRead(storage, id);
+        });
+
+      return next;
+    });
+  }, [storage]);
 
   const handleMarkTakeawayRead = useCallback(() => {
     setTakeawayRead(true);
+    if (!navigator.onLine) {
+      enqueueOracleMarkRead(storage, TAKEAWAY_ID);
+    } else {
+      putOracleReadState({ id: TAKEAWAY_ID, isRead: true })
+        .then(() => updateOracleReadCache(storage, { [TAKEAWAY_ID]: true }))
+        .catch(() => enqueueOracleMarkRead(storage, TAKEAWAY_ID));
+    }
     toast({
       title: "Marked as read",
       description: "Today's takeaway marked as read.",
     });
-  }, []);
+  }, [storage]);
 
   const handleMarkAllRead = useCallback(() => {
     setInsights((prev) => prev.map((i) => ({ ...i, isRead: true })));
     setTakeawayRead(true);
+
+    const ids = [TAKEAWAY_ID, ...insights.map((i) => i.id)];
+    if (!navigator.onLine) {
+      ids.forEach((id) => enqueueOracleMarkRead(storage, id));
+    } else {
+      bulkOracleReadState({ ids, isRead: true })
+        .then(() => updateOracleReadCache(storage, Object.fromEntries(ids.map((id) => [id, true]))))
+        .catch(() => ids.forEach((id) => enqueueOracleMarkRead(storage, id)));
+    }
+
     toast({
       title: "All marked as read",
       description: "All insights have been marked as read.",
     });
-  }, []);
+  }, [insights, storage]);
 
   const handleRefresh = useCallback(() => {
-    setIsRefreshing(true);
-    // Simulate refresh
-    setTimeout(() => {
-      setIsRefreshing(false);
+    refreshFromServer().finally(() => {
       toast({
         title: "Refreshed",
         description: "Insights are up to date.",
       });
-    }, 800);
-    // BACKEND HOOK (unchanged): fetch fresh insights from API
-  }, []);
+    });
+  }, [refreshFromServer]);
 
   const handleShowAll = useCallback(() => {
     setFilter("all");
@@ -203,7 +255,10 @@ export default function Insights() {
 
   const handleRetry = useCallback(() => {
     pageState.setState("loading");
-    setTimeout(() => pageState.setState("ready"), 1000);
+    setTimeout(() => {
+      setSignalsAsset(resolveContextAsset());
+      pageState.setState("ready");
+    }, 250);
   }, [pageState]);
 
   const handleToggleStatusMode = useCallback(() => {
@@ -302,6 +357,20 @@ export default function Insights() {
     );
   }
 
+  // Missing asset context: show standard error (prevents calling backend without asset).
+  if (!signalsAsset) {
+    return (
+      <PageContainer testId="page-insights">
+        <ScreenState
+          status="error"
+          onRetry={handleRetry}
+          errorTitle="Missing asset context"
+          errorMessage="Select an asset in Research, then retry."
+        />
+      </PageContainer>
+    );
+  }
+
   // Global empty state (no insights at all)
   if (pageState.isEmpty || insights.length === 0) {
     return (
@@ -331,10 +400,6 @@ export default function Insights() {
             <h1 className="text-2xl font-bold tracking-tight text-foreground">
               Provider Status
             </h1>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <GrokPulseLastRunWidget />
           </div>
 
           <Card>
@@ -383,14 +448,9 @@ export default function Insights() {
           </Button>
         </div>
 
-        {/* Grok Pulse Status Widget */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <GrokPulseLastRunWidget />
-        </div>
-
         {/* Unified Signals View */}
         <section aria-label="Unified signals">
-          <UnifiedSignalsView />
+          <UnifiedSignalsView assetId={signalsAsset} />
         </section>
 
         {/* Pinned cards */}

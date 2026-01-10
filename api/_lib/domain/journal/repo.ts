@@ -17,7 +17,6 @@ import type {
   JournalEvent,
   JournalStatus,
   JournalCreateRequest,
-  JournalConfirmPayload,
 } from './types';
 import {
   assertUserId,
@@ -130,7 +129,6 @@ export async function journalCreateWithMeta(
   const event: JournalEvent = {
     id,
     userId,
-    side: request.side,
     status: 'PENDING',
     timestamp,
     summary: request.summary,
@@ -232,29 +230,24 @@ export async function journalList(
 
 export async function journalConfirm(
   userId: string,
-  id: string,
-  payload: JournalConfirmPayload
+  id: string
 ): Promise<JournalEvent | null> {
   assertUserId(userId);
   
   const event = await journalRepoKV.getEvent(userId, id);
   if (!event) return null;
   
+  // Canonical transitions: pending -> confirmed only
+  if (event.status === 'ARCHIVED') return null;
+
   // Idempotent: if already confirmed, just return
-  if (event.status === 'CONFIRMED') {
-    return event;
-  }
-  
+  if (event.status === 'CONFIRMED') return event;
+
   const now = new Date().toISOString();
   
   event.status = 'CONFIRMED';
   event.updatedAt = now;
-  event.confirmData = {
-    mood: payload.mood,
-    note: payload.note,
-    tags: payload.tags,
-    confirmedAt: now,
-  };
+  event.confirmedAt = now;
   
   await journalRepoKV.putEvent(userId, event);
   
@@ -290,8 +283,7 @@ export async function journalConfirm(
 
 export async function journalArchive(
   userId: string,
-  id: string,
-  reason: string
+  id: string
 ): Promise<JournalEvent | null> {
   assertUserId(userId);
   
@@ -299,30 +291,22 @@ export async function journalArchive(
   if (!event) return null;
   
   // Idempotent: if already archived, just return
-  if (event.status === 'ARCHIVED') {
-    return event;
-  }
-  
+  if (event.status === 'ARCHIVED') return event;
+
+  // Canonical transitions: confirmed -> archived only
+  if (event.status !== 'CONFIRMED') return null;
+
   const now = new Date().toISOString();
-  const previousStatus = event.status;
   
   event.status = 'ARCHIVED';
   event.updatedAt = now;
-  event.archiveData = {
-    reason,
-    archivedAt: now,
-  };
+  event.archivedAt = now;
   
   await journalRepoKV.putEvent(userId, event);
   
   // Remove from previous status index
-  if (previousStatus === 'PENDING') {
-    const pendingIds = await journalRepoKV.listStatusIds(userId, 'PENDING');
-    await journalRepoKV.setStatusIds(userId, 'PENDING', pendingIds.filter(x => x !== id));
-  } else if (previousStatus === 'CONFIRMED') {
-    const confirmedIds = await journalRepoKV.listStatusIds(userId, 'CONFIRMED');
-    await journalRepoKV.setStatusIds(userId, 'CONFIRMED', confirmedIds.filter(x => x !== id));
-  }
+  const confirmedIds = await journalRepoKV.listStatusIds(userId, 'CONFIRMED');
+  await journalRepoKV.setStatusIds(userId, 'CONFIRMED', confirmedIds.filter(x => x !== id));
   
   // Add to archived index
   const archivedIds = await journalRepoKV.listStatusIds(userId, 'ARCHIVED');
@@ -345,17 +329,15 @@ export async function journalRestore(
   const event = await journalRepoKV.getEvent(userId, id);
   if (!event) return null;
   
-  // Idempotent: if already pending, just return
-  if (event.status === 'PENDING') {
-    return event;
-  }
+  // Canonical transitions: archived -> pending only
+  if (event.status !== 'ARCHIVED') return null;
   
   const now = new Date().toISOString();
   const previousStatus = event.status;
   
   event.status = 'PENDING';
   event.updatedAt = now;
-  delete event.archiveData;
+  delete event.archivedAt;
   
   await journalRepoKV.putEvent(userId, event);
   

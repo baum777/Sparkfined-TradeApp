@@ -43,7 +43,7 @@ export interface UseJournalApiReturn {
   setEntries: React.Dispatch<React.SetStateAction<JournalEntryLocal[]>>;
   
   // Mutations - P0.1: confirm/archive take no payload
-  createEntry: (side: 'BUY' | 'SELL', summary: string, symbolOrAddress?: string) => Promise<JournalEntryLocal>;
+  createEntry: (summary: string, timestamp?: string) => Promise<JournalEntryLocal>;
   confirmEntry: (id: string) => void;
   archiveEntry: (id: string) => void;
   deleteEntry: (id: string) => void;
@@ -187,7 +187,9 @@ export function useJournalApi(): UseJournalApiReturn {
         ...entry,
         _isQueued: !!queueItem,
         _queueId: queueItem?.id,
-        _syncError: !!queueItem?.lastError,
+        _syncError: queueItem?.status === 'failed',
+        _syncRetryCount: queueItem?.status === 'failed' ? queueItem?.retryCount : undefined,
+        _syncLastError: queueItem?.status === 'failed' ? queueItem?.lastError : undefined,
       };
     });
 
@@ -199,7 +201,6 @@ export function useJournalApi(): UseJournalApiReturn {
         // Only add if this local-* entry is still pending in queue
         result.unshift({
           id: item.entryId,
-          side: payload?.side || 'BUY',
           status: 'pending',
           summary: payload?.summary || '',
           timestamp: payload?.timestamp || new Date().toISOString(),
@@ -207,7 +208,9 @@ export function useJournalApi(): UseJournalApiReturn {
           updatedAt: new Date(item.createdAt).toISOString(),
           _isQueued: true,
           _queueId: item.id,
-          _syncError: !!item.lastError,
+          _syncError: item.status === 'failed',
+          _syncRetryCount: item.status === 'failed' ? item.retryCount : undefined,
+          _syncLastError: item.status === 'failed' ? item.lastError : undefined,
           _clientId: item.entryId,
         });
       }
@@ -255,16 +258,13 @@ export function useJournalApi(): UseJournalApiReturn {
   // ─────────────────────────────────────────────────────────────
 
   const createEntry = useCallback(async (
-    side: 'BUY' | 'SELL',
     summary: string,
-    symbolOrAddress?: string
+    timestamp?: string
   ): Promise<JournalEntryLocal> => {
     const localId = generateLocalId();
     const payload: JournalCreateRequest = {
-      side,
       summary,
-      timestamp: new Date().toISOString(),
-      symbolOrAddress,
+      timestamp: timestamp || new Date().toISOString(),
     };
 
     // Enqueue for sync
@@ -273,7 +273,6 @@ export function useJournalApi(): UseJournalApiReturn {
     // Optimistic entry
     const optimisticEntry: JournalEntryLocal = {
       id: localId,
-      side,
       status: 'pending',
       summary,
       timestamp: payload.timestamp!,
@@ -320,9 +319,15 @@ export function useJournalApi(): UseJournalApiReturn {
       return;
     }
 
-    // Optimistic update
-    setEntries(prev =>
-      prev.map(entry =>
+    // Optimistic update (with canonical transition guard)
+    let blocked = false;
+    setEntries(prev => {
+      const current = prev.find(e => e.id === id);
+      if (current?.status === 'pending') {
+        blocked = true;
+        return prev;
+      }
+      return prev.map(entry =>
         entry.id === id
           ? {
               ...entry,
@@ -331,8 +336,12 @@ export function useJournalApi(): UseJournalApiReturn {
               _isQueued: true,
             }
           : entry
-      )
-    );
+      );
+    });
+    if (blocked) {
+      console.warn('[useJournalApi] Cannot archive a pending entry (confirm it first)');
+      return;
+    }
 
     // Enqueue - P0.1: NO payload
     enqueue('ARCHIVE', id);
@@ -385,7 +394,7 @@ export function useJournalApi(): UseJournalApiReturn {
   // ─────────────────────────────────────────────────────────────
 
   const retrySync = useCallback(async () => {
-    const { syncedCount, needsRefetch } = await processQueue();
+    const { syncedCount, needsRefetch } = await processQueue({ forceNow: true });
     if (syncedCount > 0 || needsRefetch) {
       // Refetch to get updated entries
       await fetchEntries();

@@ -1,11 +1,6 @@
 import { getKV } from '../kv/store.js';
 import crypto from 'crypto';
 
-interface RateLimitConfig {
-  windowMs: number;
-  limit: number;
-}
-
 export interface RateLimitResult {
   allowed: boolean;
   reason?: string;

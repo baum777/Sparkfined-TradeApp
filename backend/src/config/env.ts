@@ -16,6 +16,12 @@ const envSchema = z.object({
   PORT: z.string().transform(Number).default('3000'),
   DATABASE_PATH: z.string().default('./.data/tradeapp.sqlite'),
   API_BASE_PATH: z.string().default('/api'),
+
+  // Legacy/compat fields used by some modules
+  BACKEND_PORT: z.string().transform(Number).default('3000'),
+  DATABASE_URL: z.string().default('sqlite:./.data/tradeapp.sqlite'),
+  LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
+  JWT_SECRET: z.string().default('dev-secret'),
   
   // Auth
   API_KEY: z.string().optional(),
@@ -28,10 +34,17 @@ const envSchema = z.object({
   // AI
   OPENAI_API_KEY: z.string().optional(),
   OPENAI_BASE_URL: z.string().default('https://api.openai.com/v1'),
+  OPENAI_MODEL_JOURNAL: z.string().optional(),
+  OPENAI_MODEL_INSIGHTS: z.string().optional(),
+  OPENAI_MODEL_CHARTS: z.string().optional(),
   
   DEEPSEEK_API_KEY: z.string().optional(),
   DEEPSEEK_BASE_URL: z.string().default('https://api.deepseek.com'),
   DEEPSEEK_MODEL_REASONING: z.string().default('deepseek-reasoner'),
+  // Reasoning Router (DeepSeek R1 "thinking mode") + execution defaults
+  DEEPSEEK_MODEL_ROUTER: z.string().default('deepseek-reasoner'),
+  DEEPSEEK_MODEL_ANSWER: z.string().default('deepseek-chat'),
+  OPUS_MODEL: z.string().optional(),
 
   // Grok Pulse
   GROK_API_KEY: z.string().optional(),
@@ -40,10 +53,35 @@ const envSchema = z.object({
   GROK_PULSE_CRON_SECRET: z.string().optional(),
   MAX_DAILY_GROK_CALLS: z.string().transform(Number).default('900'),
   PULSE_TOKEN_ADDRESSES: z.string().default(''), // comma-separated
+  // Optional, best-effort ticker resolution map: "SOL=So111...,USDC=EPjF..."
+  PULSE_TICKER_MAP: z.string().optional(),
   
   // Vercel KV
   KV_REST_API_URL: z.string().optional(),
   KV_REST_API_TOKEN: z.string().optional(),
+
+  // LLM Router / timeouts / retries
+  LLM_ROUTER_ENABLED: z.enum(['true', 'false']).default('true').transform(v => v === 'true'),
+  LLM_ROUTER_DEBUG: z.enum(['true', 'false']).default('false').transform(v => v === 'true'),
+  LLM_TIMEOUT_MS: z.string().transform(Number).default('20000'),
+  LLM_MAX_RETRIES: z.string().transform(Number).default('2'),
+  LLM_BUDGET_DEFAULT: z.enum(['low', 'medium', 'high']).default('low'),
+  LLM_TIER_DEFAULT: z.enum(['free', 'standard', 'pro', 'high']).default('free'),
+  // Deterministic fallback when router fails or primary provider fails (optional override).
+  // Note: values align with RouterDecisionProvider.
+  LLM_FALLBACK_PROVIDER: z.enum(['deepseek', 'openai', 'grok']).optional(),
+
+  // Solana Onchain (Helius)
+  HELIUS_API_KEY: z.string(),
+  HELIUS_RPC_URL: z.string().optional(),
+  HELIUS_DAS_RPC_URL: z.string().optional(),
+  HELIUS_TIMEOUT_MS: z.string().transform(Number).optional(),
+  // Enhanced transactions caps (determinism + cost control)
+  HELIUS_ENHANCED_MAX_PAGES: z.string().transform(Number).optional(),
+  HELIUS_ENHANCED_LIMIT: z.string().transform(Number).optional(),
+
+  // Onchain gating tuning
+  ONCHAIN_TUNING_PROFILE: z.enum(['default', 'conservative', 'aggressive']).default('default'),
 
   // Monitoring
   WATCHER_INTERVAL_MS: z.string().transform(Number).default('5000'),
@@ -53,6 +91,7 @@ const envSchema = z.object({
 });
 
 export type Env = z.infer<typeof envSchema>;
+export type BackendEnv = Env;
 
 let envCache: Env | null = null;
 

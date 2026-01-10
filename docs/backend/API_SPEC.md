@@ -29,6 +29,9 @@ export interface ErrorResponse {
 - **Response**: `x-request-id: <uuid>` (immer)
 - **Idempotency**: `Idempotency-Key: <string>` (für Create-Operationen, wenn angegeben)
 
+> **Auth (Status im aktuellen Milestone)**: Auth ist **absichtlich deaktiviert** (Frontend-Default `VITE_ENABLE_AUTH` ist nicht gesetzt → `false`).
+> Alle Produkt-Flows laufen anonym/dev-single-tenant. `/api/auth/*` Endpoints sind aktuell **nicht** Teil des Backends.
+
 ---
 
 ## 0) Foundations
@@ -72,90 +75,31 @@ export interface MetaResponse {
 
 ```ts
 export type JournalEntryStatus = "pending" | "confirmed" | "archived";
-export type JournalEntrySide = "BUY" | "SELL";
 
 /**
  * JournalEntryV1 (API Boundary)
  *
  * Notes:
  * - `status` ist IMMER lowercase an der API-Grenze.
- * - `timestamp` ist der Trade-Zeitpunkt (wann der Trade passiert ist).
+ * - `timestamp` ist der Entry-Zeitpunkt (wann die Notiz/Reflexion erfasst wurde).
  * - `createdAt/updatedAt` sind Lifecycle-Zeitstempel der Journal-Entry.
  * - `confirmedAt/archivedAt` sind State-Transition-Zeitstempel.
  */
 export interface JournalEntryV1 {
   id: string;
-  side: JournalEntrySide;
   status: JournalEntryStatus;
-  timestamp: string; // ISO 8601 (Trade-Zeitpunkt)
+  timestamp: string; // ISO 8601 (Entry-Zeitpunkt)
   summary: string;
 
   createdAt: string; // ISO 8601
   updatedAt: string; // ISO 8601
   confirmedAt?: string; // ISO 8601 (nur wenn status="confirmed")
   archivedAt?: string;  // ISO 8601 (nur wenn status="archived")
-
-  /**
-   * Frozen Onchain Snapshot (P1.2)
-   * - Wird beim Create best-effort erfasst (nur wenn `symbolOrAddress` mitgegeben wird)
-   * - Fehler/Diagnose NICHT in `onchainContext`, sondern in `onchainContextMeta`
-   */
-  onchainContext?: OnchainContextV1;
-  onchainContextMeta?: OnchainContextMetaV1;
-}
-
-export interface JournalConfirmPayload {
-  mood: string;
-  note: string;
-  tags: string[];
 }
 
 export interface JournalCreateRequest {
-  side: JournalEntrySide;
   summary: string;
   timestamp?: string; // optional; server sets now if missing (ISO 8601)
-  /**
-   * Optional: Solana Mint Address (Base58, 32–44 chars)
-   * (Aktuell strikt als Solana-Adresse validiert; kein Ticker-Fallback am API-Boundary.)
-   */
-  symbolOrAddress?: string;
-}
-
-export interface OnchainContextV1 {
-  capturedAt: string; // ISO 8601
-  priceUsd: number;
-  liquidityUsd: number;
-  volume24h: number;
-  marketCap: number;
-  ageMinutes: number;
-  holders: number;
-  transfers24h: number;
-  dexId?: string;
-}
-
-export type OnchainContextProvider = "dexpaprika" | "moralis" | "internal";
-export type OnchainContextErrorCode =
-  | "MISSING_MARKET_KEY"
-  | "MISSING_API_KEY"
-  | "TIMEOUT"
-  | "HTTP_ERROR"
-  | "PARSE_ERROR"
-  | "MISSING_FIELD"
-  | "APPROXIMATE_COUNT"
-  | "UNKNOWN_ERROR";
-
-export interface OnchainContextErrorV1 {
-  provider: OnchainContextProvider;
-  code: OnchainContextErrorCode;
-  message: string;
-  at: string; // ISO 8601
-  requestId: string;
-  httpStatus?: number;
-}
-
-export interface OnchainContextMetaV1 {
-  capturedAt: string; // ISO 8601 (redundant for ease of access)
-  errors: OnchainContextErrorV1[];
 }
 ```
 
@@ -218,12 +162,12 @@ export interface JournalListResponse {
 - **Request body**: `JournalCreateRequest`
 - **Response 201**: `JournalEntryV1`
 - **Errors**:
-  - 400 `VALIDATION_FAILED` (missing summary/side)
+  - 400 `VALIDATION_FAILED` (missing summary)
 - **Caching**: `Cache-Control: no-store`
 
 ### `POST /api/journal/:id/confirm`
 - **Auth/Guards**: optional bearer (v1)
-- **Request body**: `JournalConfirmPayload`
+- **Request body**: none
 - **Response 200**: `JournalEntryV1` (mit `status="confirmed"`, `confirmedAt` gesetzt)
 - **Edge cases**:
   - Confirm auf `archived` → 409 `JOURNAL_INVALID_STATE`
@@ -232,16 +176,10 @@ export interface JournalListResponse {
 
 ### `POST /api/journal/:id/archive`
 - **Auth/Guards**: optional bearer (v1)
-- **Request body**:
-
-```ts
-export interface JournalArchiveRequest {
-  reason: string;
-}
-```
-
+- **Request body**: none
 - **Response 200**: `JournalEntryV1` (mit `status="archived"`, `archivedAt` gesetzt)
 - **Edge cases**:
+  - Archive auf `pending` → 409 `JOURNAL_INVALID_STATE` (erst confirm)
   - Archive auf `archived` → 200 idempotent
 - **Errors**: 404 `JOURNAL_NOT_FOUND`
 
@@ -263,7 +201,7 @@ export interface JournalArchiveRequest {
   - Interne Domain-Modelle/KV-Keys können uppercase (`PENDING/CONFIRMED/ARCHIVED`) nutzen.
   - API Responses nutzen **immer lowercase**: `"pending" | "confirmed" | "archived"`.
 - **Timestamps**:
-  - `timestamp`: Trade-Zeitpunkt (wann der Trade passiert ist)
+  - `timestamp`: Entry-Zeitpunkt (wann die Notiz/Reflexion erfasst wurde)
   - `createdAt` / `updatedAt`: Lifecycle der Journal-Entry
   - `confirmedAt` / `archivedAt`: State-Transitions
 
@@ -272,7 +210,7 @@ export interface JournalArchiveRequest {
 - Der frühere generische Zeitstempel-Use von `timestamp` ist **deprecated** für Lifecycle/Transitions.
 - Clients sollen für Lifecycle/Transitions auf `createdAt`, `updatedAt`, `confirmedAt`, `archivedAt` setzen.
 
-> // BACKEND_TODO: `GET /api/journal/stats`, `GET /api/journal/export/csv` (existiert bereits als Frontend-Service-API-Idee, aber UI nutzt es noch nicht).
+> // NOTE: Trading-Journal Endpoints (stats/export/prices) sind **out of scope** für Journal v1.
 
 ---
 

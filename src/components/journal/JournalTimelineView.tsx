@@ -9,7 +9,7 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { JournalMomentCard } from "./JournalMomentCard";
-import { JournalTradeCard } from "./JournalTradeCard";
+import { JournalEntryCard } from "./JournalEntryCard";
 import { JournalInsightTimelineCard } from "./JournalInsightTimelineCard";
 import type { JournalEntryLocal } from "@/services/journal/types";
 import { cn } from "@/lib/utils";
@@ -19,7 +19,6 @@ interface JournalTimelineViewProps {
   onCardClick: (entry: JournalEntryLocal, index: number) => void;
   onEdit?: (entry: JournalEntryLocal) => void;
   onArchive?: (id: string) => void;
-  onAddReflection?: (entry: JournalEntryLocal) => void;
 }
 
 interface DayGroup {
@@ -46,7 +45,6 @@ export function JournalTimelineView({
   onCardClick,
   onEdit,
   onArchive,
-  onAddReflection,
 }: JournalTimelineViewProps) {
   const [collapsedDays, setCollapsedDays] = useState<Set<string>>(new Set());
 
@@ -196,12 +194,11 @@ export function JournalTimelineView({
                   
                   if (isConfirmed) {
                     return (
-                      <JournalTradeCard
+                      <JournalEntryCard
                         key={entry.id}
                         entry={entry}
                         onEdit={onEdit ? () => onEdit(entry) : undefined}
                         onArchive={onArchive ? () => onArchive(entry.id) : undefined}
-                        onAddReflection={onAddReflection ? () => onAddReflection(entry) : undefined}
                       />
                     );
                   }

@@ -1,6 +1,6 @@
 /**
  * Unit Tests: Journal Service - Index Consistency
- * Tests for pending → confirmed and pending → archived flows
+ * Tests for pending → confirmed → archived flows
  * Verifies index updates (day + status lists)
  */
 
@@ -25,7 +25,6 @@ describe('Journal Service - Index Consistency', () => {
     it('should remove id from PENDING list on confirm', async () => {
       // Create entry
       const entry = await journalCreate(TEST_USER, {
-        side: 'BUY',
         summary: 'Test entry',
       });
 
@@ -34,7 +33,7 @@ describe('Journal Service - Index Consistency', () => {
       expect(pendingBefore).toContain(entry.id);
 
       // Confirm
-      await journalConfirm(TEST_USER, entry.id, { mood: 'ok', note: '', tags: [] });
+      await journalConfirm(TEST_USER, entry.id);
 
       // Verify removed from pending
       const pendingAfter = await journalRepoKV.listStatusIds(TEST_USER, 'PENDING');
@@ -43,7 +42,6 @@ describe('Journal Service - Index Consistency', () => {
 
     it('should add id to CONFIRMED list on confirm', async () => {
       const entry = await journalCreate(TEST_USER, {
-        side: 'BUY',
         summary: 'Test entry',
       });
 
@@ -51,7 +49,7 @@ describe('Journal Service - Index Consistency', () => {
       const confirmedBefore = await journalRepoKV.listStatusIds(TEST_USER, 'CONFIRMED');
       expect(confirmedBefore).not.toContain(entry.id);
 
-      await journalConfirm(TEST_USER, entry.id, { mood: 'ok', note: '', tags: [] });
+      await journalConfirm(TEST_USER, entry.id);
 
       const confirmedAfter = await journalRepoKV.listStatusIds(TEST_USER, 'CONFIRMED');
       expect(confirmedAfter).toContain(entry.id);
@@ -60,12 +58,11 @@ describe('Journal Service - Index Consistency', () => {
     it('should add id to day list on confirm', async () => {
       const timestamp = '2026-01-15T10:00:00.000Z';
       const entry = await journalCreate(TEST_USER, {
-        side: 'BUY',
         summary: 'Test entry',
         timestamp,
       });
 
-      await journalConfirm(TEST_USER, entry.id, { mood: 'ok', note: '', tags: [] });
+      await journalConfirm(TEST_USER, entry.id);
 
       const dayIds = await journalRepoKV.listDayIds(TEST_USER, '2026-01-15');
       expect(dayIds).toContain(entry.id);
@@ -73,7 +70,6 @@ describe('Journal Service - Index Consistency', () => {
 
     it('should update updatedAt index on confirm', async () => {
       const entry = await journalCreate(TEST_USER, {
-        side: 'BUY',
         summary: 'Test entry',
       });
 
@@ -82,7 +78,7 @@ describe('Journal Service - Index Consistency', () => {
       // Wait a tiny bit to ensure timestamp changes
       await new Promise(resolve => setTimeout(resolve, 10));
 
-      await journalConfirm(TEST_USER, entry.id, { mood: 'ok', note: '', tags: [] });
+      await journalConfirm(TEST_USER, entry.id);
 
       const after = await journalRepoKV.getUpdatedAt(TEST_USER);
       expect(after).not.toBeNull();
@@ -91,12 +87,11 @@ describe('Journal Service - Index Consistency', () => {
 
     it('should be idempotent - double confirm does not duplicate indices', async () => {
       const entry = await journalCreate(TEST_USER, {
-        side: 'BUY',
         summary: 'Test entry',
       });
 
-      await journalConfirm(TEST_USER, entry.id, { mood: 'ok', note: '', tags: [] });
-      await journalConfirm(TEST_USER, entry.id, { mood: 'ok', note: '', tags: [] });
+      await journalConfirm(TEST_USER, entry.id);
+      await journalConfirm(TEST_USER, entry.id);
 
       const confirmedIds = await journalRepoKV.listStatusIds(TEST_USER, 'CONFIRMED');
       const occurrences = confirmedIds.filter(id => id === entry.id).length;
@@ -104,59 +99,41 @@ describe('Journal Service - Index Consistency', () => {
     });
   });
 
-  describe('pending → archived flow', () => {
-    it('should remove id from PENDING list on archive', async () => {
-      const entry = await journalCreate(TEST_USER, {
-        side: 'SELL',
-        summary: 'Test entry',
-      });
+  describe('confirmed → archived flow', () => {
+    it('should move id from CONFIRMED to ARCHIVED on archive', async () => {
+      const entry = await journalCreate(TEST_USER, { summary: 'Test entry' });
+      await journalConfirm(TEST_USER, entry.id);
 
-      const pendingBefore = await journalRepoKV.listStatusIds(TEST_USER, 'PENDING');
-      expect(pendingBefore).toContain(entry.id);
+      const confirmedBefore = await journalRepoKV.listStatusIds(TEST_USER, 'CONFIRMED');
+      expect(confirmedBefore).toContain(entry.id);
 
-      await journalArchive(TEST_USER, entry.id, 'Invalid setup');
+      await journalArchive(TEST_USER, entry.id);
 
-      const pendingAfter = await journalRepoKV.listStatusIds(TEST_USER, 'PENDING');
-      expect(pendingAfter).not.toContain(entry.id);
-    });
-
-    it('should add id to ARCHIVED list on archive', async () => {
-      const entry = await journalCreate(TEST_USER, {
-        side: 'SELL',
-        summary: 'Test entry',
-      });
-
-      const archivedBefore = await journalRepoKV.listStatusIds(TEST_USER, 'ARCHIVED');
-      expect(archivedBefore).not.toContain(entry.id);
-
-      await journalArchive(TEST_USER, entry.id, 'Invalid setup');
+      const confirmedAfter = await journalRepoKV.listStatusIds(TEST_USER, 'CONFIRMED');
+      expect(confirmedAfter).not.toContain(entry.id);
 
       const archivedAfter = await journalRepoKV.listStatusIds(TEST_USER, 'ARCHIVED');
       expect(archivedAfter).toContain(entry.id);
     });
 
     it('should update updatedAt index on archive', async () => {
-      const entry = await journalCreate(TEST_USER, {
-        side: 'SELL',
-        summary: 'Test entry',
-      });
+      const entry = await journalCreate(TEST_USER, { summary: 'Test entry' });
+      await journalConfirm(TEST_USER, entry.id);
 
       await new Promise(resolve => setTimeout(resolve, 10));
 
-      await journalArchive(TEST_USER, entry.id, 'Invalid setup');
+      await journalArchive(TEST_USER, entry.id);
 
       const after = await journalRepoKV.getUpdatedAt(TEST_USER);
       expect(after).not.toBeNull();
     });
 
     it('should be idempotent - double archive does not duplicate indices', async () => {
-      const entry = await journalCreate(TEST_USER, {
-        side: 'SELL',
-        summary: 'Test entry',
-      });
+      const entry = await journalCreate(TEST_USER, { summary: 'Test entry' });
+      await journalConfirm(TEST_USER, entry.id);
 
-      await journalArchive(TEST_USER, entry.id, 'Reason 1');
-      await journalArchive(TEST_USER, entry.id, 'Reason 2');
+      await journalArchive(TEST_USER, entry.id);
+      await journalArchive(TEST_USER, entry.id);
 
       const archivedIds = await journalRepoKV.listStatusIds(TEST_USER, 'ARCHIVED');
       const occurrences = archivedIds.filter(id => id === entry.id).length;
@@ -167,10 +144,10 @@ describe('Journal Service - Index Consistency', () => {
   describe('archived → pending (restore) flow', () => {
     it('should remove id from ARCHIVED list on restore', async () => {
       const entry = await journalCreate(TEST_USER, {
-        side: 'BUY',
         summary: 'Test entry',
       });
-      await journalArchive(TEST_USER, entry.id, 'Mistake');
+      await journalConfirm(TEST_USER, entry.id);
+      await journalArchive(TEST_USER, entry.id);
 
       const archivedBefore = await journalRepoKV.listStatusIds(TEST_USER, 'ARCHIVED');
       expect(archivedBefore).toContain(entry.id);
@@ -183,10 +160,10 @@ describe('Journal Service - Index Consistency', () => {
 
     it('should add id back to PENDING list on restore', async () => {
       const entry = await journalCreate(TEST_USER, {
-        side: 'BUY',
         summary: 'Test entry',
       });
-      await journalArchive(TEST_USER, entry.id, 'Mistake');
+      await journalConfirm(TEST_USER, entry.id);
+      await journalArchive(TEST_USER, entry.id);
 
       await journalRestore(TEST_USER, entry.id);
 
@@ -196,10 +173,10 @@ describe('Journal Service - Index Consistency', () => {
 
     it('should update updatedAt index on restore', async () => {
       const entry = await journalCreate(TEST_USER, {
-        side: 'BUY',
         summary: 'Test entry',
       });
-      await journalArchive(TEST_USER, entry.id, 'Mistake');
+      await journalConfirm(TEST_USER, entry.id);
+      await journalArchive(TEST_USER, entry.id);
 
       await new Promise(resolve => setTimeout(resolve, 10));
 
@@ -215,11 +192,11 @@ describe('Journal Service - Index Consistency', () => {
       const OTHER_USER = 'other-user-xyz';
 
       // Create entry for TEST_USER
-      const entry1 = await journalCreate(TEST_USER, { side: 'BUY', summary: 'User 1' });
-      const entry2 = await journalCreate(OTHER_USER, { side: 'SELL', summary: 'User 2' });
+      const entry1 = await journalCreate(TEST_USER, { summary: 'User 1' });
+      const entry2 = await journalCreate(OTHER_USER, { summary: 'User 2' });
 
       // Confirm TEST_USER entry
-      await journalConfirm(TEST_USER, entry1.id, { mood: 'ok', note: '', tags: [] });
+      await journalConfirm(TEST_USER, entry1.id);
 
       // OTHER_USER pending list should still have their entry
       const otherPending = await journalRepoKV.listStatusIds(OTHER_USER, 'PENDING');

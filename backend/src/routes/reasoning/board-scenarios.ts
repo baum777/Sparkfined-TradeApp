@@ -18,10 +18,11 @@ export async function handleReasoningBoardScenarios(req: ParsedRequest, res: Ser
   rateLimiters.reasoning(req.path, req.userId);
 
   const body = validateBody(boardScenariosRequestSchema, req.body);
+  const normalized = { ...body, version: body.version ?? REASONING_CONTRACT_VERSION };
 
   setCacheHeaders(res, { noStore: true });
 
-  const result = await runReasoning(req, 'board-scenarios', body);
+  const result = await runReasoning(req, 'board-scenarios', normalized);
 
   sendJson(res, result);
 }

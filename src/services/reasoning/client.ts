@@ -6,12 +6,12 @@ interface ApiEnvelope<T> {
   message?: string;
 }
 
-interface ErrorResponse {
-  status: number;
-  message: string;
-  code: string;
-  requestId: string;
-  details?: Record<string, string[]>;
+interface ErrorBody {
+  error: {
+    code: string;
+    message: string;
+    details?: Record<string, string[]>;
+  };
 }
 
 export class ReasoningHttpError extends Error {
@@ -30,11 +30,23 @@ export class ReasoningHttpError extends Error {
   }
 }
 
-function unwrapEnvelope<T>(json: unknown): T {
+export class ReasoningContractError extends Error {
+  readonly endpoint: string;
+  constructor(message: string, endpoint: string) {
+    super(message);
+    this.name = 'ReasoningContractError';
+    this.endpoint = endpoint;
+  }
+}
+
+function unwrapEnvelopeStrict<T>(json: unknown, endpoint: string): T {
   if (json && typeof json === 'object' && 'data' in json && 'status' in json) {
     return (json as ApiEnvelope<T>).data;
   }
-  return json as T;
+  throw new ReasoningContractError(
+    `Non-canonical response shape for ${endpoint}: expected { data, status, message? } envelope`,
+    endpoint
+  );
 }
 
 function sleep(ms: number): Promise<void> {
@@ -77,15 +89,16 @@ export class ReasoningClient {
 
         const text = await res.text();
         const json = text.length ? JSON.parse(text) : null;
+        const requestId = res.headers.get('x-request-id') ?? undefined;
 
         if (!res.ok) {
-          const err = (json && typeof json === 'object' && 'status' in json && 'code' in json)
-            ? (json as ErrorResponse)
+          const err = (json && typeof json === 'object' && 'error' in json)
+            ? (json as ErrorBody)
             : null;
           const httpErr = new ReasoningHttpError(
-            err?.message || `HTTP ${res.status}`,
+            err?.error?.message || `HTTP ${res.status}`,
             res.status,
-            err ? { code: err.code, requestId: err.requestId, details: err.details } : undefined
+            err ? { code: err.error.code, requestId, details: err.error.details } : { requestId }
           );
 
           if (attempt < retries && isRetryableStatus(res.status)) {
@@ -98,7 +111,7 @@ export class ReasoningClient {
           throw httpErr;
         }
 
-        return unwrapEnvelope<TRes>(json);
+        return unwrapEnvelopeStrict<TRes>(json, path);
       } catch (e) {
         lastError = e;
         const isAbort = e instanceof Error && e.name === 'AbortError';

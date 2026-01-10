@@ -45,7 +45,7 @@ interface JournalConfirmModalProps {
   entry: JournalEntryLocal | null;
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (id: string, payload: ConfirmPayload) => void;
+  onConfirm: (id: string) => void;
 }
 
 export function JournalConfirmModal({
@@ -67,7 +67,11 @@ export function JournalConfirmModal({
       .map((t) => t.trim())
       .filter((t) => t.length > 0);
 
-    onConfirm(entry.id, { mood, note, tags });
+    // Local-only fields (mood/note/tags) are intentionally not sent to the backend.
+    void mood;
+    void note;
+    void tags;
+    onConfirm(entry.id);
 
     // Reset form
     setMood("neutral");
@@ -115,7 +119,7 @@ export function JournalConfirmModal({
             <Label htmlFor="note">Note (optional)</Label>
             <Textarea
               id="note"
-              placeholder="Add any notes about this trade..."
+              placeholder="Add any notes about this entry..."
               value={note}
               onChange={(e) => setNote(e.target.value)}
               rows={3}
@@ -126,7 +130,7 @@ export function JournalConfirmModal({
             <Label htmlFor="tags">Tags (comma-separated)</Label>
             <Input
               id="tags"
-              placeholder="e.g., breakout, momentum, scalp"
+              placeholder="e.g., learning, gratitude, review"
               value={tagsInput}
               onChange={(e) => setTagsInput(e.target.value)}
             />

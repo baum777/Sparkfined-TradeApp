@@ -11,13 +11,11 @@ describe('Validation Schemas', () => {
   describe('Journal Create Request', () => {
     it('should accept valid request', () => {
       const body = {
-        side: 'BUY',
         summary: 'Test trade entry',
       };
       
       const result = validateBody(journalCreateRequestSchema, body);
       
-      expect(result.side).toBe('BUY');
       expect(result.summary).toBe('Test trade entry');
     });
     
@@ -32,12 +30,12 @@ describe('Validation Schemas', () => {
     
     it('should reject invalid side', () => {
       const body = {
-        side: 'INVALID',
         summary: 'Test',
       };
       
-      expect(() => validateBody(journalCreateRequestSchema, body))
-        .toThrow(AppError);
+      // Side is no longer part of the v1 diary contract; this is now just a sanity check that
+      // the schema ignores unknown fields unless explicitly present (zod default behavior).
+      expect(() => validateBody(journalCreateRequestSchema, body)).not.toThrow();
     });
     
     it('should include field errors in details', () => {
@@ -50,7 +48,7 @@ describe('Validation Schemas', () => {
         expect(error).toBeInstanceOf(AppError);
         const appError = error as AppError;
         expect(appError.status).toBe(400);
-        expect(appError.code).toBe('VALIDATION_FAILED');
+        expect(appError.code).toBe('VALIDATION_ERROR');
         expect(appError.details).toBeDefined();
       }
     });

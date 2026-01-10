@@ -72,10 +72,11 @@ Diese Liste ist bewusst konservativ: Alles Unklare wird als Production-Risiko be
   - **[ ]** Erwartung explizit kommunizieren; spätere Push-Roadmap.
 
 ### 10) Service Worker nutzt hardcoded `"/api"`
-- **Impact**: Wenn Backend external ist, brechen SW Requests (Routing/CORS).
+- **Impact**: Wenn Backend external ist und `VITE_API_URL`/Routing nicht korrekt gesetzt sind, brechen SW Requests (Routing/CORS).
 - **Betroffene Bereiche**: `src/sw/sw-alerts.ts`, `src/sw/sw-oracle.ts`.
 - **Remediation**:
-  - **[ ]** Same-origin `/api` sicherstellen (Rewrite) oder SW bekommt build-time API origin.
+  - **[ ]** Same-origin `/api` sicherstellen (Rewrite; empfohlen) und `VITE_API_URL="/api"` setzen, **oder**
+  - **[ ]** `VITE_API_URL` direkt auf externe API setzen und CORS/Auth sauber lösen.
 
 ---
 

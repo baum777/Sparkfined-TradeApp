@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { checkAndConsumeBudget, budgetGate } from '../../lib/budget/budgetGate.js';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { checkAndConsumeBudget } from '../../lib/budget/budgetGate.js';
 import { usageTracker } from '../../lib/usage/usageTracker.js';
 import { checkRateLimit } from '../../lib/rateLimit/limiter.js';
 import { AppSettingsV1 } from '../../lib/budget/types.js';
