@@ -15,34 +15,25 @@
     "dev": "pnpm exec vite",
     "dev:backend": "pnpm -C apps/backend-alerts dev",
     "dev:all": "bash -lc 'pnpm -C apps/backend-alerts dev & pnpm exec vite'",
-
     "build": "pnpm exec vite build",
     "build:dev": "pnpm exec vite build --mode development",
-
     "build:backend": "pnpm -C apps/backend-alerts build",
     "start:backend": "pnpm -C apps/backend-alerts start",
-
     "lint": "pnpm exec eslint .",
     "lint:api": "pnpm -C api run typecheck",
     "lint:backend": "pnpm -C backend run typecheck",
-
     "typecheck": "pnpm exec tsc --noEmit",
-
     "preview": "pnpm exec vite preview",
-
     "test": "pnpm exec vitest run",
     "test:watch": "pnpm exec vitest",
-
     "test:e2e": "pnpm exec playwright test",
     "test:e2e:ui": "pnpm exec playwright test --ui",
     "test:e2e:headed": "pnpm exec playwright test --headed",
     "test:e2e:debug": "pnpm exec playwright test --debug",
     "test:e2e:report": "pnpm exec playwright show-report",
-
     "test:api": "pnpm -C api run test",
     "test:backend": "pnpm -C backend run test",
     "migrate": "pnpm -C backend run migrate",
-
     "verify": "pnpm -C backend install && pnpm -C backend run typecheck && pnpm -C backend run build && pnpm -C backend run test && pnpm install && pnpm exec tsc --noEmit && pnpm exec vite build && pnpm exec vitest run"
   },
   "dependencies": {
@@ -117,6 +108,7 @@
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.38.0",
     "vite": "^5.4.19",
+    "vite-plugin-pwa": "^1.2.0",
     "vitest": "^3.1.4"
   }
 }
