@@ -49,7 +49,7 @@ pnpm dev
 - **Backend (`backend/`)**: `http://localhost:3000`
 - **API Base Path**: `/api`
   - Lokal: Vite proxyt `/api/*` → `http://localhost:3000` (siehe `vite.config.ts`)
-  - Production: Vercel rewritet `/api/*` → `https://{env:VERCEL_BACKEND_URL}/api/*` (siehe `vercel.json`)
+  - Production: Vercel rewritet `/api/*` → `https://<YOUR_RAILWAY_DOMAIN>/api/*` (siehe `vercel.json`, TODO Domain ersetzen)
 
 ## Environment Variables (Kurzüberblick)
 
@@ -88,7 +88,7 @@ Zusätzlich existiert `api/` als Serverless‑Backend mit eigener Implementierun
 ### 1) `/api` Routing stimmt nicht
 
 - Lokal: Proxy ist nur für `/api` konfiguriert.
-- Production: `/api/*` wird auf das externe Backend via `VERCEL_BACKEND_URL` geroutet.
+- Production: `/api/*` wird auf das externe Backend via Vercel-`vercel.json` Rewrite geroutet (Railway-Domain einsetzen).
 
 ### 2) Contract Drift: Response Envelope
 
@@ -101,4 +101,3 @@ Wenn API Calls fehlschlagen: siehe `shared/docs/API_CONTRACTS.md`.
 ### 3) Backend startet nicht (Env Validation)
 
 `backend/` verlangt `HELIUS_API_KEY` im Env Schema (Zod). Ohne diese Variable startet der Prozess nicht.
-

@@ -30,7 +30,8 @@ Diese Datei listet **alle aktuell im Repo referenzierten** Env Vars + empfohlene
 
 **Flags/Checks (Production)**
 - **[ ]** `VITE_ENABLE_DEV_NAV="false"` setzen (fail-safe: Dev Screens nicht exponieren).
-- **[ ]** `VITE_API_URL` nur auf `"/api"` setzen, wenn `/api` auf Vercel garantiert korrekt geroutet ist (Rewrite/Functions).
+- **[ ]** `VITE_API_URL="/api"` in **Vercel Production + Preview** setzen, wenn `/api` via Rewrite auf das Railway-Backend zeigt (Same-Origin).
+- **[ ]** **Keine Secrets im Repo**: alle Env Vars in Vercel/Railway UI setzen, nicht committen.
 
 ---
 
@@ -39,6 +40,7 @@ Diese Datei listet **alle aktuell im Repo referenzierten** Env Vars + empfohlene
 | Name | Required | Secret? | Default | Scope | Verwendet in |
 |---|---:|---:|---|---|---|
 | `NODE_ENV` | ✅ | ❌ | `development` | Runtime | `backend/src/config/env.ts` |
+| `PORT` | ✅ (für Railway/Provider) | ❌ | `3000` | Runtime | `backend/src/config/env.ts`, `backend/src/config/config.ts` |
 | `BACKEND_PORT` | ✅ (nur für Server-Mode) | ❌ | `3000` | Runtime | `backend/src/config/env.ts` |
 | `API_BASE_PATH` | ✅ | ❌ | `"/api"` | Runtime | `backend/src/config/env.ts` |
 | `DATABASE_URL` | ✅ | ✅ (operationally sensitive) | `sqlite:./.data/tradeapp.sqlite` | Runtime | `backend/src/config/env.ts`, `backend/src/config/config.ts` |
@@ -111,19 +113,12 @@ Der Service Worker wird von Vite mitgebaut und kann deshalb `import.meta.env.VIT
 
 ---
 
-## Vercel Routing — `vercel.json` `{env:...}`
+## Vercel Routing — `vercel.json` Rewrite
 
-Diese Variable ist **kein** `VITE_*` und landet **nicht** im Frontend-Bundle. Sie wird nur von Vercel zum Routing verwendet.
+Der Rewrite in `vercel.json` leitet `/api/*` an das Railway-Backend weiter. **Wichtig**: die Placeholder-Domain muss vor dem Deploy ersetzt werden.
 
-| Name | Required | Secret? | Default | Scope | Verwendet in |
-|---|---:|---:|---|---|---|
-| `VERCEL_BACKEND_URL` | ✅ (wenn `/api` per Rewrite auf externes Backend zeigt) | ❌ | — | Runtime (Vercel) | `vercel.json`, `scripts/verify-vercel-api-ownership.mjs` |
-
-**Wichtiges Format**
-- Wert ist **nur der Hostname**, ohne `https://` und ohne `/api`.
-  - ✅ `my-backend.up.railway.app`
-  - ❌ `https://my-backend.up.railway.app`
-  - ❌ `my-backend.up.railway.app/api`
+**TODO vor Deploy**
+- Ersetze `https://<YOUR_RAILWAY_DOMAIN>/api/$1` in `vercel.json` durch die echte Railway-Domain (ohne zu raten).
 
 ---
 
@@ -134,4 +129,3 @@ Diese Variablen sind **nicht** im Code, aber werden typischerweise benötigt, so
 - **[ ]** Session/Cookie secrets (falls cookies)
 - **[ ]** Rate-limit store URL (Redis/Upstash)
 - **[ ]** Error tracking DSN für Backend (nicht als `VITE_*`, sondern server-seitig)
-

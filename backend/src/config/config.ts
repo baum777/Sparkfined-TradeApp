@@ -36,7 +36,7 @@ export function createConfig(): AppConfig {
     isTest: env.NODE_ENV === 'test',
     isProd: env.NODE_ENV === 'production',
     server: {
-      port: env.BACKEND_PORT,
+      port: env.PORT ?? env.BACKEND_PORT,
       apiBasePath: env.API_BASE_PATH,
     },
     database: {

@@ -80,6 +80,10 @@ Bedeutung:
 - startCommand: `node dist/server.js`
 - healthcheck: `/api/health`
 
+Wenn Railway per UI-Commands (statt Dockerfile) betrieben wird:
+- Build: `pnpm install && pnpm -C backend run build`
+- Start: `pnpm -C backend run start`
+
 => **Railway ist als Hosting-Plattform für das externe Backend vorgesehen.**
 
 ### 3.2 Railway Deployment (für `apps/backend-alerts/`)
@@ -100,9 +104,8 @@ In `api/_lib/alertsProxy.ts` existiert ein Proxy auf einen Railway-Upstream:
 
 ### 4.1 Vercel (Routing)
 
-- `VERCEL_BACKEND_URL`
-  - Wird in `vercel.json` im Rewrite verwendet.
-  - Erwartetes Format (aufgrund Destination-Template): **Hostname ohne `https://` und ohne `/api`**.
+- `vercel.json` enthält einen `/api` Rewrite mit einer **Placeholder-Domain**.
+  - Vor Deploy muss `https://<YOUR_RAILWAY_DOMAIN>/api/$1` auf die echte Railway-Domain gesetzt werden (kein Guessing).
 
 ### 4.2 Frontend (Vite Build-Time)
 
@@ -131,4 +134,3 @@ In `api/_lib/alertsProxy.ts` existiert ein Proxy auf einen Railway-Upstream:
   Wenn `vercel.json` in Production aktiv ist (typisch), dann ist `/api/*` **extern**. Falls jemand `vercel.json` ignoriert/überschreibt, kann das abweichen.
 - **A3 (parallel backends):**
   Das Repo enthält mehrere Backends; der „kanonische“ Production-Pfad ist aktuell primär durch `vercel.json` determiniert, nicht durch Existenz von `api/`.
-
