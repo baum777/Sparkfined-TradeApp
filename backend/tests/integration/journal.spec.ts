@@ -12,7 +12,9 @@ import {
   journalArchive,
   journalRestore,
   journalDelete,
+  journalSystemArchive,
 } from '../../src/domain/journal/repo';
+import { AppError } from '../../src/http/error';
 
 // Test userId - all operations are scoped to this user
 const TEST_USER_ID = 'test-user-123';
@@ -94,6 +96,7 @@ describe('Journal Integration', () => {
       journalConfirm(TEST_USER_ID, toConfirm.id);
       
       const toArchive = journalCreate(TEST_USER_ID, { summary: 'To archive' }, 'idem-list-a1');
+      journalConfirm(TEST_USER_ID, toArchive.id);
       journalArchive(TEST_USER_ID, toArchive.id);
     });
     
@@ -174,6 +177,7 @@ describe('Journal Integration', () => {
   describe('Archive', () => {
     it('should change status to ARCHIVED', () => {
       const entry = journalCreate(TEST_USER_ID, { summary: 'Test' }, 'idem-archive-1');
+      journalConfirm(TEST_USER_ID, entry.id);
       
       const archived = journalArchive(TEST_USER_ID, entry.id);
       
@@ -183,6 +187,7 @@ describe('Journal Integration', () => {
     
     it('should be idempotent', () => {
       const entry = journalCreate(TEST_USER_ID, { summary: 'Test' }, 'idem-archive-2');
+      journalConfirm(TEST_USER_ID, entry.id);
       
       journalArchive(TEST_USER_ID, entry.id);
       const second = journalArchive(TEST_USER_ID, entry.id);
@@ -192,33 +197,67 @@ describe('Journal Integration', () => {
 
     it('should not archive other users entries', () => {
       const entry = journalCreate(TEST_USER_ID, { summary: 'Test' }, 'idem-archive-3');
+      journalConfirm(TEST_USER_ID, entry.id);
       
       const result = journalArchive(OTHER_USER_ID, entry.id);
       
       expect(result).toBeNull();
     });
+
+    it('blocks user archive of pending entry', () => {
+      const entry = journalCreate(TEST_USER_ID, { summary: 'Test' }, 'idem-archive-pending-1');
+      
+      expect(() => journalArchive(TEST_USER_ID, entry.id)).toThrow(AppError);
+      expect(() => journalArchive(TEST_USER_ID, entry.id)).toThrow('Cannot archive a pending entry');
+    });
+
+    it('allows system auto-archive for matched_sell', () => {
+      const entry = journalCreate(TEST_USER_ID, { summary: 'Test' }, 'idem-archive-matched-1');
+      
+      const archived = journalSystemArchive({
+        userId: TEST_USER_ID,
+        id: entry.id,
+        reason: 'matched_sell',
+      });
+      
+      expect(archived?.status).toBe('archived');
+      expect(archived?.autoArchiveReason).toBe('matched_sell');
+    });
   });
   
   describe('Restore', () => {
-    it('should change status back to PENDING', () => {
-      const entry = journalCreate(TEST_USER_ID, { summary: 'Test' }, 'idem-restore-1');
-      journalArchive(TEST_USER_ID, entry.id);
+    it('restore matched_sell -> pending; user_action -> confirmed', () => {
+      // Test restore from matched_sell archive -> pending
+      const entry1 = journalCreate(TEST_USER_ID, { summary: 'Test 1' }, 'idem-restore-matched-1');
+      journalSystemArchive({
+        userId: TEST_USER_ID,
+        id: entry1.id,
+        reason: 'matched_sell',
+      });
       
-      const restored = journalRestore(TEST_USER_ID, entry.id);
+      const restored1 = journalRestore(TEST_USER_ID, entry1.id);
+      expect(restored1?.status).toBe('pending');
+
+      // Test restore from user_action archive -> confirmed
+      const entry2 = journalCreate(TEST_USER_ID, { summary: 'Test 2' }, 'idem-restore-user-1');
+      journalConfirm(TEST_USER_ID, entry2.id);
+      journalArchive(TEST_USER_ID, entry2.id);
       
-      expect(restored?.status).toBe('pending');
+      const restored2 = journalRestore(TEST_USER_ID, entry2.id);
+      expect(restored2?.status).toBe('confirmed');
     });
-    
-    it('should be idempotent on pending', () => {
-      const entry = journalCreate(TEST_USER_ID, { summary: 'Test' }, 'idem-restore-2');
+
+    it('should throw error when restoring non-archived entry', () => {
+      const entry = journalCreate(TEST_USER_ID, { summary: 'Test' }, 'idem-restore-error-1');
+      journalConfirm(TEST_USER_ID, entry.id);
       
-      const restored = journalRestore(TEST_USER_ID, entry.id);
-      
-      expect(restored?.status).toBe('pending');
+      expect(() => journalRestore(TEST_USER_ID, entry.id)).toThrow(AppError);
+      expect(() => journalRestore(TEST_USER_ID, entry.id)).toThrow('Cannot restore a non-archived entry');
     });
 
     it('should not restore other users entries', () => {
       const entry = journalCreate(TEST_USER_ID, { summary: 'Test' }, 'idem-restore-3');
+      journalConfirm(TEST_USER_ID, entry.id);
       journalArchive(TEST_USER_ID, entry.id);
       
       const result = journalRestore(OTHER_USER_ID, entry.id);

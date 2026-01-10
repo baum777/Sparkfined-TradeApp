@@ -88,8 +88,8 @@ export function notFound(message: string, code: ErrorCode = ErrorCodes.NOT_FOUND
   return new AppError(message, 404, code);
 }
 
-export function unauthorized(message = 'Unauthorized'): AppError {
-  return new AppError(message, 401, ErrorCodes.UNAUTHORIZED);
+export function unauthorized(message = 'Unauthorized', code: ErrorCode = ErrorCodes.UNAUTHORIZED): AppError {
+  return new AppError(message, 401, code);
 }
 
 export function badRequest(

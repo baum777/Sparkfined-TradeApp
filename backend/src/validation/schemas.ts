@@ -40,7 +40,7 @@ export const settingsPatchSchema = z.object({
 // ─────────────────────────────────────────────────────────────
 
 export const journalInsightsRequestSchema = z.object({
-  kind: z.enum(['teaser', 'review', 'playbook']),
+  kind: z.enum(['teaser', 'review', 'playbook', 'adaptiveCoach']).optional(),
   includeGrok: z.boolean().optional(),
 });
 

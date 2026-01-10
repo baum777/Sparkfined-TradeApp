@@ -512,7 +512,7 @@ export function journalConfirm(
   };
 }
 
-export function journalArchive(userId: string, id: string): JournalEntryV1 | null {
+export function journalArchive(userId: string, id: string, reason?: string): JournalEntryV1 | null {
   assertUserId(userId);
   const db = getDatabase();
   const now = new Date().toISOString();
@@ -520,6 +520,13 @@ export function journalArchive(userId: string, id: string): JournalEntryV1 | nul
   const entry = journalGetById(userId, id);
   if (!entry) {
     return null;
+  }
+  
+  // P0: enforce state machine at domain level
+  // - user archive: confirmed -> archived only
+  // - system archive: pending -> archived ONLY if reason === 'matched_sell'
+  if (entry.status === 'pending' && reason !== 'matched_sell') {
+    throw conflict('Cannot archive a pending entry', ErrorCodes.INVALID_TRANSITION);
   }
   
   // Idempotent: if already archived, just return
@@ -537,7 +544,7 @@ export function journalArchive(userId: string, id: string): JournalEntryV1 | nul
     db.prepare(`
       INSERT OR REPLACE INTO journal_archives_v2 (entry_id, user_id, reason, archived_at)
       VALUES (?, ?, ?, ?)
-    `).run(id, userId, '', now);
+    `).run(id, userId, reason ?? 'user_action', now);
   })();
   
   return {
@@ -703,27 +710,43 @@ export function journalRestore(userId: string, id: string): JournalEntryV1 | nul
     return null;
   }
   
-  // Idempotent: if already pending, just return
-  if (entry.status === 'pending') {
-    return entry;
+  // P0: restore only from archived
+  if (entry.status !== 'archived') {
+    throw conflict('Cannot restore a non-archived entry', ErrorCodes.INVALID_TRANSITION);
   }
-  
+
+  // determine restore target based on archive reason
+  const archive = db.prepare(
+    `SELECT reason FROM journal_archives_v2 WHERE entry_id = ? AND user_id = ?`
+  ).get(id, userId) as { reason: string } | undefined;
+  const reason = archive?.reason;
+
+  let nextStatus: 'pending' | 'confirmed';
+  if (reason === 'matched_sell') {
+    nextStatus = 'pending';
+  } else {
+    // default user_action
+    nextStatus = 'confirmed';
+  }
+
+  db.prepare(`DELETE FROM journal_archives_v2 WHERE entry_id = ? AND user_id = ?`).run(id, userId);
+
+  // Update entry status
   db.prepare(`
     UPDATE journal_entries_v2
-    SET status = 'pending', updated_at = ?
+    SET status = ?, updated_at = ?
     WHERE user_id = ? AND id = ?
-  `).run(now, userId, id);
-  
-  // Remove archive record if exists
-  db.prepare(`DELETE FROM journal_archives_v2 WHERE entry_id = ? AND user_id = ?`).run(id, userId);
-  
-  return {
-    ...entry,
-    status: 'pending',
-    updatedAt: now,
-    archivedAt: undefined,
-    confirmedAt: undefined,
-  };
+  `).run(nextStatus, now, userId, id);
+
+  // If restoring to confirmed, add confirmation record
+  if (nextStatus === 'confirmed') {
+    db.prepare(`
+      INSERT OR REPLACE INTO journal_confirmations_v2 (entry_id, user_id, mood, note, tags_json, confirmed_at)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(id, userId, '', '', '[]', now);
+  }
+
+  return journalGetById(userId, id);
 }
 
 export function journalDelete(userId: string, id: string): boolean {
