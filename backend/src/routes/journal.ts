@@ -1,7 +1,7 @@
 import type { ServerResponse } from 'http';
 import type { ParsedRequest } from '../http/router.js';
 import { sendJson, sendCreated, sendNoContent, setCacheHeaders } from '../http/response.js';
-import { notFound, conflict, validationError, ErrorCodes } from '../http/error.js';
+import { notFound, conflict, validationError, ErrorCodes, unauthorized } from '../http/error.js';
 import { validateBody, validateQuery } from '../validation/validate.js';
 import {
   journalCreateRequestSchema,
@@ -23,7 +23,14 @@ import type { JournalListResponse } from '../domain/journal/types.js';
  * Per API_SPEC.md section 1
  */
 
+function requireJournalAuth(req: ParsedRequest): void {
+  if (!req.userId || req.userId === 'anon') {
+    throw unauthorized('Authentication required', ErrorCodes.UNAUTHENTICATED);
+  }
+}
+
 export function handleJournalList(req: ParsedRequest, res: ServerResponse): void {
+  requireJournalAuth(req);
   const query = validateQuery(journalListQuerySchema, req.query);
   
   // Support both 'view' and 'status' query params
@@ -43,6 +50,7 @@ export function handleJournalList(req: ParsedRequest, res: ServerResponse): void
 }
 
 export function handleJournalGetById(req: ParsedRequest, res: ServerResponse): void {
+  requireJournalAuth(req);
   const { id } = req.params;
   
   // userId is now REQUIRED for all journal operations (multitenancy)
@@ -57,6 +65,7 @@ export function handleJournalGetById(req: ParsedRequest, res: ServerResponse): v
 }
 
 export function handleJournalCreate(req: ParsedRequest, res: ServerResponse): void {
+  requireJournalAuth(req);
   const body = validateBody(journalCreateRequestSchema, req.body);
   
   // Check for idempotency key (header is canonical)
@@ -75,6 +84,7 @@ export function handleJournalCreate(req: ParsedRequest, res: ServerResponse): vo
 }
 
 export function handleJournalConfirm(req: ParsedRequest, res: ServerResponse): void {
+  requireJournalAuth(req);
   const { id } = req.params;
   
   // userId is now REQUIRED for all journal operations (multitenancy)
@@ -99,33 +109,34 @@ export function handleJournalConfirm(req: ParsedRequest, res: ServerResponse): v
 }
 
 export function handleJournalArchive(req: ParsedRequest, res: ServerResponse): void {
+  requireJournalAuth(req);
   const { id } = req.params;
   
   // userId is now REQUIRED for all journal operations (multitenancy)
-  const existing = journalGetById(req.userId, id);
-  if (!existing) {
+  const entry = journalGetById(req.userId, id);
+  if (!entry) {
     throw notFound(`Journal entry not found: ${id}`, ErrorCodes.JOURNAL_NOT_FOUND);
   }
-  
-  // Idempotent no-op is allowed when already archived.
-  const entry = journalArchive(req.userId, id);
+
+  // P0: user must NOT archive pending
+  if (entry.status === 'pending') {
+    throw conflict('Cannot archive a pending entry', ErrorCodes.INVALID_TRANSITION);
+  }
+
+  const archived = journalArchive(req.userId, id);
   
   setCacheHeaders(res, { noStore: true });
-  sendJson(res, entry);
+  sendJson(res, archived);
 }
 
 export function handleJournalRestore(req: ParsedRequest, res: ServerResponse): void {
+  requireJournalAuth(req);
   const { id } = req.params;
   
   // userId is now REQUIRED for all journal operations (multitenancy)
   const existing = journalGetById(req.userId, id);
   if (!existing) {
     throw notFound(`Journal entry not found: ${id}`, ErrorCodes.JOURNAL_NOT_FOUND);
-  }
-
-  // Only archived -> pending is a valid transition (pending is idempotent).
-  if (existing.status === 'confirmed') {
-    throw conflict('Cannot restore a confirmed entry', ErrorCodes.INVALID_TRANSITION);
   }
   
   const entry = journalRestore(req.userId, id);
@@ -135,6 +146,7 @@ export function handleJournalRestore(req: ParsedRequest, res: ServerResponse): v
 }
 
 export function handleJournalDelete(req: ParsedRequest, res: ServerResponse): void {
+  requireJournalAuth(req);
   const { id } = req.params;
   
   // userId is now REQUIRED for all journal operations (multitenancy)
