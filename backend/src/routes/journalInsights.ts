@@ -13,8 +13,14 @@ import * as grokPulseAdapter from '../domain/grokPulse/grokPulseAdapter.js';
 import { buildInsightContext } from '../domain/insights/context.js';
 import { generateInsights, getHighestTierModule } from '../domain/insights/index.js';
 import type { InsightSnapshot } from '../domain/insights/types.js';
+import { buildContextPack } from '../domain/contextPack/build.js';
+import type { ContextPack } from '../domain/contextPack/types.js';
 
 type JournalInsightsResponse = {
+  facts: {
+    entry: unknown; // JournalEntryV1
+  };
+  context?: ContextPack;
   insights: InsightSnapshot[];
   narrative?: {
     source: 'grok_pulse_snapshot';
@@ -38,6 +44,9 @@ export async function handleJournalInsights(req: ParsedRequest, res: ServerRespo
   }
 
   const includeGrok = body.includeGrok === true;
+  const includeContextPack = body.includeContextPack === true;
+  const contextPackAnchorMode = body.contextPackAnchorMode || 'trade_centered';
+  const includeDeltas = body.includeDeltas === true;
   const tier = resolveTierFromAuthUser(req.user);
 
   // Server-side gating: include Grok narrative ONLY if explicitly requested and enabled.
@@ -59,11 +68,37 @@ export async function handleJournalInsights(req: ParsedRequest, res: ServerRespo
   const insights = await generateInsights(tier, context);
 
   const response: JournalInsightsResponse = {
+    facts: {
+      entry, // JournalEntryV1
+    },
     insights,
   };
 
-  // Add Grok narrative if requested and allowed
-  if (includeGrok) {
+  // Build ContextPack if requested (per FROZEN SPEC section 5A)
+  if (includeContextPack) {
+    const assetMint = entry.capture?.assetMint || entry.symbolOrAddress || '';
+    const settings = await getSettings(req.userId);
+    
+    const contextPack = await buildContextPack({
+      userId: req.userId,
+      tier,
+      asset: {
+        mint: assetMint,
+        symbol: entry.capture?.assetSymbol || entry.symbolOrAddress || undefined,
+      },
+      anchor: {
+        mode: contextPackAnchorMode as 'trade_centered' | 'now_centered' | 'launch_centered' | 'latest_only',
+        anchorTimeISO: entry.timestamp || entry.createdAt,
+      },
+      includeGrok,
+      settings,
+      entry,
+    });
+    response.context = contextPack;
+  }
+
+  // Add Grok narrative if requested and allowed (legacy support)
+  if (includeGrok && !includeContextPack) {
     const asset = entry.capture?.assetMint || entry.symbolOrAddress;
     const classified = typeof asset === 'string' ? classifyPulseAsset(asset) : null;
     const resolved = typeof asset === 'string' && classified ? resolvePulseAsset(asset) : null;
