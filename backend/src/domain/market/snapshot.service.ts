@@ -1,16 +1,19 @@
 /**
  * Market Snapshot Service
  * Builds at-trade market snapshots with tier-gated data capture
+ * Per BACKEND MAP section 1: market.snapshot.service.ts must also hard-gate fields (defense in depth)
  */
 
 import type { ResolvedTier } from '../../config/tiers.js';
 import { tierGte } from '../../config/tiers.js';
+import { canIncludeMarket, canIncludeIndicators, canIncludeOrderPressure } from '../contextPack/gates.js';
 import * as priceProvider from './providers/price.provider.js';
 import * as volumeProvider from './providers/volume.provider.js';
 import * as holdersProvider from './providers/holders.provider.js';
 import * as liquidityProvider from './providers/liquidity.provider.js';
 import * as rsiIndicator from './indicators/rsi.js';
 import * as trendIndicator from './indicators/trend.js';
+import type { MarketSnapshotAtTime } from '../contextPack/types.js';
 
 export interface AtTradeMarketSnapshot {
   capturedAt: string; // ISO timestamp
@@ -85,5 +88,83 @@ export async function buildOrderPressureData(
   // This requires analyzing recent transaction data
   // For now, return empty data
   return {};
+}
+
+/**
+ * Build MarketSnapshotAtTime for ContextPack
+ * Per BACKEND MAP section 1: buildMarketSnapshot({ mint, asOfISO, tier })
+ * Defense in depth: gates.ts is checked in build.ts, but we also gate here
+ */
+export async function buildMarketSnapshot(params: {
+  mint: string;
+  asOfISO: string;
+  tier: ResolvedTier;
+}): Promise<MarketSnapshotAtTime | null> {
+  const { mint, asOfISO, tier } = params;
+  
+  // Defense in depth: check gates
+  if (!canIncludeMarket(tier)) {
+    return null;
+  }
+  
+  // Use existing buildAtTradeSnapshot
+  const snapshot = await buildAtTradeSnapshot(tier, mint, asOfISO);
+  
+  const market: MarketSnapshotAtTime = {
+    asOfISO,
+  };
+  
+  // Standard tier: basic market data
+  if (canIncludeMarket(tier)) {
+    market.priceUsd = snapshot.priceUsd;
+    market.marketCapUsd = snapshot.marketCapUsd;
+    market.volume24hUsd = snapshot.volume24hUsd;
+    market.holdersCount = snapshot.holdersCount;
+    
+    // Try to get liquidity if available
+    try {
+      const liquidityData = await liquidityProvider.fetchLiquidityData(mint);
+      market.liquidityUsd = liquidityData.liquidityUsd;
+    } catch {
+      // Ignore if liquidity fetch fails
+    }
+  }
+  
+  // Pro tier: indicators
+  if (canIncludeIndicators(tier)) {
+    market.indicators = {
+      rsi14: snapshot.rsi14 ?? undefined,
+      trendState: mapTrendState(snapshot.trendState),
+    };
+  }
+  
+  // High tier: order pressure
+  if (canIncludeOrderPressure(tier)) {
+    const orderPressure = await buildOrderPressureData(mint);
+    if (orderPressure.buySellImbalance !== undefined || 
+        orderPressure.largeTxCount !== undefined ||
+        orderPressure.avgTradeSizeDelta !== undefined) {
+      market.orderPressure = {
+        buySellImbalance: orderPressure.buySellImbalance,
+        largeTxCount: orderPressure.largeTxCount,
+        avgTradeSizeDelta: orderPressure.avgTradeSizeDelta,
+      };
+    }
+  }
+  
+  return market;
+}
+
+/**
+ * Map trend state to ContextPack format
+ */
+function mapTrendState(
+  state?: 'bullish' | 'bearish' | 'neutral' | 'unknown'
+): 'overbought' | 'neutral' | 'oversold' | undefined {
+  if (!state) return undefined;
+  if (state === 'bullish') return 'overbought';
+  if (state === 'bearish') return 'oversold';
+  if (state === 'neutral') return 'neutral';
+  return undefined;
 }
 

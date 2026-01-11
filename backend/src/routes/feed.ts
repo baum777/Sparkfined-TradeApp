@@ -8,6 +8,11 @@ import { notFound, validationError } from '../http/error.js';
 import { classifyPulseAsset, resolvePulseAsset } from '../domain/grokPulse/assetResolver.js';
 import { getPulseFeedSnapshot } from '../domain/grokPulse/grokPulseAdapter.js';
 import type { OracleFeedItem, PulseFeed } from '../domain/feed/types.js';
+import { resolveTierFromAuthUser } from '../domain/settings/tier.js';
+import { getSettings } from '../domain/settings/settings.service.js';
+import { buildContextPack } from '../domain/contextPack/build.js';
+import { buildPulseContextExtension } from '../domain/contextPack/pulseExtension.js';
+import { buildOracleContextExtension } from '../domain/contextPack/oracleExtension.js';
  
 /**
  * Canonical Feed Endpoints
@@ -50,7 +55,7 @@ export async function handleFeedOracle(req: ParsedRequest, res: ServerResponse):
 export async function handleFeedPulse(req: ParsedRequest, res: ServerResponse): Promise<void> {
   const query = validateQuery(feedPulseQuerySchema, req.query);
   const asset = query.asset;
- 
+
   const classified = classifyPulseAsset(asset);
   if (!classified) {
     throw validationError('Invalid asset input. Expected ticker-like symbol or Solana-like address.');
@@ -63,6 +68,32 @@ export async function handleFeedPulse(req: ParsedRequest, res: ServerResponse): 
   }
 
   const payload: PulseFeed = await getPulseFeedSnapshot(resolved);
+  
+  // Per BACKEND MAP section 2B: Add optional context summary
+  // Prefer now_centered market snapshot; do not compute deltas on Pulse path unless cached
+  const tier = resolveTierFromAuthUser(req.user);
+  if (tier) {
+    const settings = await getSettings(req.userId);
+    const contextPack = await buildContextPack({
+      userId: req.userId,
+      tier,
+      asset: {
+        mint: resolved.address,
+        symbol: resolved.symbol,
+      },
+      anchor: {
+        mode: 'now_centered',
+        anchorTimeISO: new Date().toISOString(),
+      },
+      includeGrok: false, // Pulse does not request narrative by default
+      settings,
+    });
+    
+    const contextExtension = buildPulseContextExtension(contextPack);
+    if (contextExtension) {
+      (payload as any).context = contextExtension;
+    }
+  }
  
   // Pulse is near-real-time; avoid caching.
   setCacheHeaders(res, { noStore: true });
