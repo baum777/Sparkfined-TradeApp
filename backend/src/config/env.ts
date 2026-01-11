@@ -60,6 +60,9 @@ const envSchema = z.object({
   KV_REST_API_URL: z.string().optional(),
   KV_REST_API_TOKEN: z.string().optional(),
 
+  // Market providers (optional)
+  DEXPAPRIKA_API_KEY: z.string().optional(),
+
   // LLM Router / timeouts / retries
   LLM_ROUTER_ENABLED: z.enum(['true', 'false']).default('true').transform(v => v === 'true'),
   LLM_ROUTER_DEBUG: z.enum(['true', 'false']).default('false').transform(v => v === 'true'),

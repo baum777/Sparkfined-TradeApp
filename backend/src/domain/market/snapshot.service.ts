@@ -8,7 +8,6 @@ import { tierGte } from '../../config/tiers.js';
 import * as priceProvider from './providers/price.provider.js';
 import * as volumeProvider from './providers/volume.provider.js';
 import * as holdersProvider from './providers/holders.provider.js';
-import * as liquidityProvider from './providers/liquidity.provider.js';
 import * as rsiIndicator from './indicators/rsi.js';
 import * as trendIndicator from './indicators/trend.js';
 
@@ -81,6 +80,7 @@ export async function buildAtTradeSnapshot(
 export async function buildOrderPressureData(
   symbolOrAddress: string
 ): Promise<OrderPressureData> {
+  void symbolOrAddress;
   // TODO: Implement order pressure calculation
   // This requires analyzing recent transaction data
   // For now, return empty data

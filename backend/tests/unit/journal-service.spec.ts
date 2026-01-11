@@ -61,6 +61,7 @@ describe('Journal Service - Index Consistency (SQLite)', () => {
 
       expect(entry.status).toBe('pending');
 
+      journalConfirm(TEST_USER, entry.id);
       const archived = journalArchive(TEST_USER, entry.id);
 
       expect(archived?.status).toBe('archived');
@@ -72,6 +73,7 @@ describe('Journal Service - Index Consistency (SQLite)', () => {
         summary: 'Test entry',
       }, 'idem-unit-archive-2');
 
+      journalConfirm(TEST_USER, entry.id);
       const first = journalArchive(TEST_USER, entry.id);
       const second = journalArchive(TEST_USER, entry.id);
 
@@ -81,25 +83,24 @@ describe('Journal Service - Index Consistency (SQLite)', () => {
   });
 
   describe('archived → pending (restore) flow', () => {
-    it('should change status from ARCHIVED to PENDING', () => {
+    it('should change status from ARCHIVED to CONFIRMED (user_action)', () => {
       const entry = journalCreate(TEST_USER, {
         summary: 'Test entry',
       }, 'idem-unit-restore-1');
+      journalConfirm(TEST_USER, entry.id);
       journalArchive(TEST_USER, entry.id);
 
       const restored = journalRestore(TEST_USER, entry.id);
 
-      expect(restored?.status).toBe('pending');
+      expect(restored?.status).toBe('confirmed');
     });
 
-    it('should be idempotent - restore on pending returns pending', () => {
+    it('restore on pending should return null (invalid transition)', () => {
       const entry = journalCreate(TEST_USER, {
         summary: 'Test entry',
       }, 'idem-unit-restore-2');
 
-      const result = journalRestore(TEST_USER, entry.id);
-
-      expect(result?.status).toBe('pending');
+      expect(() => journalRestore(TEST_USER, entry.id)).toThrow('Cannot restore a non-archived entry');
     });
   });
 
@@ -135,6 +136,7 @@ describe('Journal Service - Index Consistency (SQLite)', () => {
       const entry = journalCreate(TEST_USER, {
         summary: 'User 1 entry',
       }, 'idem-unit-mt-3');
+      journalConfirm(TEST_USER, entry.id);
       journalArchive(TEST_USER, entry.id);
 
       const result = journalRestore(OTHER_USER, entry.id);

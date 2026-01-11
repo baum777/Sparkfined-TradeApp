@@ -1,7 +1,7 @@
-<<<<<<< HEAD
 import { logger } from '../observability/logger.js';
 import { runOracleDailyJob } from './oracleDaily.js';
 import { runJournalEnrichJob } from './journalEnrich.js';
+import { runDeltaSnapshotsJob } from './deltaSnapshots.job.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const FIVE_MIN_MS = 5 * 60 * 1000;
@@ -52,12 +52,21 @@ export function startScheduledJobs(): { stop: () => void } {
   // Journal enrich: run every 5 minutes (no-op placeholder for now), run once immediately.
   const runEnrich = safeRun('journal-enrich', async () => {
     const result = await runJournalEnrichJob();
-    logger.info('Journal enrich tick', result);
+    logger.info('Journal enrich tick', { ...result });
   });
   runEnrich();
 
   const enrichInterval = setInterval(runEnrich, FIVE_MIN_MS);
   intervals.push(enrichInterval);
+
+  // Delta snapshots: run every 5 minutes (pro+ inferred from captured snapshot fields).
+  const runDeltas = safeRun('delta-snapshots', async () => {
+    const result = await runDeltaSnapshotsJob();
+    logger.info('Delta snapshots tick', { ...result });
+  });
+  runDeltas();
+  const deltasInterval = setInterval(runDeltas, FIVE_MIN_MS);
+  intervals.push(deltasInterval);
 
   const stop = () => {
     timeouts.forEach(clearTimeout);
@@ -65,20 +74,5 @@ export function startScheduledJobs(): { stop: () => void } {
   };
 
   return { stop };
-=======
-/**
- * Minimal scheduler stub.
- *
- * The backend uses this to start/stop periodic jobs.
- * In this repo, most periodic work is implemented as interval-based jobs in `server.ts`.
- */
-
-export function startScheduledJobs(): { stop: () => void } {
-  return {
-    stop: () => {
-      // no-op
-    },
-  };
->>>>>>> d9074af39364962f005189d37a941b5b89934b39
 }
 

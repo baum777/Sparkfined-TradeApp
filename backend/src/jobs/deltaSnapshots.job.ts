@@ -7,11 +7,8 @@
 import { logger } from '../observability/logger.js';
 import { getDatabase } from '../db/sqlite.js';
 import { journalGetById } from '../domain/journal/repo.js';
-import { resolveTierFromAuthUser } from '../domain/settings/tier.js';
-import { tierGte } from '../config/tiers.js';
 import { computeAllDeltaSnapshots } from '../domain/market/delta.service.js';
 import type { AtTradeMarketSnapshot } from '../domain/market/snapshot.service.js';
-import type { DeltaSnapshot } from '../domain/market/delta.service.js';
 
 export interface DeltaSnapshotsJobResult {
   processed: number;
@@ -68,6 +65,17 @@ export async function runDeltaSnapshotsJob(): Promise<DeltaSnapshotsJobResult> {
       }
       
       const atTradeSnapshot = JSON.parse(snapshotRow.market_snapshot_json) as AtTradeMarketSnapshot;
+
+      // HARD GATE (spec): standard/free MUST NOT compute or persist deltas.
+      // We don't persist user tiers in DB, so we infer pro+ eligibility from the snapshot payload:
+      // - pro+ capture includes indicator fields (rsi14/trendState)
+      // - standard capture does not
+      const inferredProPlus = Object.prototype.hasOwnProperty.call(atTradeSnapshot, 'rsi14')
+        || Object.prototype.hasOwnProperty.call(atTradeSnapshot, 'trendState');
+      if (!inferredProPlus) {
+        skipped++;
+        continue;
+      }
       
       // Get asset mint from entry
       const entryFull = journalGetById(entry.user_id, entry.id);

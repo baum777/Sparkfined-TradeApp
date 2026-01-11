@@ -8,6 +8,10 @@ import { notFound, validationError } from '../http/error.js';
 import { classifyPulseAsset, resolvePulseAsset } from '../domain/grokPulse/assetResolver.js';
 import { getPulseFeedSnapshot } from '../domain/grokPulse/grokPulseAdapter.js';
 import type { OracleFeedItem, PulseFeed } from '../domain/feed/types.js';
+import { resolveTierFromAuthUser } from '../domain/settings/tier.js';
+import { getSettings } from '../domain/settings/settings.service.js';
+import { buildContextPackForJournalEntry } from '../domain/contextPack/contextPack.js';
+import { buildPulseContextFromContextPack } from '../domain/contextPack/pulseContext.js';
  
 /**
  * Canonical Feed Endpoints
@@ -62,7 +66,32 @@ export async function handleFeedPulse(req: ParsedRequest, res: ServerResponse): 
     throw notFound('Asset symbol could not be resolved');
   }
 
-  const payload: PulseFeed = await getPulseFeedSnapshot(resolved);
+  const payload: PulseFeed & { context?: any } = await getPulseFeedSnapshot(resolved);
+
+  // Pulse extension: attach optional deterministic context overlays/confidence (pro/high only).
+  try {
+    const tier = resolveTierFromAuthUser(req.user);
+    if (tier === 'pro' || tier === 'high') {
+      const settings = await getSettings(req.userId);
+
+      // Build a minimal ContextPack from the pulse snapshot alone (narrative-as-context).
+      // We intentionally do NOT call market/delta providers here (Pulse must stay low-latency).
+      const pack = buildContextPackForJournalEntry({
+        userId: req.userId,
+        tier: tier as any,
+        settings,
+        asset: { mint: resolved.address, ...(resolved.kind === 'ticker' ? { symbol: resolved.symbol } : {}) },
+        anchor: { mode: 'latest_only', anchorTimeISO: new Date().toISOString() },
+        generatedAtISO: payload.updatedAt,
+        includeGrok: true,
+        pulseNarrativeSnapshot: (payload as any)?.snapshot ?? null,
+      });
+
+      payload.context = buildPulseContextFromContextPack(pack);
+    }
+  } catch {
+    // fail open
+  }
  
   // Pulse is near-real-time; avoid caching.
   setCacheHeaders(res, { noStore: true });

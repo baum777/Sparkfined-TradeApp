@@ -185,7 +185,26 @@ describe('Journal insights Grok gating', () => {
 
     const spy = vi
       .spyOn(grokPulseAdapter, 'getPulseFeedSnapshot')
-      .mockResolvedValue({ ok: true, source: 'test' } as any);
+      .mockResolvedValue({
+        assetResolved: {
+          input: 'So11111111111111111111111111111111111111112',
+          kind: 'address',
+          address: 'So11111111111111111111111111111111111111112',
+        },
+        snapshot: {
+          score: 42,
+          label: 'BULL',
+          confidence: 0.8,
+          cta: 'WATCH',
+          one_liner: 'Test narrative one-liner.',
+          top_snippet: 'Test snippet.',
+          ts: Date.now(),
+          low_confidence: false,
+          source: 'grok',
+        },
+        history: [],
+        updatedAt: new Date().toISOString(),
+      } as any);
 
     const res = await fetch(`${baseUrl}/api/journal/${id}/insights`, {
       method: 'POST',
@@ -200,7 +219,8 @@ describe('Journal insights Grok gating', () => {
     expect(res.status).toBe(200);
     expect(body.status).toBe('ok');
     expect(body.data?.narrative?.source).toBe('grok_pulse_snapshot');
-    expect(body.data?.narrative?.pulse).toEqual({ ok: true, source: 'test' });
+    expect(body.data?.narrative?.pulse?.snapshot?.label).toBe('BULL');
+    expect(body.data?.context?.narrative?.sentiment?.label).toBe('bullish');
     expect(spy).toHaveBeenCalledTimes(1);
 
     spy.mockRestore();

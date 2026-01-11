@@ -1,7 +1,7 @@
 import type { ServerResponse } from 'http';
 import type { ParsedRequest } from '../http/router.js';
 import { sendJson, sendCreated, sendNoContent, setCacheHeaders } from '../http/response.js';
-import { notFound, conflict, validationError, ErrorCodes, unauthorized } from '../http/error.js';
+import { notFound, conflict, validationError, ErrorCodes } from '../http/error.js';
 import { validateBody, validateQuery } from '../validation/validate.js';
 import {
   journalCreateRequestSchema,
@@ -23,14 +23,7 @@ import type { JournalListResponse } from '../domain/journal/types.js';
  * Per API_SPEC.md section 1
  */
 
-function requireJournalAuth(req: ParsedRequest): void {
-  if (!req.userId || req.userId === 'anon') {
-    throw unauthorized('Authentication required', ErrorCodes.UNAUTHENTICATED);
-  }
-}
-
 export function handleJournalList(req: ParsedRequest, res: ServerResponse): void {
-  requireJournalAuth(req);
   const query = validateQuery(journalListQuerySchema, req.query);
   
   // Support both 'view' and 'status' query params
@@ -50,7 +43,6 @@ export function handleJournalList(req: ParsedRequest, res: ServerResponse): void
 }
 
 export function handleJournalGetById(req: ParsedRequest, res: ServerResponse): void {
-  requireJournalAuth(req);
   const { id } = req.params;
   
   // userId is now REQUIRED for all journal operations (multitenancy)
@@ -65,7 +57,6 @@ export function handleJournalGetById(req: ParsedRequest, res: ServerResponse): v
 }
 
 export function handleJournalCreate(req: ParsedRequest, res: ServerResponse): void {
-  requireJournalAuth(req);
   const body = validateBody(journalCreateRequestSchema, req.body);
   
   // Check for idempotency key (header is canonical)
@@ -84,7 +75,6 @@ export function handleJournalCreate(req: ParsedRequest, res: ServerResponse): vo
 }
 
 export function handleJournalConfirm(req: ParsedRequest, res: ServerResponse): void {
-  requireJournalAuth(req);
   const { id } = req.params;
   
   // userId is now REQUIRED for all journal operations (multitenancy)
@@ -109,7 +99,6 @@ export function handleJournalConfirm(req: ParsedRequest, res: ServerResponse): v
 }
 
 export function handleJournalArchive(req: ParsedRequest, res: ServerResponse): void {
-  requireJournalAuth(req);
   const { id } = req.params;
   
   // userId is now REQUIRED for all journal operations (multitenancy)
@@ -130,7 +119,6 @@ export function handleJournalArchive(req: ParsedRequest, res: ServerResponse): v
 }
 
 export function handleJournalRestore(req: ParsedRequest, res: ServerResponse): void {
-  requireJournalAuth(req);
   const { id } = req.params;
   
   // userId is now REQUIRED for all journal operations (multitenancy)
@@ -146,7 +134,6 @@ export function handleJournalRestore(req: ParsedRequest, res: ServerResponse): v
 }
 
 export function handleJournalDelete(req: ParsedRequest, res: ServerResponse): void {
-  requireJournalAuth(req);
   const { id } = req.params;
   
   // userId is now REQUIRED for all journal operations (multitenancy)

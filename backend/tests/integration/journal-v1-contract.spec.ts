@@ -123,9 +123,11 @@ describe('Journal v1 Contract (Diary/Reflection)', () => {
     const restoreBody = await readJson(restoreRes);
     expect(restoreRes.status).toBe(200);
     expect(restoreBody).toHaveProperty('status', 'ok');
-    expect(restoreBody.data).toHaveProperty('status', 'pending');
+    // restore target depends on archive reason:
+    // - user_action restore returns to confirmed
+    expect(restoreBody.data).toHaveProperty('status', 'confirmed');
     expect(restoreBody.data).not.toHaveProperty('archivedAt');
-    expect(restoreBody.data).not.toHaveProperty('confirmedAt');
+    expect(restoreBody.data).toHaveProperty('confirmedAt');
   });
 
   it('invalid transitions return 409 INVALID_TRANSITION', async () => {
@@ -141,6 +143,8 @@ describe('Journal v1 Contract (Diary/Reflection)', () => {
     const created = await readJson(createRes);
     const id = created.data.id as string;
 
+    // Must confirm before user archive is allowed.
+    await fetch(`${baseUrl}/api/journal/${id}/confirm`, { method: 'POST' });
     await fetch(`${baseUrl}/api/journal/${id}/archive`, { method: 'POST' });
 
     const badConfirmRes = await fetch(`${baseUrl}/api/journal/${id}/confirm`, { method: 'POST' });
