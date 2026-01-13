@@ -54,7 +54,7 @@ export async function handleFeedOracle(req: ParsedRequest, res: ServerResponse):
 export async function handleFeedPulse(req: ParsedRequest, res: ServerResponse): Promise<void> {
   const query = validateQuery(feedPulseQuerySchema, req.query);
   const asset = query.asset;
- 
+
   const classified = classifyPulseAsset(asset);
   if (!classified) {
     throw validationError('Invalid asset input. Expected ticker-like symbol or Solana-like address.');

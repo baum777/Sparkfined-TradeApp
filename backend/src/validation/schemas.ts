@@ -42,6 +42,9 @@ export const settingsPatchSchema = z.object({
 export const journalInsightsRequestSchema = z.object({
   kind: z.enum(['teaser', 'review', 'playbook', 'adaptiveCoach']).optional(),
   includeGrok: z.boolean().optional(),
+  includeContextPack: z.boolean().optional(),
+  contextPackAnchorMode: z.enum(['trade_centered', 'now_centered', 'launch_centered', 'latest_only']).optional(),
+  includeDeltas: z.boolean().optional(),
 });
 
 // ─────────────────────────────────────────────────────────────

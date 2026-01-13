@@ -44,6 +44,9 @@ export async function handleJournalInsights(req: ParsedRequest, res: ServerRespo
   }
 
   const includeGrok = body.includeGrok === true;
+  const includeContextPack = body.includeContextPack === true;
+  const contextPackAnchorMode = body.contextPackAnchorMode || 'trade_centered';
+  const includeDeltas = body.includeDeltas === true;
   const tier = resolveTierFromAuthUser(req.user);
   const settings = await getSettings(req.userId);
 

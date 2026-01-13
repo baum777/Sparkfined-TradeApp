@@ -12,6 +12,10 @@ import {
   oracleSetReadState,
   oracleBulkSetReadState,
 } from '../domain/oracle/repo.js';
+import { resolveTierFromAuthUser } from '../domain/settings/tier.js';
+import { getSettings } from '../domain/settings/settings.service.js';
+import { buildContextPack } from '../domain/contextPack/build.js';
+import { buildOracleContextExtension } from '../domain/contextPack/oracleExtension.js';
 
 /**
  * Oracle Routes
@@ -28,7 +32,7 @@ export interface OracleBulkReadStateResponse {
   updated: OracleReadStateResponse[];
 }
 
-export function handleOracleDaily(req: ParsedRequest, res: ServerResponse): void {
+export async function handleOracleDaily(req: ParsedRequest, res: ServerResponse): Promise<void> {
   const query = validateQuery(oracleDailyQuerySchema, req.query);
   
   // Parse date or use today
@@ -43,6 +47,32 @@ export function handleOracleDaily(req: ParsedRequest, res: ServerResponse): void
   }
   
   const feed = oracleGetDaily(date, req.userId);
+  
+  // Per BACKEND MAP section 2C: Build context pack if asset provided
+  // Uses at-trade snapshot + deltas if eligible/cached
+  // narrative optional, use arbitration rules for narrative evidence
+  const tier = resolveTierFromAuthUser(req.user);
+  if (tier && query.asset) {
+    const settings = await getSettings(req.userId);
+    const contextPack = await buildContextPack({
+      userId: req.userId,
+      tier,
+      asset: {
+        mint: query.asset,
+      },
+      anchor: {
+        mode: 'trade_centered',
+        anchorTimeISO: date.toISOString(),
+      },
+      includeGrok: false, // Oracle does not request narrative by default
+      settings,
+    });
+    
+    const contextExtension = buildOracleContextExtension(contextPack);
+    if (contextExtension) {
+      (feed as any).context = contextExtension;
+    }
+  }
   
   // Cache headers per API_SPEC.md
   // User-specific read states mean we use private caching
