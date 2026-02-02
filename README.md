@@ -83,6 +83,10 @@ Zusätzlich existiert `api/` als Serverless‑Backend mit eigener Implementierun
 - `shared/docs/SECURITY.md`
 - `shared/docs/STATUS.md`
 
+## Projektstatus & Roadmap
+
+- `docs/PROJEKTSTATUS_UND_ROADMAP.md` (Gap-Analyse → Issue-fähige Roadmap inkl. DoD)
+
 ## Troubleshooting (häufig)
 
 ### 1) `/api` Routing stimmt nicht
