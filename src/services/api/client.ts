@@ -8,6 +8,7 @@ export interface ApiClientConfig {
   baseURL: string;
   timeout: number;
   headers: Record<string, string>;
+  credentials: RequestCredentials;
 }
 
 export interface ApiOkEnvelope<T> {
@@ -77,7 +78,7 @@ function parseCanonicalErrorBody(value: unknown): ApiErrorBody | null {
   const err = (value as any).error;
   if (!isObject(err)) return null;
   if (typeof err.code !== 'string' || typeof err.message !== 'string') return null;
-  return value as ApiErrorBody;
+  return value as unknown as ApiErrorBody;
 }
 
 function parseLegacyErrorBody(value: unknown): { code?: string; message?: string; details?: unknown } | null {
@@ -109,6 +110,9 @@ class ApiClient {
         'Content-Type': 'application/json',
         ...config?.headers,
       },
+      credentials:
+        config?.credentials ??
+        (import.meta.env.VITE_ENABLE_AUTH === 'true' ? 'include' : 'same-origin'),
     };
 
     // Raw mode: return response JSON as-is (no envelope enforcement / no unwrapping).
@@ -156,6 +160,7 @@ class ApiClient {
           ...this.config.headers,
           ...options.headers,
         },
+        credentials: options.credentials ?? this.config.credentials,
         signal: controller.signal,
       });
 

@@ -47,27 +47,27 @@ export interface EvaluationResult {
 /**
  * Evaluate all active alerts
  */
-export function evaluateAlerts(ctx: EvaluatorContext): EvaluationResult {
-  const alerts = alertList('active');
+export async function evaluateAlerts(ctx: EvaluatorContext): Promise<EvaluationResult> {
+  const alerts = await alertList('active');
   const events: AlertEmitted[] = [];
-  
+
   for (const alert of alerts) {
-    const result = evaluateAlert(alert, ctx);
+    const result = await evaluateAlert(alert, ctx);
     if (result) {
       events.push(result);
     }
   }
-  
+
   return {
     evaluated: alerts.length,
     events,
   };
 }
 
-function evaluateAlert(
+async function evaluateAlert(
   alert: Alert,
   ctx: EvaluatorContext
-): AlertEmitted | undefined {
+): Promise<AlertEmitted | undefined> {
   switch (alert.type) {
     case 'SIMPLE':
       return evaluateSimpleAlert(alert, ctx);
@@ -80,10 +80,10 @@ function evaluateAlert(
   }
 }
 
-function evaluateSimpleAlert(
+async function evaluateSimpleAlert(
   alert: SimpleAlert,
   ctx: EvaluatorContext
-): AlertEmitted | undefined {
+): Promise<AlertEmitted | undefined> {
   if (!alert.enabled || alert.stage !== 'WATCHING') {
     return undefined;
   }
@@ -98,7 +98,7 @@ function evaluateSimpleAlert(
   const nowIso = ctx.now.toISOString();
   
   // Update alert
-  alertUpdateInternal(alert.id, {
+  await alertUpdateInternal(alert.id, {
     stage: 'CONFIRMED',
     status: 'triggered',
     payload: {
@@ -126,7 +126,7 @@ function evaluateSimpleAlert(
     },
   };
   
-  alertEventCreate(event);
+  await alertEventCreate(event);
   
   return event;
 }
@@ -150,10 +150,10 @@ function checkSimpleCondition(
   }
 }
 
-function evaluateTwoStage(
+async function evaluateTwoStage(
   alert: TwoStageAlert,
   ctx: EvaluatorContext
-): AlertEmitted | undefined {
+): Promise<AlertEmitted | undefined> {
   const indicatorIds = alert.indicators.map(i => i.id);
   const indicatorValues = ctx.indicators.evaluateIndicators(
     alert.symbolOrAddress,
@@ -166,14 +166,14 @@ function evaluateTwoStage(
     indicatorValues,
   };
   
-  const result = evaluateTwoStageAlert(alert, evalCtx);
+  const result = await evaluateTwoStageAlert(alert, evalCtx);
   return result.event;
 }
 
-function evaluateDeadToken(
+async function evaluateDeadToken(
   alert: DeadTokenAlert,
   ctx: EvaluatorContext
-): AlertEmitted | undefined {
+): Promise<AlertEmitted | undefined> {
   const metrics = ctx.tokenMetrics.getMetrics(alert.symbolOrAddress);
   
   const evalCtx: DeadTokenEvaluationContext = {
@@ -181,7 +181,7 @@ function evaluateDeadToken(
     metrics,
   };
   
-  const result = evaluateDeadTokenAlert(alert, evalCtx);
+  const result = await evaluateDeadTokenAlert(alert, evalCtx);
   return result.event;
 }
 

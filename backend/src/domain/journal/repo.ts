@@ -5,7 +5,7 @@
  */
 
 import { createHash, randomUUID } from 'crypto';
-import { getDatabase } from '../../db/sqlite.js';
+import { getDatabase } from '../../db/index.js';
 import { kvGet, kvSet } from '../../db/kv.js';
 import { conflict, validationError, ErrorCodes } from '../../http/error.js';
 import type {
@@ -97,28 +97,34 @@ export class JournalRepoSQLite implements JournalRepo {
   async getEvent(userId: string, id: string): Promise<JournalEntryV1 | null> {
     assertUserId(userId);
     const db = getDatabase();
-    
-    const row = db.prepare(`
+
+    const row = await db
+      .prepare(`
       SELECT
         id, user_id, side, status, timestamp, summary, day_key, created_at, updated_at,
         capture_source, capture_key, tx_signature, wallet, action_type, asset_mint, amount, price_hint, linked_entry_id
       FROM journal_entries_v2
       WHERE user_id = ? AND id = ?
-    `).get(userId, id) as JournalEntryRow | undefined;
-    
+    `)
+      .get<JournalEntryRow>(userId, id);
+
     if (!row) return null;
-    
-    const confirmedAt = db.prepare(`
+
+    const confirmedAt = await db
+      .prepare(`
       SELECT confirmed_at
       FROM journal_confirmations_v2
       WHERE entry_id = ? AND user_id = ?
-    `).get(id, userId) as { confirmed_at: string } | undefined;
+    `)
+      .get<{ confirmed_at: string }>(id, userId);
 
-    const archivedAt = db.prepare(`
+    const archivedAt = await db
+      .prepare(`
       SELECT archived_at, reason
       FROM journal_archives_v2
       WHERE entry_id = ? AND user_id = ?
-    `).get(id, userId) as { archived_at: string; reason: string } | undefined;
+    `)
+      .get<{ archived_at: string; reason: string }>(id, userId);
 
     return rowToEntryV1(row, confirmedAt?.confirmed_at, archivedAt ? { archivedAt: archivedAt.archived_at, reason: archivedAt.reason } : undefined);
   }
@@ -136,7 +142,7 @@ export class JournalRepoSQLite implements JournalRepo {
     const dayKey = extractDayKey(timestamp);
     const capture = event.capture;
 
-    db.prepare(
+    await db.prepare(
       `
         INSERT INTO journal_entries_v2 (
           id,
@@ -226,7 +232,7 @@ export class JournalRepoSQLite implements JournalRepo {
     
     // Transition timestamps live in legacy tables; we only store timestamps (no user-provided notes/reasons).
     if (event.confirmedAt && event.status === 'confirmed') {
-      db.prepare(`
+      await db.prepare(`
         INSERT OR REPLACE INTO journal_confirmations_v2
         (entry_id, user_id, mood, note, tags_json, confirmed_at)
         VALUES (?, ?, ?, ?, ?, ?)
@@ -234,7 +240,7 @@ export class JournalRepoSQLite implements JournalRepo {
     }
 
     if (event.archivedAt && event.status === 'archived') {
-      db.prepare(`
+      await db.prepare(`
         INSERT OR REPLACE INTO journal_archives_v2
         (entry_id, user_id, reason, archived_at)
         VALUES (?, ?, ?, ?)
@@ -242,22 +248,28 @@ export class JournalRepoSQLite implements JournalRepo {
     }
 
     if (event.status !== 'archived') {
-      db.prepare(`DELETE FROM journal_archives_v2 WHERE entry_id = ? AND user_id = ?`).run(event.id, userId);
+      await db
+        .prepare(`DELETE FROM journal_archives_v2 WHERE entry_id = ? AND user_id = ?`)
+        .run(event.id, userId);
     }
   }
 
   async deleteEvent(userId: string, id: string): Promise<boolean> {
     assertUserId(userId);
     const db = getDatabase();
-    
-    const result = db.prepare(`
+
+    const result = await db.prepare(`
       DELETE FROM journal_entries_v2 WHERE user_id = ? AND id = ?
     `).run(userId, id);
-    
+
     if (result.changes > 0) {
       // Cascade delete related data
-      db.prepare(`DELETE FROM journal_confirmations_v2 WHERE entry_id = ? AND user_id = ?`).run(id, userId);
-      db.prepare(`DELETE FROM journal_archives_v2 WHERE entry_id = ? AND user_id = ?`).run(id, userId);
+      await db
+        .prepare(`DELETE FROM journal_confirmations_v2 WHERE entry_id = ? AND user_id = ?`)
+        .run(id, userId);
+      await db
+        .prepare(`DELETE FROM journal_archives_v2 WHERE entry_id = ? AND user_id = ?`)
+        .run(id, userId);
       return true;
     }
     
@@ -267,13 +279,13 @@ export class JournalRepoSQLite implements JournalRepo {
   async listDayIds(userId: string, dayKey: string): Promise<string[]> {
     assertUserId(userId);
     const db = getDatabase();
-    
-    const rows = db.prepare(`
+
+    const rows = await db.prepare(`
       SELECT id FROM journal_entries_v2 
       WHERE user_id = ? AND day_key = ?
       ORDER BY created_at ASC
-    `).all(userId, dayKey) as { id: string }[];
-    
+    `).all<{ id: string }>(userId, dayKey);
+
     return rows.map(r => r.id);
   }
 
@@ -287,13 +299,13 @@ export class JournalRepoSQLite implements JournalRepo {
   async listStatusIds(userId: string, status: JournalStatusV1): Promise<string[]> {
     assertUserId(userId);
     const db = getDatabase();
-    
-    const rows = db.prepare(`
+
+    const rows = await db.prepare(`
       SELECT id FROM journal_entries_v2 
       WHERE user_id = ? AND status = ?
       ORDER BY created_at ASC
-    `).all(userId, status) as { id: string }[];
-    
+    `).all<{ id: string }>(userId, status);
+
     return rows.map(r => r.id);
   }
 
@@ -306,12 +318,12 @@ export class JournalRepoSQLite implements JournalRepo {
   async getUpdatedAt(userId: string): Promise<string | null> {
     assertUserId(userId);
     const db = getDatabase();
-    
-    const row = db.prepare(`
+
+    const row = await db.prepare(`
       SELECT MAX(updated_at) as max_updated FROM journal_entries_v2 
       WHERE user_id = ?
-    `).get(userId) as { max_updated: string | null } | undefined;
-    
+    `).get<{ max_updated: string | null }>(userId);
+
     return row?.max_updated || null;
   }
 
@@ -330,11 +342,11 @@ export const journalRepoSQLite = new JournalRepoSQLite();
 // All require userId as FIRST parameter
 // ─────────────────────────────────────────────────────────────
 
-export function journalCreate(
+export async function journalCreate(
   userId: string,
   request: JournalCreateRequest,
   idempotencyKey?: string
-): JournalEntryV1 {
+): Promise<JournalEntryV1> {
   assertUserId(userId);
   const db = getDatabase();
   const now = new Date().toISOString();
@@ -348,7 +360,7 @@ export function journalCreate(
 
   const idempotencyStoreKey = `kv:v1:idempotency:journal:create:${userId}:${idempotencyKey}`;
   const requestHash = hashString(stableCreateBody(request));
-  const existing = kvGet<JournalCreateIdempotencyRecord>(idempotencyStoreKey);
+  const existing = await kvGet<JournalCreateIdempotencyRecord>(idempotencyStoreKey);
   if (existing) {
     if (existing.requestHash !== requestHash) {
       throw conflict('Idempotency-Key reuse with different request body', ErrorCodes.IDEMPOTENCY_KEY_CONFLICT);
@@ -360,7 +372,7 @@ export function journalCreate(
   const timestamp = request.timestamp || now;
   const dayKey = extractDayKey(timestamp);
   
-  db.prepare(`
+  await db.prepare(`
     INSERT INTO journal_entries_v2 (id, user_id, side, status, timestamp, summary, day_key, created_at, updated_at)
     VALUES (?, ?, ?, 'pending', ?, ?, ?, ?, ?)
   `).run(id, userId, 'BUY', timestamp, request.summary, dayKey, now, now);
@@ -375,7 +387,7 @@ export function journalCreate(
   };
 
   // Store idempotency record (24h TTL).
-  kvSet<JournalCreateIdempotencyRecord>(
+  await kvSet<JournalCreateIdempotencyRecord>(
     idempotencyStoreKey,
     { requestHash, entry, createdAt: now },
     24 * 60 * 60
@@ -384,43 +396,53 @@ export function journalCreate(
   return entry;
 }
 
-export function journalGetById(userId: string, id: string): JournalEntryV1 | null {
+export async function journalGetById(userId: string, id: string): Promise<JournalEntryV1 | null> {
   assertUserId(userId);
   const db = getDatabase();
-  
-  const row = db.prepare(`
+
+  const row = await db
+    .prepare(`
     SELECT
       id, user_id, side, status, timestamp, summary, day_key, created_at, updated_at,
       capture_source, capture_key, tx_signature, wallet, action_type, asset_mint, amount, price_hint, linked_entry_id
     FROM journal_entries_v2
     WHERE user_id = ? AND id = ?
-  `).get(userId, id) as JournalEntryRow | undefined;
-  
+  `)
+    .get<JournalEntryRow>(userId, id);
+
   if (!row) {
     return null;
   }
-  
-  const confirmedAt = db.prepare(`
+
+  const confirmedAt = await db
+    .prepare(`
     SELECT confirmed_at
     FROM journal_confirmations_v2
     WHERE entry_id = ? AND user_id = ?
-  `).get(id, userId) as { confirmed_at: string } | undefined;
+  `)
+    .get<{ confirmed_at: string }>(id, userId);
 
-  const archivedAt = db.prepare(`
+  const archivedAt = await db
+    .prepare(`
     SELECT archived_at, reason
     FROM journal_archives_v2
     WHERE entry_id = ? AND user_id = ?
-  `).get(id, userId) as { archived_at: string; reason: string } | undefined;
+  `)
+    .get<{ archived_at: string; reason: string }>(id, userId);
 
-  return rowToEntryV1(row, confirmedAt?.confirmed_at, archivedAt ? { archivedAt: archivedAt.archived_at, reason: archivedAt.reason } : undefined);
+  return rowToEntryV1(
+    row,
+    confirmedAt?.confirmed_at,
+    archivedAt ? { archivedAt: archivedAt.archived_at, reason: archivedAt.reason } : undefined
+  );
 }
 
-export function journalList(
+export async function journalList(
   userId: string,
   status?: JournalStatusV1,
   limit = 50,
   cursor?: string
-): { items: JournalEntryV1[]; nextCursor?: string } {
+): Promise<{ items: JournalEntryV1[]; nextCursor?: string }> {
   assertUserId(userId);
   const db = getDatabase();
   
@@ -447,25 +469,37 @@ export function journalList(
   query += ' ORDER BY timestamp DESC LIMIT ?';
   params.push(limit + 1); // Fetch one extra to detect next page
   
-  const rows = db.prepare(query).all(...params) as JournalEntryRow[];
-  
+  const rows = await db.prepare(query).all<JournalEntryRow>(...params);
+
   const hasMore = rows.length > limit;
-  const items = rows.slice(0, limit).map(row => {
+  const items: JournalEntryV1[] = [];
+
+  for (const row of rows.slice(0, limit)) {
     const id = row.id;
-    const confirmedAt = db.prepare(`
-      SELECT confirmed_at
-      FROM journal_confirmations_v2
-      WHERE entry_id = ? AND user_id = ?
-    `).get(id, userId) as { confirmed_at: string } | undefined;
+    const confirmedAt = await db
+      .prepare(`
+        SELECT confirmed_at
+        FROM journal_confirmations_v2
+        WHERE entry_id = ? AND user_id = ?
+      `)
+      .get<{ confirmed_at: string }>(id, userId);
 
-    const archivedAt = db.prepare(`
-      SELECT archived_at, reason
-      FROM journal_archives_v2
-      WHERE entry_id = ? AND user_id = ?
-    `).get(id, userId) as { archived_at: string; reason: string } | undefined;
+    const archivedAt = await db
+      .prepare(`
+        SELECT archived_at, reason
+        FROM journal_archives_v2
+        WHERE entry_id = ? AND user_id = ?
+      `)
+      .get<{ archived_at: string; reason: string }>(id, userId);
 
-    return rowToEntryV1(row, confirmedAt?.confirmed_at, archivedAt ? { archivedAt: archivedAt.archived_at, reason: archivedAt.reason } : undefined);
-  });
+    items.push(
+      rowToEntryV1(
+        row,
+        confirmedAt?.confirmed_at,
+        archivedAt ? { archivedAt: archivedAt.archived_at, reason: archivedAt.reason } : undefined
+      )
+    );
+  }
   
   return {
     items,
@@ -473,15 +507,15 @@ export function journalList(
   };
 }
 
-export function journalConfirm(
+export async function journalConfirm(
   userId: string,
   id: string
-): JournalEntryV1 | null {
+): Promise<JournalEntryV1 | null> {
   assertUserId(userId);
   const db = getDatabase();
   const now = new Date().toISOString();
-  
-  const entry = journalGetById(userId, id);
+
+  const entry = await journalGetById(userId, id);
   if (!entry) {
     return null;
   }
@@ -492,14 +526,14 @@ export function journalConfirm(
   }
   
   // Update entry status first
-  db.prepare(`
+  await db.prepare(`
     UPDATE journal_entries_v2
     SET status = 'confirmed', updated_at = ?
     WHERE user_id = ? AND id = ?
   `).run(now, userId, id);
   
   // Store only the transition timestamp (no user-provided note/tags).
-  db.prepare(`
+  await db.prepare(`
     INSERT OR REPLACE INTO journal_confirmations_v2 (entry_id, user_id, mood, note, tags_json, confirmed_at)
     VALUES (?, ?, ?, ?, ?, ?)
   `).run(id, userId, '', '', '[]', now);
@@ -512,12 +546,12 @@ export function journalConfirm(
   };
 }
 
-export function journalArchive(userId: string, id: string, reason?: string): JournalEntryV1 | null {
+export async function journalArchive(userId: string, id: string, reason?: string): Promise<JournalEntryV1 | null> {
   assertUserId(userId);
   const db = getDatabase();
   const now = new Date().toISOString();
-  
-  const entry = journalGetById(userId, id);
+
+  const entry = await journalGetById(userId, id);
   if (!entry) {
     return null;
   }
@@ -534,18 +568,18 @@ export function journalArchive(userId: string, id: string, reason?: string): Jou
     return entry;
   }
   
-  db.transaction(() => {
-    db.prepare(`
+  await db.transaction(async () => {
+    await db.prepare(`
       UPDATE journal_entries_v2
       SET status = 'archived', updated_at = ?
       WHERE user_id = ? AND id = ?
     `).run(now, userId, id);
-    
-    db.prepare(`
+
+    await db.prepare(`
       INSERT OR REPLACE INTO journal_archives_v2 (entry_id, user_id, reason, archived_at)
       VALUES (?, ?, ?, ?)
     `).run(id, userId, reason ?? 'user_action', now);
-  })();
+  });
   
   return {
     ...entry,
@@ -556,25 +590,25 @@ export function journalArchive(userId: string, id: string, reason?: string): Jou
   };
 }
 
-export function journalSystemArchive(params: {
+export async function journalSystemArchive(params: {
   userId: string;
   id: string;
   reason: AutoArchiveReason;
   linkedEntryId?: string;
-}): JournalEntryV1 | null {
+}): Promise<JournalEntryV1 | null> {
   assertUserId(params.userId);
   const db = getDatabase();
   const now = new Date().toISOString();
 
-  const entry = journalGetById(params.userId, params.id);
+  const entry = await journalGetById(params.userId, params.id);
   if (!entry) return null;
 
   // System rule: only archive pending entries (idempotent if already archived).
   if (entry.status === 'archived') return entry;
   if (entry.status !== 'pending') return entry;
 
-  db.transaction(() => {
-    db.prepare(
+  await db.transaction(async () => {
+    await db.prepare(
       `
         UPDATE journal_entries_v2
         SET status = 'archived',
@@ -584,13 +618,13 @@ export function journalSystemArchive(params: {
       `
     ).run(params.linkedEntryId ?? null, now, params.userId, params.id);
 
-    db.prepare(
+    await db.prepare(
       `
         INSERT OR REPLACE INTO journal_archives_v2 (entry_id, user_id, reason, archived_at)
         VALUES (?, ?, ?, ?)
       `
     ).run(params.id, params.userId, params.reason, now);
-  })();
+  });
 
   return journalGetById(params.userId, params.id);
 }
@@ -607,7 +641,7 @@ export type JournalCaptureIngest = {
   timestampISO?: string;
 };
 
-export function journalIngestCapture(userId: string, capture: JournalCaptureIngest): JournalEntryV1 {
+export async function journalIngestCapture(userId: string, capture: JournalCaptureIngest): Promise<JournalEntryV1> {
   assertUserId(userId);
   const db = getDatabase();
 
@@ -619,11 +653,11 @@ export function journalIngestCapture(userId: string, capture: JournalCaptureInge
   }
 
   // Idempotency by (user_id, capture_key)
-  const existing = db
+  const existing = await db
     .prepare(`SELECT id FROM journal_entries_v2 WHERE user_id = ? AND capture_key = ?`)
-    .get(userId, capture.captureKey) as { id: string } | undefined;
+    .get<{ id: string }>(userId, capture.captureKey);
   if (existing?.id) {
-    const e = journalGetById(userId, existing.id);
+    const e = await journalGetById(userId, existing.id);
     if (e) return e;
   }
 
@@ -635,7 +669,7 @@ export function journalIngestCapture(userId: string, capture: JournalCaptureInge
   const summary = `Onchain ${capture.actionType.toUpperCase()} capture`;
 
   try {
-    db.prepare(
+    await db.prepare(
       `
         INSERT INTO journal_entries_v2 (
           id, user_id, side, status, timestamp, summary, day_key, created_at, updated_at,
@@ -665,30 +699,30 @@ export function journalIngestCapture(userId: string, capture: JournalCaptureInge
     );
   } catch (err) {
     // If UNIQUE (user_id, capture_key) races, fetch and return.
-    const again = db
+    const again = await db
       .prepare(`SELECT id FROM journal_entries_v2 WHERE user_id = ? AND capture_key = ?`)
-      .get(userId, capture.captureKey) as { id: string } | undefined;
+      .get<{ id: string }>(userId, capture.captureKey);
     if (again?.id) {
-      const e = journalGetById(userId, again.id);
+      const e = await journalGetById(userId, again.id);
       if (e) return e;
     }
     throw err;
   }
 
-  const created = journalGetById(userId, id);
+  const created = await journalGetById(userId, id);
   if (!created) {
     throw new Error('Failed to ingest capture (unexpected missing row)');
   }
 
   // Hook: auto-archive pending BUY when a SELL capture arrives.
   if (capture.actionType === 'sell') {
-    const candidateId = matchPendingBuyCandidateId({
+    const candidateId = await matchPendingBuyCandidateId({
       userId,
       assetMint: capture.assetMint,
       sellTimestampISO: timestamp,
     });
     if (candidateId) {
-      journalSystemArchive({
+      await journalSystemArchive({
         userId,
         id: candidateId,
         reason: 'matched_sell',
@@ -697,15 +731,15 @@ export function journalIngestCapture(userId: string, capture: JournalCaptureInge
     }
   }
 
-  return journalGetById(userId, id) ?? created;
+  return (await journalGetById(userId, id)) ?? created;
 }
 
-export function journalRestore(userId: string, id: string): JournalEntryV1 | null {
+export async function journalRestore(userId: string, id: string): Promise<JournalEntryV1 | null> {
   assertUserId(userId);
   const db = getDatabase();
   const now = new Date().toISOString();
-  
-  const entry = journalGetById(userId, id);
+
+  const entry = await journalGetById(userId, id);
   if (!entry) {
     return null;
   }
@@ -716,9 +750,9 @@ export function journalRestore(userId: string, id: string): JournalEntryV1 | nul
   }
 
   // determine restore target based on archive reason
-  const archive = db.prepare(
-    `SELECT reason FROM journal_archives_v2 WHERE entry_id = ? AND user_id = ?`
-  ).get(id, userId) as { reason: string } | undefined;
+  const archive = await db
+    .prepare(`SELECT reason FROM journal_archives_v2 WHERE entry_id = ? AND user_id = ?`)
+    .get<{ reason: string }>(id, userId);
   const reason = archive?.reason;
 
   let nextStatus: 'pending' | 'confirmed';
@@ -729,10 +763,10 @@ export function journalRestore(userId: string, id: string): JournalEntryV1 | nul
     nextStatus = 'confirmed';
   }
 
-  db.prepare(`DELETE FROM journal_archives_v2 WHERE entry_id = ? AND user_id = ?`).run(id, userId);
+  await db.prepare(`DELETE FROM journal_archives_v2 WHERE entry_id = ? AND user_id = ?`).run(id, userId);
 
   // Update entry status
-  db.prepare(`
+  await db.prepare(`
     UPDATE journal_entries_v2
     SET status = ?, updated_at = ?
     WHERE user_id = ? AND id = ?
@@ -740,7 +774,7 @@ export function journalRestore(userId: string, id: string): JournalEntryV1 | nul
 
   // If restoring to confirmed, add confirmation record
   if (nextStatus === 'confirmed') {
-    db.prepare(`
+    await db.prepare(`
       INSERT OR REPLACE INTO journal_confirmations_v2 (entry_id, user_id, mood, note, tags_json, confirmed_at)
       VALUES (?, ?, ?, ?, ?, ?)
     `).run(id, userId, '', '', '[]', now);
@@ -749,18 +783,22 @@ export function journalRestore(userId: string, id: string): JournalEntryV1 | nul
   return journalGetById(userId, id);
 }
 
-export function journalDelete(userId: string, id: string): boolean {
+export async function journalDelete(userId: string, id: string): Promise<boolean> {
   assertUserId(userId);
   const db = getDatabase();
-  
-  const result = db.prepare(`
+
+  const result = await db.prepare(`
     DELETE FROM journal_entries_v2 WHERE user_id = ? AND id = ?
   `).run(userId, id);
-  
+
   if (result.changes > 0) {
     // Cascade delete
-    db.prepare(`DELETE FROM journal_confirmations_v2 WHERE entry_id = ? AND user_id = ?`).run(id, userId);
-    db.prepare(`DELETE FROM journal_archives_v2 WHERE entry_id = ? AND user_id = ?`).run(id, userId);
+    await db
+      .prepare(`DELETE FROM journal_confirmations_v2 WHERE entry_id = ? AND user_id = ?`)
+      .run(id, userId);
+    await db
+      .prepare(`DELETE FROM journal_archives_v2 WHERE entry_id = ? AND user_id = ?`)
+      .run(id, userId);
     return true;
   }
   

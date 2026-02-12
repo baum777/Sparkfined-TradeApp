@@ -12,6 +12,8 @@ Dieses Repo implementiert ein Trading/Journal/Signals Frontend (SPA) plus mehrer
 - **Separater Alerts-Service**: `apps/backend-alerts/` (Express + Postgres + Push/SSE)
 - **Contracts (Single Source of Truth für Shapes)**: `shared/contracts/`
 
+**Backend-Ownership**: Siehe `docs/backend/BACKEND_OWNERSHIP.md` (Production-Entscheidung, Routing, Ownership).
+
 ## Local Dev Quickstart
 
 ### Voraussetzungen
@@ -49,7 +51,13 @@ pnpm dev
 - **Backend (`backend/`)**: `http://localhost:3000`
 - **API Base Path**: `/api`
   - Lokal: Vite proxyt `/api/*` → `http://localhost:3000` (siehe `vite.config.ts`)
-  - Production: Vercel rewritet `/api/*` → `https://<YOUR_RAILWAY_DOMAIN>/api/*` (siehe `vercel.json`, TODO Domain ersetzen)
+  - Production: Vercel rewritet `/api/*` → Railway-Backend (siehe `vercel.json` und `docs/backend/BACKEND_OWNERSHIP.md`)
+
+## Database (Backend)
+
+- `backend/` nutzt `DATABASE_URL` für die DB-Auswahl:
+  - **SQLite (local dev)**: `sqlite:./.data/tradeapp.sqlite`
+  - **Postgres (production)**: `postgres://user:pass@host:5432/db`
 
 ## Environment Variables (Kurzüberblick)
 

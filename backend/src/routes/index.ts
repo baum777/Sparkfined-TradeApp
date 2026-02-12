@@ -1,5 +1,6 @@
 // Export all handlers
 export * from './alerts.js';
+export * from './auth.js';
 export * from './journal.js';
 export * from './journalInsights.js';
 export * from './health.js';

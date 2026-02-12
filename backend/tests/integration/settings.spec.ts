@@ -42,6 +42,15 @@ describe('Settings API (Grok toggle)', () => {
     expect(body.error.code).toBe('UNAUTHENTICATED');
   });
 
+  it('rejects invalid JWT (401 UNAUTHENTICATED)', async () => {
+    const res = await fetch(`${baseUrl}/api/settings`, {
+      headers: { Authorization: 'Bearer invalid.token.value' },
+    });
+    const body = await readJson(res);
+    expect(res.status).toBe(401);
+    expect(body.error.code).toBe('UNAUTHENTICATED');
+  });
+
   it('default grokEnabled is false', async () => {
     const token = signToken({ userId: 'u-settings-1', tier: 'free' });
     const res = await fetch(`${baseUrl}/api/settings`, {

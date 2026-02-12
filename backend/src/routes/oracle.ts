@@ -46,7 +46,7 @@ export async function handleOracleDaily(req: ParsedRequest, res: ServerResponse)
     date = new Date();
   }
   
-  const feed = oracleGetDaily(date, req.userId);
+  const feed = await oracleGetDaily(date, req.userId);
   
   // Per BACKEND MAP section 2C: Build context pack if asset provided
   // Uses at-trade snapshot + deltas if eligible/cached
@@ -81,10 +81,10 @@ export async function handleOracleDaily(req: ParsedRequest, res: ServerResponse)
   sendJson(res, feed);
 }
 
-export function handleOracleReadState(req: ParsedRequest, res: ServerResponse): void {
+export async function handleOracleReadState(req: ParsedRequest, res: ServerResponse): Promise<void> {
   const body = validateBody(oracleReadStateRequestSchema, req.body);
-  
-  const result = oracleSetReadState(req.userId, body.id, body.isRead);
+
+  const result = await oracleSetReadState(req.userId, body.id, body.isRead);
   
   const response: OracleReadStateResponse = {
     id: result.id,
@@ -95,10 +95,10 @@ export function handleOracleReadState(req: ParsedRequest, res: ServerResponse): 
   sendJson(res, response);
 }
 
-export function handleOracleBulkReadState(req: ParsedRequest, res: ServerResponse): void {
+export async function handleOracleBulkReadState(req: ParsedRequest, res: ServerResponse): Promise<void> {
   const body = validateBody(oracleBulkReadStateRequestSchema, req.body);
-  
-  const results = oracleBulkSetReadState(req.userId, body.ids, body.isRead);
+
+  const results = await oracleBulkSetReadState(req.userId, body.ids, body.isRead);
   
   const response: OracleBulkReadStateResponse = {
     updated: results.map(r => ({

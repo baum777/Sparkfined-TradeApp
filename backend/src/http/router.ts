@@ -146,6 +146,18 @@ export class Router {
     });
   }
 
+  private parseCookies(header?: string): Record<string, string> {
+    if (!header) return {};
+    const entries = header.split(';').map(part => part.trim());
+    const out: Record<string, string> = {};
+    for (const entry of entries) {
+      const [key, ...rest] = entry.split('=');
+      if (!key) continue;
+      out[key] = decodeURIComponent(rest.join('='));
+    }
+    return out;
+  }
+
   private extractAuth(req: IncomingMessage): { userId: string; user?: AuthUser } {
     const authHeader = req.headers['authorization'];
     
@@ -158,6 +170,15 @@ export class Router {
         if (user) {
           return { userId: user.userId, user };
         }
+      }
+    }
+
+    const cookies = this.parseCookies(req.headers['cookie']);
+    const cookieToken = cookies.access_token;
+    if (cookieToken) {
+      const user = verifyToken(cookieToken);
+      if (user) {
+        return { userId: user.userId, user };
       }
     }
     

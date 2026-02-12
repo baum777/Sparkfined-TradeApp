@@ -1,10 +1,11 @@
-<<<<<<< HEAD
 import { logger } from '../observability/logger.js';
 import { runOracleDailyJob } from './oracleDaily.js';
 import { runJournalEnrichJob } from './journalEnrich.js';
+import { runAlertEvaluatorJob } from './alertEvaluator.job.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const FIVE_MIN_MS = 5 * 60 * 1000;
+const TWO_MIN_MS = 2 * 60 * 1000;
 
 function msUntilNextUtcHour(targetHour: number): number {
   const now = new Date();
@@ -52,12 +53,22 @@ export function startScheduledJobs(): { stop: () => void } {
   // Journal enrich: run every 5 minutes (no-op placeholder for now), run once immediately.
   const runEnrich = safeRun('journal-enrich', async () => {
     const result = await runJournalEnrichJob();
-    logger.info('Journal enrich tick', result);
+    logger.info('Journal enrich tick', { ...result });
   });
   runEnrich();
 
   const enrichInterval = setInterval(runEnrich, FIVE_MIN_MS);
   intervals.push(enrichInterval);
+
+  // Alert evaluator: run every 2 minutes, run once immediately.
+  const runAlerts = safeRun('alert-evaluator', async () => {
+    const result = await runAlertEvaluatorJob();
+    logger.info('Alert evaluator tick', { ...result });
+  });
+  runAlerts();
+
+  const alertsInterval = setInterval(runAlerts, TWO_MIN_MS);
+  intervals.push(alertsInterval);
 
   const stop = () => {
     timeouts.forEach(clearTimeout);
@@ -65,20 +76,5 @@ export function startScheduledJobs(): { stop: () => void } {
   };
 
   return { stop };
-=======
-/**
- * Minimal scheduler stub.
- *
- * The backend uses this to start/stop periodic jobs.
- * In this repo, most periodic work is implemented as interval-based jobs in `server.ts`.
- */
-
-export function startScheduledJobs(): { stop: () => void } {
-  return {
-    stop: () => {
-      // no-op
-    },
-  };
->>>>>>> d9074af39364962f005189d37a941b5b89934b39
 }
 

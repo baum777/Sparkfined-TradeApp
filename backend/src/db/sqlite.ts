@@ -2,19 +2,14 @@ import Database from 'better-sqlite3';
 import { existsSync, mkdirSync } from 'fs';
 import { dirname } from 'path';
 import { logger } from '../observability/logger.js';
+import type { DatabaseClient, PreparedStatement, StatementResult } from './types.js';
 
 /**
  * SQLite Database Connection
- * Singleton pattern for connection management
+ * Adapter to the async DatabaseClient interface.
  */
 
-let db: Database.Database | null = null;
-
-export function initDatabase(dbPath: string): Database.Database {
-  if (db) {
-    return db;
-  }
-
+export function createSqliteClient(dbPath: string): DatabaseClient {
   // Ensure directory exists
   const dir = dirname(dbPath);
   if (!existsSync(dir)) {
@@ -22,35 +17,49 @@ export function initDatabase(dbPath: string): Database.Database {
     logger.info('Created database directory', { dir });
   }
 
-  db = new Database(dbPath);
-  
+  const db = new Database(dbPath);
+
   // Enable WAL mode for better concurrent access
   db.pragma('journal_mode = WAL');
-  
+
   // Enable foreign keys
   db.pragma('foreign_keys = ON');
 
-  logger.info('Database initialized', { path: dbPath });
+  logger.info('SQLite database initialized', { path: dbPath });
 
-  return db;
-}
-
-export function getDatabase(): Database.Database {
-  if (!db) {
-    throw new Error('Database not initialized. Call initDatabase first.');
-  }
-  return db;
-}
-
-export function closeDatabase(): void {
-  if (db) {
-    db.close();
-    db = null;
-    logger.info('Database closed');
-  }
-}
-
-// For testing
-export function resetDatabase(): void {
-  db = null;
+  return {
+    prepare(sql: string): PreparedStatement {
+      const stmt = db.prepare(sql);
+      return {
+        run: async (...params: unknown[]): Promise<StatementResult> => {
+          const result = stmt.run(...params);
+          return { changes: result.changes };
+        },
+        get: async <T = unknown>(...params: unknown[]): Promise<T | undefined> => {
+          return stmt.get(...params) as T | undefined;
+        },
+        all: async <T = unknown>(...params: unknown[]): Promise<T[]> => {
+          return stmt.all(...params) as T[];
+        },
+      };
+    },
+    exec: async (sql: string): Promise<void> => {
+      db.exec(sql);
+    },
+    transaction: async <T>(fn: () => Promise<T> | T): Promise<T> => {
+      db.exec('BEGIN');
+      try {
+        const result = await fn();
+        db.exec('COMMIT');
+        return result;
+      } catch (error) {
+        db.exec('ROLLBACK');
+        throw error;
+      }
+    },
+    close: async (): Promise<void> => {
+      db.close();
+      logger.info('SQLite database closed');
+    },
+  };
 }

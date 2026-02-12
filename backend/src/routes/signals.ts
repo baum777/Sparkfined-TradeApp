@@ -38,7 +38,7 @@ export async function handleSignalsUnified(req: ParsedRequest, res: ServerRespon
   const query = validateQuery(signalsUnifiedQuerySchema, req.query);
   const asset = query.asset;
  
-  const daily = oracleGetDaily(new Date(), req.userId);
+  const daily = await oracleGetDaily(new Date(), req.userId);
   const oracleCards = oracleDailyToSignalCards(asset, daily);
  
   const pulse = await getPulseSnapshot(asset);

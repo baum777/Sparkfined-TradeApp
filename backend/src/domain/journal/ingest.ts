@@ -7,7 +7,7 @@ import type { ResolvedTier } from '../../config/tiers.js';
 import { tierGte } from '../../config/tiers.js';
 import { journalIngestCapture as repoIngestCapture, type JournalCaptureIngest } from './repo.js';
 import { buildAtTradeSnapshot, buildOrderPressureData } from '../market/snapshot.service.js';
-import { getDatabase } from '../../db/sqlite.js';
+import { getDatabase } from '../../db/index.js';
 import type { JournalEntryV1 } from './types.js';
 
 /**
@@ -23,7 +23,7 @@ export async function journalIngestCapture(
   tier: ResolvedTier
 ): Promise<JournalEntryV1> {
   // Create entry first
-  const entry = repoIngestCapture(userId, capture);
+  const entry = await repoIngestCapture(userId, capture);
   
   // Tier-gated market data capture
   const symbolOrAddress = capture.assetMint;
@@ -35,7 +35,7 @@ export async function journalIngestCapture(
     
     // Persist market snapshot
     const db = getDatabase();
-    db.prepare(`
+    await db.prepare(`
       INSERT OR REPLACE INTO journal_market_snapshots_v1
       (user_id, entry_id, market_snapshot_json, captured_at)
       VALUES (?, ?, ?, ?)
@@ -50,7 +50,7 @@ export async function journalIngestCapture(
     if (tierGte(tier, 'high')) {
       const orderPressure = await buildOrderPressureData(symbolOrAddress);
       
-      db.prepare(`
+      await db.prepare(`
         INSERT OR REPLACE INTO journal_order_pressure_v1
         (user_id, entry_id, order_pressure_json, captured_at)
         VALUES (?, ?, ?, ?)

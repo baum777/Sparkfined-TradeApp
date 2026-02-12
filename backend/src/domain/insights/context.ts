@@ -10,7 +10,7 @@ import type { DeltaSnapshot } from '../market/delta.service.js';
 import type { InsightContext } from './types.js';
 import type { ResolvedTier } from '../../config/tiers.js';
 import { tierGte } from '../../config/tiers.js';
-import { getDatabase } from '../../db/sqlite.js';
+import { getDatabase } from '../../db/index.js';
 import type { JournalEntryRow } from '../journal/types.js';
 
 /**
@@ -66,11 +66,13 @@ async function loadMarketSnapshot(
   entryId: string
 ): Promise<AtTradeMarketSnapshot | null> {
   const db = getDatabase();
-  const row = db.prepare(`
-    SELECT market_snapshot_json
-    FROM journal_market_snapshots_v1
-    WHERE user_id = ? AND entry_id = ?
-  `).get(userId, entryId) as { market_snapshot_json: string } | undefined;
+  const row = await db
+    .prepare(`
+      SELECT market_snapshot_json
+      FROM journal_market_snapshots_v1
+      WHERE user_id = ? AND entry_id = ?
+    `)
+    .get<{ market_snapshot_json: string }>(userId, entryId);
   
   if (!row) return null;
   
@@ -89,11 +91,13 @@ async function loadDeltaSnapshots(
   entryId: string
 ): Promise<Record<string, DeltaSnapshot | null> | null> {
   const db = getDatabase();
-  const rows = db.prepare(`
-    SELECT window, delta_snapshot_json
-    FROM journal_delta_snapshots_v1
-    WHERE user_id = ? AND entry_id = ?
-  `).all(userId, entryId) as { window: string; delta_snapshot_json: string }[];
+  const rows = await db
+    .prepare(`
+      SELECT window, delta_snapshot_json
+      FROM journal_delta_snapshots_v1
+      WHERE user_id = ? AND entry_id = ?
+    `)
+    .all<{ window: string; delta_snapshot_json: string }>(userId, entryId);
   
   if (rows.length === 0) return null;
   
@@ -117,15 +121,17 @@ async function loadConfirmedEntries(
   excludeEntryId: string
 ): Promise<JournalEntryV1[]> {
   const db = getDatabase();
-  const rows = db.prepare(`
-    SELECT
-      id, user_id, side, status, timestamp, summary, day_key, created_at, updated_at,
-      capture_source, capture_key, tx_signature, wallet, action_type, asset_mint, amount, price_hint, linked_entry_id
-    FROM journal_entries_v2
-    WHERE user_id = ? AND status = 'confirmed' AND id != ?
-    ORDER BY created_at DESC
-    LIMIT 10
-  `).all(userId, excludeEntryId) as JournalEntryRow[];
+  const rows = await db
+    .prepare(`
+      SELECT
+        id, user_id, side, status, timestamp, summary, day_key, created_at, updated_at,
+        capture_source, capture_key, tx_signature, wallet, action_type, asset_mint, amount, price_hint, linked_entry_id
+      FROM journal_entries_v2
+      WHERE user_id = ? AND status = 'confirmed' AND id != ?
+      ORDER BY created_at DESC
+      LIMIT 10
+    `)
+    .all<JournalEntryRow>(userId, excludeEntryId);
   
   // Convert rows to JournalEntryV1 (simplified - would need full conversion)
   return rows.map(row => ({
@@ -163,11 +169,13 @@ async function loadOrderPressure(
   avgTradeSizeDelta?: number;
 } | null> {
   const db = getDatabase();
-  const row = db.prepare(`
-    SELECT order_pressure_json
-    FROM journal_order_pressure_v1
-    WHERE user_id = ? AND entry_id = ?
-  `).get(userId, entryId) as { order_pressure_json: string } | undefined;
+  const row = await db
+    .prepare(`
+      SELECT order_pressure_json
+      FROM journal_order_pressure_v1
+      WHERE user_id = ? AND entry_id = ?
+    `)
+    .get<{ order_pressure_json: string }>(userId, entryId);
   
   if (!row) return null;
   

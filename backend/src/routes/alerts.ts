@@ -34,10 +34,10 @@ export interface AlertEventsResponse {
   items: AlertEmitted[];
 }
 
-export function handleAlertsList(req: ParsedRequest, res: ServerResponse): void {
+export async function handleAlertsList(req: ParsedRequest, res: ServerResponse): Promise<void> {
   const query = validateQuery(alertsListQuerySchema, req.query);
   
-  const alerts = alertList(query.filter, query.symbolOrAddress);
+  const alerts = await alertList(query.filter, query.symbolOrAddress);
   
   setCacheHeaders(res, { noStore: true });
   
@@ -48,19 +48,19 @@ export function handleAlertsList(req: ParsedRequest, res: ServerResponse): void 
   sendJson(res, response);
 }
 
-export function handleAlertCreate(req: ParsedRequest, res: ServerResponse): void {
+export async function handleAlertCreate(req: ParsedRequest, res: ServerResponse): Promise<void> {
   const body = validateBody(createAlertRequestSchema, req.body);
   
-  const alert = alertCreate(body as CreateAlertRequest);
+  const alert = await alertCreate(body as CreateAlertRequest);
   
   setCacheHeaders(res, { noStore: true });
   sendCreated(res, alert);
 }
 
-export function handleAlertGetById(req: ParsedRequest, res: ServerResponse): void {
+export async function handleAlertGetById(req: ParsedRequest, res: ServerResponse): Promise<void> {
   const { id } = req.params;
   
-  const alert = alertGetById(id);
+  const alert = await alertGetById(id);
   
   if (!alert) {
     throw notFound(`Alert not found: ${id}`, ErrorCodes.ALERT_NOT_FOUND);
@@ -70,11 +70,11 @@ export function handleAlertGetById(req: ParsedRequest, res: ServerResponse): voi
   sendJson(res, alert);
 }
 
-export function handleAlertUpdate(req: ParsedRequest, res: ServerResponse): void {
+export async function handleAlertUpdate(req: ParsedRequest, res: ServerResponse): Promise<void> {
   const { id } = req.params;
   const updates = validateBody(updateAlertRequestSchema, req.body);
   
-  const alert = alertUpdate(id, updates);
+  const alert = await alertUpdate(id, updates);
   
   if (!alert) {
     throw notFound(`Alert not found: ${id}`, ErrorCodes.ALERT_NOT_FOUND);
@@ -84,10 +84,10 @@ export function handleAlertUpdate(req: ParsedRequest, res: ServerResponse): void
   sendJson(res, alert);
 }
 
-export function handleAlertCancelWatch(req: ParsedRequest, res: ServerResponse): void {
+export async function handleAlertCancelWatch(req: ParsedRequest, res: ServerResponse): Promise<void> {
   const { id } = req.params;
   
-  const alert = alertCancelWatch(id);
+  const alert = await alertCancelWatch(id);
   
   if (!alert) {
     throw notFound(`Alert not found: ${id}`, ErrorCodes.ALERT_NOT_FOUND);
@@ -97,10 +97,10 @@ export function handleAlertCancelWatch(req: ParsedRequest, res: ServerResponse):
   sendJson(res, alert);
 }
 
-export function handleAlertDelete(req: ParsedRequest, res: ServerResponse): void {
+export async function handleAlertDelete(req: ParsedRequest, res: ServerResponse): Promise<void> {
   const { id } = req.params;
   
-  const deleted = alertDelete(id);
+  const deleted = await alertDelete(id);
   
   if (!deleted) {
     throw notFound(`Alert not found: ${id}`, ErrorCodes.ALERT_NOT_FOUND);
@@ -109,10 +109,10 @@ export function handleAlertDelete(req: ParsedRequest, res: ServerResponse): void
   sendNoContent(res);
 }
 
-export function handleAlertEvents(req: ParsedRequest, res: ServerResponse): void {
+export async function handleAlertEvents(req: ParsedRequest, res: ServerResponse): Promise<void> {
   const query = validateQuery(alertEventsQuerySchema, req.query);
   
-  const events = alertEventsQuery(query.since, query.limit);
+  const events = await alertEventsQuery(query.since, query.limit);
   
   setCacheHeaders(res, { noStore: true });
   

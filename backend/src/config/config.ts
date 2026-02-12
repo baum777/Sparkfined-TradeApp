@@ -27,8 +27,9 @@ export interface AppConfig {
 export function createConfig(): AppConfig {
   const env = getEnv();
 
+  const isSqlite = env.DATABASE_URL.startsWith('sqlite:');
   // Extract SQLite file path from DATABASE_URL (format: sqlite:./path/to/file.sqlite)
-  const dbPath = env.DATABASE_URL.replace(/^sqlite:/, '');
+  const dbPath = isSqlite ? env.DATABASE_URL.replace(/^sqlite:/, '') : '';
 
   return {
     env,
@@ -39,10 +40,10 @@ export function createConfig(): AppConfig {
       port: env.PORT ?? env.BACKEND_PORT,
       apiBasePath: env.API_BASE_PATH,
     },
-    database: {
-      url: env.DATABASE_URL,
-      path: dbPath,
-    },
+  database: {
+    url: env.DATABASE_URL,
+    path: dbPath,
+  },
     logging: {
       level: env.LOG_LEVEL,
     },

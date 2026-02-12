@@ -109,10 +109,10 @@ function checkSecondSurgeConditions(
   return { met: count >= 2, count };
 }
 
-export function evaluateDeadTokenAlert(
+export async function evaluateDeadTokenAlert(
   alert: DeadTokenAlert,
   ctx: DeadTokenEvaluationContext
-): DeadTokenEvaluationResult {
+): Promise<DeadTokenEvaluationResult> {
   const now = ctx.now;
   const nowIso = now.toISOString();
   const { metrics } = ctx;
@@ -159,11 +159,11 @@ export function evaluateDeadTokenAlert(
   }
 }
 
-function evaluateInitial(
+async function evaluateInitial(
   alert: DeadTokenAlert,
   metrics: TokenMetrics,
   nowIso: string
-): DeadTokenEvaluationResult {
+): Promise<DeadTokenEvaluationResult> {
   const { params } = alert;
   
   // Check deadness precondition
@@ -197,7 +197,7 @@ function evaluateInitial(
     windowEndsAt,
   };
   
-  alertUpdateInternal(alert.id, {
+  await alertUpdateInternal(alert.id, {
     stage: 'WATCHING',
     payload,
   });
@@ -221,22 +221,22 @@ function evaluateInitial(
     },
   };
   
-  alertEventCreate(event);
+  await alertEventCreate(event);
   
   return {
-    alert: alertGetById(alert.id) as DeadTokenAlert,
+    alert: (await alertGetById(alert.id)) as DeadTokenAlert,
     event,
     transitioned: true,
   };
 }
 
-function evaluateAwakening(
+async function evaluateAwakening(
   alert: DeadTokenAlert,
   metrics: TokenMetrics,
   baseVolume: number,
   baseTrades: number,
   nowIso: string
-): DeadTokenEvaluationResult {
+): Promise<DeadTokenEvaluationResult> {
   const { params } = alert;
   
   // Check if window expired
@@ -264,7 +264,7 @@ function evaluateAwakening(
     windowEndsAt,
   };
   
-  alertUpdateInternal(alert.id, { payload });
+  await alertUpdateInternal(alert.id, { payload });
   
   const event: AlertEmitted = {
     eventId: randomUUID(),
@@ -285,22 +285,22 @@ function evaluateAwakening(
     },
   };
   
-  alertEventCreate(event);
+  await alertEventCreate(event);
   
   return {
-    alert: alertGetById(alert.id) as DeadTokenAlert,
+    alert: (await alertGetById(alert.id)) as DeadTokenAlert,
     event,
     transitioned: true,
   };
 }
 
-function evaluateSustained(
+async function evaluateSustained(
   alert: DeadTokenAlert,
   metrics: TokenMetrics,
   baseVolume: number,
   baseTrades: number,
   nowIso: string
-): DeadTokenEvaluationResult {
+): Promise<DeadTokenEvaluationResult> {
   const { params } = alert;
   
   // Check if window expired
@@ -323,7 +323,7 @@ function evaluateSustained(
     sessionEndsAt: alert.sessionEndsAt,
   };
   
-  alertUpdateInternal(alert.id, {
+  await alertUpdateInternal(alert.id, {
     stage: 'CONFIRMED',
     status: 'triggered',
     payload,
@@ -347,20 +347,20 @@ function evaluateSustained(
     },
   };
   
-  alertEventCreate(event);
+  await alertEventCreate(event);
   
   return {
-    alert: alertGetById(alert.id) as DeadTokenAlert,
+    alert: (await alertGetById(alert.id)) as DeadTokenAlert,
     event,
     transitioned: true,
   };
 }
 
-function endSession(
+async function endSession(
   alert: DeadTokenAlert,
   nowIso: string,
   reason: 'timeout' | 'window_expired' | 'completed'
-): DeadTokenEvaluationResult {
+): Promise<DeadTokenEvaluationResult> {
   const cooldownEndsAt = new Date(
     Date.now() + alert.params.COOLDOWN_MIN * 60 * 1000
   ).toISOString();
@@ -373,7 +373,7 @@ function endSession(
     cooldownEndsAt,
   };
   
-  alertUpdateInternal(alert.id, {
+  await alertUpdateInternal(alert.id, {
     stage: reason === 'completed' ? 'CONFIRMED' : 'EXPIRED',
     status: reason === 'completed' ? 'triggered' : 'paused',
     enabled: reason === 'completed' ? 1 : 0,
@@ -399,22 +399,22 @@ function endSession(
     },
   };
   
-  alertEventCreate(event);
+  await alertEventCreate(event);
   
   return {
-    alert: alertGetById(alert.id) as DeadTokenAlert,
+    alert: (await alertGetById(alert.id)) as DeadTokenAlert,
     event,
     transitioned: true,
   };
 }
 
-function resetToInitial(alert: DeadTokenAlert): DeadTokenEvaluationResult {
+async function resetToInitial(alert: DeadTokenAlert): Promise<DeadTokenEvaluationResult> {
   const payload: DeadTokenPayload = {
     params: alert.params,
     deadTokenStage: 'INITIAL',
   };
   
-  alertUpdateInternal(alert.id, {
+  await alertUpdateInternal(alert.id, {
     stage: 'WATCHING',
     status: 'active',
     enabled: 1,
@@ -423,7 +423,7 @@ function resetToInitial(alert: DeadTokenAlert): DeadTokenEvaluationResult {
   });
   
   return {
-    alert: alertGetById(alert.id) as DeadTokenAlert,
+    alert: (await alertGetById(alert.id)) as DeadTokenAlert,
     transitioned: true,
   };
 }

@@ -1,4 +1,4 @@
-import { getDatabase } from '../../db/sqlite.js';
+import { getDatabase } from '../../db/index.js';
 
 export type AutoArchiveReason = 'matched_sell' | 'user_action' | 'policy';
 
@@ -9,13 +9,13 @@ export type AutoArchiveReason = 'matched_sell' | 'user_action' | 'policy';
  * - nearest prior by timestamp (max timestamp < sellTimestampISO)
  * - tie-break: created_at desc, then id desc (lexicographic)
  */
-export function matchPendingBuyCandidateId(params: {
+export async function matchPendingBuyCandidateId(params: {
   userId: string;
   assetMint: string;
   sellTimestampISO: string;
-}): string | null {
+}): Promise<string | null> {
   const db = getDatabase();
-  const row = db
+  const row = await db
     .prepare(
       `
         SELECT id
@@ -29,7 +29,7 @@ export function matchPendingBuyCandidateId(params: {
         LIMIT 1
       `
     )
-    .get(params.userId, params.assetMint, params.sellTimestampISO) as { id: string } | undefined;
+    .get<{ id: string }>(params.userId, params.assetMint, params.sellTimestampISO);
   return row?.id ?? null;
 }
 

@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { getDatabase } from '../../db/sqlite.js';
+import { getDatabase } from '../../db/index.js';
 import type {
   Alert,
   AlertRow,
@@ -159,7 +159,7 @@ export type CreateAlertRequest =
   | CreateTwoStageAlertRequest
   | CreateDeadTokenAlertRequest;
 
-export function alertCreate(request: CreateAlertRequest): Alert {
+export async function alertCreate(request: CreateAlertRequest): Promise<Alert> {
   const db = getDatabase();
   const now = new Date().toISOString();
   const id = `alert-${Date.now()}-${randomUUID().slice(0, 8)}`;
@@ -207,7 +207,7 @@ export function alertCreate(request: CreateAlertRequest): Alert {
       break;
   }
   
-  db.prepare(`
+  await db.prepare(`
     INSERT INTO alerts_v1 (
       id, type, symbol_or_address, timeframe, enabled, status, stage,
       created_at, note, payload_json, expires_at, cooldown_ends_at, updated_at
@@ -224,7 +224,7 @@ export function alertCreate(request: CreateAlertRequest): Alert {
     now
   );
   
-  const created = alertGetById(id);
+  const created = await alertGetById(id);
   if (!created) {
     throw new Error('Failed to create alert');
   }
@@ -232,13 +232,15 @@ export function alertCreate(request: CreateAlertRequest): Alert {
   return created;
 }
 
-export function alertGetById(id: string): Alert | null {
+export async function alertGetById(id: string): Promise<Alert | null> {
   const db = getDatabase();
-  
-  const row = db.prepare(`
+
+  const row = await db
+    .prepare(`
     SELECT * FROM alerts_v1 WHERE id = ?
-  `).get(id) as AlertRow | undefined;
-  
+  `)
+    .get<AlertRow>(id);
+
   if (!row) {
     return null;
   }
@@ -246,10 +248,10 @@ export function alertGetById(id: string): Alert | null {
   return rowToAlert(row);
 }
 
-export function alertList(
+export async function alertList(
   filter: 'all' | 'active' | 'paused' | 'triggered' = 'all',
   symbolOrAddress?: string
-): Alert[] {
+): Promise<Alert[]> {
   const db = getDatabase();
   
   let query = 'SELECT * FROM alerts_v1';
@@ -272,8 +274,8 @@ export function alertList(
   
   query += ' ORDER BY created_at DESC';
   
-  const rows = db.prepare(query).all(...params) as AlertRow[];
-  
+  const rows = await db.prepare(query).all<AlertRow>(...params);
+
   return rows.map(rowToAlert);
 }
 
@@ -284,11 +286,11 @@ export interface UpdateAlertRequest {
   targetPrice?: number;
 }
 
-export function alertUpdate(id: string, updates: UpdateAlertRequest): Alert | null {
+export async function alertUpdate(id: string, updates: UpdateAlertRequest): Promise<Alert | null> {
   const db = getDatabase();
   const now = new Date().toISOString();
-  
-  const alert = alertGetById(id);
+
+  const alert = await alertGetById(id);
   if (!alert) {
     return null;
   }
@@ -316,7 +318,11 @@ export function alertUpdate(id: string, updates: UpdateAlertRequest): Alert | nu
   // Handle SIMPLE-specific updates
   if (alert.type === 'SIMPLE' && (updates.condition !== undefined || updates.targetPrice !== undefined)) {
     const payload = JSON.parse(
-      (db.prepare('SELECT payload_json FROM alerts_v1 WHERE id = ?').get(id) as { payload_json: string }).payload_json
+      (
+        await db
+          .prepare('SELECT payload_json FROM alerts_v1 WHERE id = ?')
+          .get<{ payload_json: string }>(id)
+      )?.payload_json ?? '{}'
     ) as SimplePayload;
     
     if (updates.condition !== undefined) {
@@ -332,38 +338,41 @@ export function alertUpdate(id: string, updates: UpdateAlertRequest): Alert | nu
   
   params.push(id);
   
-  db.prepare(`UPDATE alerts_v1 SET ${setClauses.join(', ')} WHERE id = ?`).run(...params);
-  
+  await db.prepare(`UPDATE alerts_v1 SET ${setClauses.join(', ')} WHERE id = ?`).run(...params);
+
   return alertGetById(id);
 }
 
-export function alertCancelWatch(id: string): Alert | null {
+export async function alertCancelWatch(id: string): Promise<Alert | null> {
   const db = getDatabase();
   const now = new Date().toISOString();
-  
-  const alert = alertGetById(id);
+
+  const alert = await alertGetById(id);
   if (!alert) {
     return null;
   }
-  
-  db.prepare(`
+
+  await db.prepare(`
     UPDATE alerts_v1
     SET stage = 'CANCELLED', enabled = 0, status = 'paused', updated_at = ?
     WHERE id = ?
   `).run(now, id);
-  
+
   return alertGetById(id);
 }
 
-export function alertDelete(id: string): boolean {
+export async function alertDelete(id: string): Promise<boolean> {
   const db = getDatabase();
-  
-  const result = db.prepare('DELETE FROM alerts_v1 WHERE id = ?').run(id);
-  
+
+  const result = await db.prepare('DELETE FROM alerts_v1 WHERE id = ?').run(id);
+
   return result.changes > 0;
 }
 
-export function alertUpdateInternal(id: string, updates: Partial<AlertRow> & { payload?: AlertPayload }): void {
+export async function alertUpdateInternal(
+  id: string,
+  updates: Partial<AlertRow> & { payload?: AlertPayload }
+): Promise<void> {
   const db = getDatabase();
   const now = new Date().toISOString();
   
@@ -402,5 +411,5 @@ export function alertUpdateInternal(id: string, updates: Partial<AlertRow> & { p
   
   params.push(id);
   
-  db.prepare(`UPDATE alerts_v1 SET ${setClauses.join(', ')} WHERE id = ?`).run(...params);
+  await db.prepare(`UPDATE alerts_v1 SET ${setClauses.join(', ')} WHERE id = ?`).run(...params);
 }

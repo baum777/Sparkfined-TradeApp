@@ -1,4 +1,4 @@
-import { getDatabase } from '../../db/sqlite.js';
+import { getDatabase } from '../../db/index.js';
 import type { TAReport } from './types.js';
 
 /**
@@ -13,53 +13,53 @@ function getCacheKey(market: string, timeframe: string, replay: boolean, bucket:
   return `ta:${market}:${timeframe}:${replay}:${bucket}`;
 }
 
-export function taCacheGet(
+export async function taCacheGet(
   market: string,
   timeframe: string,
   replay: boolean,
   bucket: string
-): TAReport | null {
+): Promise<TAReport | null> {
   const db = getDatabase();
   const key = getCacheKey(market, timeframe, replay, bucket);
   const now = Math.floor(Date.now() / 1000);
-  
-  const row = db.prepare(`
+
+  const row = await db.prepare(`
     SELECT payload_json FROM ta_cache_v1
     WHERE key = ? AND expires_at > ?
-  `).get(key, now) as { payload_json: string } | undefined;
-  
+  `).get<{ payload_json: string }>(key, now);
+
   if (!row) {
     return null;
   }
-  
+
   return JSON.parse(row.payload_json) as TAReport;
 }
 
-export function taCacheSet(
+export async function taCacheSet(
   market: string,
   timeframe: string,
   replay: boolean,
   bucket: string,
   report: TAReport
-): void {
+): Promise<void> {
   const db = getDatabase();
   const key = getCacheKey(market, timeframe, replay, bucket);
   const now = new Date().toISOString();
   const expiresAt = Math.floor(Date.now() / 1000) + TA_CACHE_TTL_SECONDS;
-  
-  db.prepare(`
+
+  await db.prepare(`
     INSERT OR REPLACE INTO ta_cache_v1 (key, payload_json, expires_at, created_at)
     VALUES (?, ?, ?, ?)
   `).run(key, JSON.stringify(report), expiresAt, now);
 }
 
-export function taCacheCleanup(): number {
+export async function taCacheCleanup(): Promise<number> {
   const db = getDatabase();
   const now = Math.floor(Date.now() / 1000);
-  
-  const result = db.prepare(`
+
+  const result = await db.prepare(`
     DELETE FROM ta_cache_v1 WHERE expires_at <= ?
   `).run(now);
-  
+
   return result.changes;
 }

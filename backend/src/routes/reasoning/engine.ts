@@ -231,7 +231,7 @@ export async function runReasoning(
   });
 
   const kvKey = kvKeys.reasoningCache(type, body.referenceId, version, cacheKey);
-  const cached = kvGet<ReasoningResponse<AnyInsight>>(kvKey);
+  const cached = await kvGet<ReasoningResponse<AnyInsight>>(kvKey);
   if (cached) {
     return {
       ...cached,
@@ -306,7 +306,7 @@ export async function runReasoning(
       cache: { key: cacheKey, hit: false, isStale: false, source: 'llm' },
     });
 
-    kvSet(kvKey, response, kvTTL.reasoningCache);
+    await kvSet(kvKey, response, kvTTL.reasoningCache);
 
     return response;
   } catch (e) {
@@ -348,7 +348,7 @@ export async function runInsightCritic(
   });
 
   const kvKey = kvKeys.reasoningCache('insight-critic', body.referenceId, version, cacheKey);
-  const cached = kvGet<ReasoningResponse<InsightCriticOnlyResult>>(kvKey);
+  const cached = await kvGet<ReasoningResponse<InsightCriticOnlyResult>>(kvKey);
   if (cached) {
     return {
       ...cached,
@@ -387,7 +387,7 @@ export async function runInsightCritic(
       cache: { key: cacheKey, hit: false, isStale: false, source: 'llm' },
     });
 
-    kvSet(kvKey, response, kvTTL.reasoningCache);
+    await kvSet(kvKey, response, kvTTL.reasoningCache);
 
     return response;
   } catch (e) {

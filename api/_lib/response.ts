@@ -7,13 +7,12 @@ import type { VercelResponse } from '@vercel/node';
 import { getRequestId } from './request-id';
 
 /**
- * Success Response Envelope
- * { data: T, status: number, message?: string }
+ * Success Response Envelope (canonical)
+ * { status: "ok", data: T }
  */
 export interface ApiResponse<T> {
+  status: 'ok';
   data: T;
-  status: number;
-  message?: string;
 }
 
 /**
@@ -29,16 +28,10 @@ export interface ErrorResponseBody {
   };
 }
 
-export function sendJson<T>(
-  res: VercelResponse,
-  data: T,
-  status = 200,
-  message?: string
-): void {
+export function sendJson<T>(res: VercelResponse, data: T, status = 200): void {
   const response: ApiResponse<T> = {
+    status: 'ok',
     data,
-    status,
-    message,
   };
 
   res.setHeader('Content-Type', 'application/json');
@@ -46,8 +39,8 @@ export function sendJson<T>(
   res.status(status).json(response);
 }
 
-export function sendCreated<T>(res: VercelResponse, data: T, message?: string): void {
-  sendJson(res, data, 201, message);
+export function sendCreated<T>(res: VercelResponse, data: T): void {
+  sendJson(res, data, 201);
 }
 
 export function sendNoContent(res: VercelResponse): void {
