@@ -5,13 +5,10 @@
  */
 
 import { logger } from '../observability/logger.js';
-import { getDatabase } from '../db/sqlite.js';
+import { getDatabase } from '../db/index.js';
 import { journalGetById } from '../domain/journal/repo.js';
-import { resolveTierFromAuthUser } from '../domain/settings/tier.js';
-import { tierGte } from '../config/tiers.js';
 import { computeAllDeltaSnapshots } from '../domain/market/delta.service.js';
 import type { AtTradeMarketSnapshot } from '../domain/market/snapshot.service.js';
-import type { DeltaSnapshot } from '../domain/market/delta.service.js';
 
 export interface DeltaSnapshotsJobResult {
   processed: number;
@@ -33,18 +30,18 @@ export async function runDeltaSnapshotsJob(): Promise<DeltaSnapshotsJobResult> {
   // Find entries that need delta computation
   // Only for entries with market snapshots (tier >= standard)
   // Only compute for pro+ tier users
-  const entries = db.prepare(`
+  const entries = await db.prepare(`
     SELECT DISTINCT e.user_id, e.id, e.timestamp, e.status
     FROM journal_entries_v2 e
     INNER JOIN journal_market_snapshots_v1 s ON e.user_id = s.user_id AND e.id = s.entry_id
     WHERE e.status IN ('pending', 'confirmed')
       AND e.timestamp IS NOT NULL
-  `).all() as Array<{
+  `).all<{
     user_id: string;
     id: string;
     timestamp: string;
     status: string;
-  }>;
+  }>();
   
   for (const entry of entries) {
     processed++;
@@ -56,11 +53,11 @@ export async function runDeltaSnapshotsJob(): Promise<DeltaSnapshotsJobResult> {
       // Or we could add a tier column to entries, but that's a design decision
       
       // Load market snapshot
-      const snapshotRow = db.prepare(`
+      const snapshotRow = await db.prepare(`
         SELECT market_snapshot_json
         FROM journal_market_snapshots_v1
         WHERE user_id = ? AND entry_id = ?
-      `).get(entry.user_id, entry.id) as { market_snapshot_json: string } | undefined;
+      `).get<{ market_snapshot_json: string }>(entry.user_id, entry.id);
       
       if (!snapshotRow) {
         skipped++;
@@ -70,7 +67,7 @@ export async function runDeltaSnapshotsJob(): Promise<DeltaSnapshotsJobResult> {
       const atTradeSnapshot = JSON.parse(snapshotRow.market_snapshot_json) as AtTradeMarketSnapshot;
       
       // Get asset mint from entry
-      const entryFull = journalGetById(entry.user_id, entry.id);
+      const entryFull = await journalGetById(entry.user_id, entry.id);
       if (!entryFull || !entryFull.capture?.assetMint) {
         skipped++;
         continue;
@@ -86,7 +83,7 @@ export async function runDeltaSnapshotsJob(): Promise<DeltaSnapshotsJobResult> {
       // Persist delta snapshots
       for (const [window, delta] of Object.entries(deltas)) {
         if (delta) {
-          db.prepare(`
+          await db.prepare(`
             INSERT OR REPLACE INTO journal_delta_snapshots_v1
             (user_id, entry_id, window, delta_snapshot_json, captured_at)
             VALUES (?, ?, ?, ?, ?)

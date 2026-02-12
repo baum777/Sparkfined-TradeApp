@@ -30,10 +30,10 @@ export interface TwoStageEvaluationResult {
   transitioned: boolean;
 }
 
-export function evaluateTwoStageAlert(
+export async function evaluateTwoStageAlert(
   alert: TwoStageAlert,
   ctx: TwoStageEvaluationContext
-): TwoStageEvaluationResult {
+): Promise<TwoStageEvaluationResult> {
   const now = ctx.now;
   const nowIso = now.toISOString();
   
@@ -76,12 +76,12 @@ export function evaluateTwoStageAlert(
   return { alert, transitioned: false };
 }
 
-function expireAlert(
+async function expireAlert(
   alert: TwoStageAlert,
   nowIso: string
-): TwoStageEvaluationResult {
+): Promise<TwoStageEvaluationResult> {
   // Update in database
-  alertUpdateInternal(alert.id, {
+  await alertUpdateInternal(alert.id, {
     stage: 'EXPIRED',
     status: 'paused',
     enabled: 0,
@@ -106,9 +106,9 @@ function expireAlert(
     },
   };
   
-  alertEventCreate(event);
-  
-  const updatedAlert = alertGetById(alert.id) as TwoStageAlert;
+  await alertEventCreate(event);
+
+  const updatedAlert = (await alertGetById(alert.id)) as TwoStageAlert;
   
   return {
     alert: updatedAlert,
@@ -117,12 +117,12 @@ function expireAlert(
   };
 }
 
-function confirmAlert(
+async function confirmAlert(
   alert: TwoStageAlert,
   indicators: IndicatorState[],
   triggeredCount: number,
   nowIso: string
-): TwoStageEvaluationResult {
+): Promise<TwoStageEvaluationResult> {
   // Calculate cooldown end
   const cooldownEndsAt = new Date(
     Date.now() + alert.cooldownMinutes * 60 * 1000
@@ -141,7 +141,7 @@ function confirmAlert(
     expiresAt: alert.expiresAt,
   };
   
-  alertUpdateInternal(alert.id, {
+  await alertUpdateInternal(alert.id, {
     stage: 'CONFIRMED',
     status: 'triggered',
     cooldown_ends_at: cooldownEndsAt,
@@ -167,9 +167,9 @@ function confirmAlert(
     },
   };
   
-  alertEventCreate(event);
-  
-  const updatedAlert = alertGetById(alert.id) as TwoStageAlert;
+  await alertEventCreate(event);
+
+  const updatedAlert = (await alertGetById(alert.id)) as TwoStageAlert;
   
   return {
     alert: updatedAlert,
@@ -178,12 +178,12 @@ function confirmAlert(
   };
 }
 
-function updateProgress(
+async function updateProgress(
   alert: TwoStageAlert,
   indicators: IndicatorState[],
   triggeredCount: number,
   nowIso: string
-): TwoStageEvaluationResult {
+): Promise<TwoStageEvaluationResult> {
   // Update indicators in database
   const payload: TwoStagePayload = {
     template: alert.template,
@@ -197,7 +197,7 @@ function updateProgress(
     expiresAt: alert.expiresAt,
   };
   
-  alertUpdateInternal(alert.id, { payload });
+  await alertUpdateInternal(alert.id, { payload });
   
   // Emit progress event (optional, for UI updates)
   const event: AlertEmitted = {
@@ -222,9 +222,9 @@ function updateProgress(
     },
   };
   
-  alertEventCreate(event);
+  await alertEventCreate(event);
   
-  const updatedAlert = alertGetById(alert.id) as TwoStageAlert;
+  const updatedAlert = (await alertGetById(alert.id)) as TwoStageAlert;
   
   return {
     alert: updatedAlert,

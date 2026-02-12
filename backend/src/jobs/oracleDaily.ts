@@ -10,7 +10,7 @@ export async function runOracleDailyJob(): Promise<void> {
   const dateLabel = now.toISOString().slice(0, 10);
 
   try {
-    oracleGetDaily(now, 'system-cron');
+    await oracleGetDaily(now, 'system-cron');
     logger.info('Oracle daily job completed', { date: dateLabel });
   } catch (error) {
     logger.error('Oracle daily job failed', { date: dateLabel, error: String(error) });

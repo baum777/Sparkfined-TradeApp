@@ -2,7 +2,7 @@ import { createServer } from 'http';
 import { join } from 'path';
 import { loadEnv } from './config/env.js';
 import { getConfig } from './config/config.js';
-import { initDatabase, closeDatabase } from './db/sqlite.js';
+import { initDatabase, closeDatabase } from './db/index.js';
 import { runMigrations } from './db/migrate.js';
 import { kvCleanupExpired } from './db/kv.js';
 import { alertEventsCleanup } from './domain/alerts/eventsRepo.js';
@@ -22,11 +22,11 @@ loadEnv();
 const config = getConfig();
 
 // Initialize database
-initDatabase(config.database.path);
+await initDatabase(config.database.url);
 
 // Run migrations
 const migrationsDir = join(process.cwd(), 'migrations');
-runMigrations(migrationsDir);
+await runMigrations(migrationsDir);
 
 // Create router
 const app = createApp();
@@ -53,14 +53,14 @@ const server = createServer((req, res) => {
 });
 
 // Cleanup jobs
-function runCleanupJobs(): void {
+async function runCleanupJobs(): Promise<void> {
   logger.debug('Running cleanup jobs');
   
   try {
-    const kvCleaned = kvCleanupExpired();
-    const eventsCleaned = alertEventsCleanup();
-    const oracleCleaned = oracleClearOldDaily();
-    const taCleaned = taCacheCleanup();
+    const kvCleaned = await kvCleanupExpired();
+    const eventsCleaned = await alertEventsCleanup();
+    const oracleCleaned = await oracleClearOldDaily();
+    const taCleaned = await taCacheCleanup();
     
     logger.info('Cleanup complete', {
       kv: kvCleaned,
@@ -85,9 +85,15 @@ function shutdown(): void {
   scheduledJobs.stop();
   
   server.close(() => {
-    closeDatabase();
-    logger.info('Server shut down complete');
-    process.exit(0);
+    closeDatabase()
+      .then(() => {
+        logger.info('Server shut down complete');
+        process.exit(0);
+      })
+      .catch(error => {
+        logger.error('Shutdown failed while closing database', { error: String(error) });
+        process.exit(1);
+      });
   });
   
   // Force exit after 10 seconds

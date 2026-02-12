@@ -25,7 +25,7 @@ export async function handleFeedOracle(req: ParsedRequest, res: ServerResponse):
   const asset = query.asset;
  
   // Minimal, deterministic "oracle feed" derived from the daily oracle feed.
-  const daily = oracleGetDaily(new Date(), req.userId);
+  const daily = await oracleGetDaily(new Date(), req.userId);
  
   const items: OracleFeedItem[] = [
     {

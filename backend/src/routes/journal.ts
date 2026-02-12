@@ -29,7 +29,7 @@ function requireJournalAuth(req: ParsedRequest): void {
   }
 }
 
-export function handleJournalList(req: ParsedRequest, res: ServerResponse): void {
+export async function handleJournalList(req: ParsedRequest, res: ServerResponse): Promise<void> {
   requireJournalAuth(req);
   const query = validateQuery(journalListQuerySchema, req.query);
   
@@ -37,7 +37,7 @@ export function handleJournalList(req: ParsedRequest, res: ServerResponse): void
   const status = query.view || query.status;
   
   // userId is now REQUIRED for all journal operations (multitenancy)
-  const result = journalList(req.userId, status, query.limit, query.cursor);
+  const result = await journalList(req.userId, status, query.limit, query.cursor);
   
   setCacheHeaders(res, { noStore: true });
   
@@ -49,12 +49,12 @@ export function handleJournalList(req: ParsedRequest, res: ServerResponse): void
   sendJson(res, response);
 }
 
-export function handleJournalGetById(req: ParsedRequest, res: ServerResponse): void {
+export async function handleJournalGetById(req: ParsedRequest, res: ServerResponse): Promise<void> {
   requireJournalAuth(req);
   const { id } = req.params;
   
   // userId is now REQUIRED for all journal operations (multitenancy)
-  const entry = journalGetById(req.userId, id);
+  const entry = await journalGetById(req.userId, id);
   
   if (!entry) {
     throw notFound(`Journal entry not found: ${id}`, ErrorCodes.JOURNAL_NOT_FOUND);
@@ -64,7 +64,7 @@ export function handleJournalGetById(req: ParsedRequest, res: ServerResponse): v
   sendJson(res, entry);
 }
 
-export function handleJournalCreate(req: ParsedRequest, res: ServerResponse): void {
+export async function handleJournalCreate(req: ParsedRequest, res: ServerResponse): Promise<void> {
   requireJournalAuth(req);
   const body = validateBody(journalCreateRequestSchema, req.body);
   
@@ -77,19 +77,19 @@ export function handleJournalCreate(req: ParsedRequest, res: ServerResponse): vo
   }
   
   // userId is now REQUIRED for all journal operations (multitenancy)
-  const entry = journalCreate(req.userId, body, idempotencyKey);
+  const entry = await journalCreate(req.userId, body, idempotencyKey);
   
   setCacheHeaders(res, { noStore: true });
   sendCreated(res, entry);
 }
 
-export function handleJournalConfirm(req: ParsedRequest, res: ServerResponse): void {
+export async function handleJournalConfirm(req: ParsedRequest, res: ServerResponse): Promise<void> {
   requireJournalAuth(req);
   const { id } = req.params;
   
   // userId is now REQUIRED for all journal operations (multitenancy)
   // First check if entry exists
-  const existing = journalGetById(req.userId, id);
+  const existing = await journalGetById(req.userId, id);
   if (!existing) {
     throw notFound(`Journal entry not found: ${id}`, ErrorCodes.JOURNAL_NOT_FOUND);
   }
@@ -102,18 +102,18 @@ export function handleJournalConfirm(req: ParsedRequest, res: ServerResponse): v
     );
   }
   
-  const entry = journalConfirm(req.userId, id);
+  const entry = await journalConfirm(req.userId, id);
   
   setCacheHeaders(res, { noStore: true });
   sendJson(res, entry);
 }
 
-export function handleJournalArchive(req: ParsedRequest, res: ServerResponse): void {
+export async function handleJournalArchive(req: ParsedRequest, res: ServerResponse): Promise<void> {
   requireJournalAuth(req);
   const { id } = req.params;
   
   // userId is now REQUIRED for all journal operations (multitenancy)
-  const entry = journalGetById(req.userId, id);
+  const entry = await journalGetById(req.userId, id);
   if (!entry) {
     throw notFound(`Journal entry not found: ${id}`, ErrorCodes.JOURNAL_NOT_FOUND);
   }
@@ -123,34 +123,34 @@ export function handleJournalArchive(req: ParsedRequest, res: ServerResponse): v
     throw conflict('Cannot archive a pending entry', ErrorCodes.INVALID_TRANSITION);
   }
 
-  const archived = journalArchive(req.userId, id);
+  const archived = await journalArchive(req.userId, id);
   
   setCacheHeaders(res, { noStore: true });
   sendJson(res, archived);
 }
 
-export function handleJournalRestore(req: ParsedRequest, res: ServerResponse): void {
+export async function handleJournalRestore(req: ParsedRequest, res: ServerResponse): Promise<void> {
   requireJournalAuth(req);
   const { id } = req.params;
   
   // userId is now REQUIRED for all journal operations (multitenancy)
-  const existing = journalGetById(req.userId, id);
+  const existing = await journalGetById(req.userId, id);
   if (!existing) {
     throw notFound(`Journal entry not found: ${id}`, ErrorCodes.JOURNAL_NOT_FOUND);
   }
   
-  const entry = journalRestore(req.userId, id);
+  const entry = await journalRestore(req.userId, id);
   
   setCacheHeaders(res, { noStore: true });
   sendJson(res, entry);
 }
 
-export function handleJournalDelete(req: ParsedRequest, res: ServerResponse): void {
+export async function handleJournalDelete(req: ParsedRequest, res: ServerResponse): Promise<void> {
   requireJournalAuth(req);
   const { id } = req.params;
   
   // userId is now REQUIRED for all journal operations (multitenancy)
-  const deleted = journalDelete(req.userId, id);
+  const deleted = await journalDelete(req.userId, id);
   
   if (!deleted) {
     throw notFound(`Journal entry not found: ${id}`, ErrorCodes.JOURNAL_NOT_FOUND);

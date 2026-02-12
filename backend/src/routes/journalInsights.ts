@@ -38,7 +38,7 @@ export async function handleJournalInsights(req: ParsedRequest, res: ServerRespo
   const { id } = req.params;
   const body = validateBody(journalInsightsRequestSchema, req.body);
 
-  const entry = journalGetById(req.userId, id);
+  const entry = await journalGetById(req.userId, id);
   if (!entry) {
     throw notFound(`Journal entry not found: ${id}`, ErrorCodes.JOURNAL_NOT_FOUND);
   }

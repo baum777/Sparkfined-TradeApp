@@ -1,4 +1,4 @@
-import { getDatabase } from './sqlite.js';
+import { getDatabase } from './index.js';
 
 /**
  * Key-Value Store Adapter
@@ -7,64 +7,80 @@ import { getDatabase } from './sqlite.js';
  * Key format: kv:v1:<domain>:...
  */
 
-export function kvGet<T>(key: string): T | null {
+export async function kvGet<T>(key: string): Promise<T | null> {
   const db = getDatabase();
   const now = Math.floor(Date.now() / 1000);
-  
-  const row = db.prepare(`
-    SELECT value_json FROM kv_v1
-    WHERE key = ? AND (expires_at IS NULL OR expires_at > ?)
-  `).get(key, now) as { value_json: string } | undefined;
-  
+
+  const row = await db
+    .prepare(
+      `
+        SELECT value_json FROM kv_v1
+        WHERE key = ? AND (expires_at IS NULL OR expires_at > ?)
+      `
+    )
+    .get<{ value_json: string }>(key, now);
+
   if (!row) {
     return null;
   }
-  
+
   return JSON.parse(row.value_json) as T;
 }
 
-export function kvSet<T>(key: string, value: T, ttlSeconds?: number): void {
+export async function kvSet<T>(key: string, value: T, ttlSeconds?: number): Promise<void> {
   const db = getDatabase();
   const now = Math.floor(Date.now() / 1000);
   const expiresAt = ttlSeconds ? now + ttlSeconds : null;
-  
-  db.prepare(`
-    INSERT OR REPLACE INTO kv_v1 (key, value_json, expires_at, updated_at)
-    VALUES (?, ?, ?, ?)
-  `).run(key, JSON.stringify(value), expiresAt, now);
+
+  await db
+    .prepare(
+      `
+        INSERT OR REPLACE INTO kv_v1 (key, value_json, expires_at, updated_at)
+        VALUES (?, ?, ?, ?)
+      `
+    )
+    .run(key, JSON.stringify(value), expiresAt, now);
 }
 
-export function kvDelete(key: string): boolean {
+export async function kvDelete(key: string): Promise<boolean> {
   const db = getDatabase();
-  
-  const result = db.prepare(`DELETE FROM kv_v1 WHERE key = ?`).run(key);
-  
+
+  const result = await db.prepare(`DELETE FROM kv_v1 WHERE key = ?`).run(key);
+
   return result.changes > 0;
 }
 
-export function kvGetByPrefix<T>(prefix: string): Array<{ key: string; value: T }> {
+export async function kvGetByPrefix<T>(prefix: string): Promise<Array<{ key: string; value: T }>> {
   const db = getDatabase();
   const now = Math.floor(Date.now() / 1000);
-  
-  const rows = db.prepare(`
-    SELECT key, value_json FROM kv_v1
-    WHERE key LIKE ? AND (expires_at IS NULL OR expires_at > ?)
-  `).all(`${prefix}%`, now) as Array<{ key: string; value_json: string }>;
-  
+
+  const rows = await db
+    .prepare(
+      `
+        SELECT key, value_json FROM kv_v1
+        WHERE key LIKE ? AND (expires_at IS NULL OR expires_at > ?)
+      `
+    )
+    .all<{ key: string; value_json: string }>(`${prefix}%`, now);
+
   return rows.map(row => ({
     key: row.key,
     value: JSON.parse(row.value_json) as T,
   }));
 }
 
-export function kvCleanupExpired(): number {
+export async function kvCleanupExpired(): Promise<number> {
   const db = getDatabase();
   const now = Math.floor(Date.now() / 1000);
-  
-  const result = db.prepare(`
-    DELETE FROM kv_v1 WHERE expires_at IS NOT NULL AND expires_at <= ?
-  `).run(now);
-  
+
+  const result = await db
+    .prepare(
+      `
+        DELETE FROM kv_v1 WHERE expires_at IS NOT NULL AND expires_at <= ?
+      `
+    )
+    .run(now);
+
   return result.changes;
 }
 

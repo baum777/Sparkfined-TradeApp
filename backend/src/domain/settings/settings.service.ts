@@ -1,4 +1,4 @@
-import { getDatabase } from '../../db/sqlite.js';
+import { getDatabase } from '../../db/index.js';
 import { AppError, ErrorCodes } from '../../http/error.js';
 import type { ResolvedTier, UserSettings, UserSettingsPatch } from './settings.types.js';
 
@@ -17,9 +17,9 @@ function tierAllowsGrokEnable(tier: ResolvedTier): boolean {
 
 export async function getSettings(userId: string): Promise<UserSettings> {
   const db = getDatabase();
-  const row = db
+  const row = await db
     .prepare(`SELECT ai_grok_enabled FROM user_settings_v1 WHERE user_id = ?`)
-    .get(userId) as { ai_grok_enabled: number } | undefined;
+    .get<{ ai_grok_enabled: number }>(userId);
   return normalizeRow(row);
 }
 
@@ -40,12 +40,14 @@ export async function patchSettings(userId: string, patch: UserSettingsPatch, ct
   }
 
   const now = new Date().toISOString();
-  db.prepare(
-    `
-      INSERT OR REPLACE INTO user_settings_v1 (user_id, ai_grok_enabled, updated_at)
-      VALUES (?, ?, ?)
-    `
-  ).run(userId, next.ai.grokEnabled ? 1 : 0, now);
+  await db
+    .prepare(
+      `
+        INSERT OR REPLACE INTO user_settings_v1 (user_id, ai_grok_enabled, updated_at)
+        VALUES (?, ?, ?)
+      `
+    )
+    .run(userId, next.ai.grokEnabled ? 1 : 0, now);
 
   return next;
 }
