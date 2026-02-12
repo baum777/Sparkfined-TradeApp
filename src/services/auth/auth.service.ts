@@ -67,6 +67,8 @@ class AuthService {
   private readonly basePath = '/auth';
   private currentUser: User | null = null;
   private tokenRefreshTimer: NodeJS.Timeout | null = null;
+  private accessToken: string | null = null;
+  private refreshToken: string | null = null;
 
   private assertEnabled(): void {
     if (!ENABLE_AUTH) {
@@ -203,16 +205,9 @@ class AuthService {
    */
   async refreshAccessToken(): Promise<AuthTokens> {
     this.assertEnabled();
-    const refreshToken = this.getRefreshToken();
-
-    if (!refreshToken) {
-      throw new Error('No refresh token available');
-    }
-
-    const tokens = await apiClient.post<AuthTokens>(
-      `${this.basePath}/refresh`,
-      { refreshToken }
-    );
+    const tokens = await apiClient.post<AuthTokens>(`${this.basePath}/refresh`, {
+      refreshToken: this.refreshToken || undefined,
+    });
 
     this.storeTokens(tokens);
     this.scheduleTokenRefresh(tokens.expiresIn);
@@ -224,6 +219,7 @@ class AuthService {
    */
   isAuthenticated(): boolean {
     if (!ENABLE_AUTH) return false;
+    if (this.currentUser) return true;
     const token = this.getAccessToken();
     return !!token && !this.isTokenExpired(token);
   }
@@ -232,23 +228,22 @@ class AuthService {
    * Holt den Access Token
    */
   getAccessToken(): string | null {
-    return localStorage.getItem('accessToken');
+    return this.accessToken;
   }
 
   /**
    * Holt den Refresh Token
    */
   private getRefreshToken(): string | null {
-    return localStorage.getItem('refreshToken');
+    return this.refreshToken;
   }
 
   /**
    * Speichert Tokens
    */
   private storeTokens(tokens: AuthTokens): void {
-    localStorage.setItem('accessToken', tokens.accessToken);
-    localStorage.setItem('refreshToken', tokens.refreshToken);
-    apiClient.setAuthToken(tokens.accessToken);
+    this.accessToken = tokens.accessToken;
+    this.refreshToken = tokens.refreshToken;
   }
 
   /**
@@ -265,9 +260,8 @@ class AuthService {
    */
   private clearSession(): void {
     this.currentUser = null;
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    apiClient.removeAuthToken();
+    this.accessToken = null;
+    this.refreshToken = null;
 
     if (this.tokenRefreshTimer) {
       clearTimeout(this.tokenRefreshTimer);

@@ -81,8 +81,9 @@ Diese Datei listet **alle aktuell im Repo referenzierten** Env Vars + empfohlene
 
 **Wichtige Production-Hinweise**
 - **`DATABASE_URL`**:
-  - Aktueller Default ist **lokal** (`sqlite:./.data/...`) → auf Vercel nicht persistent.
-  - Für Production muss eine persistente DB gewählt werden; das wird voraussichtlich neue/andere Env Vars erfordern (z.B. `POSTGRES_URL`, `DATABASE_URL` im Postgres-Format etc.).
+  - Lokal: `sqlite:./.data/tradeapp.sqlite`
+  - Production: **Postgres** (z.B. Railway/Neon/Supabase), Format: `postgres://user:pass@host:5432/db`
+  - SQLite ist nicht persistent bei Container-Restarts → **nicht** für Production verwenden.
 - **`BACKEND_PORT`**:
   - Für Vercel Functions i.d.R. irrelevant (kein `listen()`), für extern gehosteten Server relevant.
 
@@ -115,10 +116,10 @@ Der Service Worker wird von Vite mitgebaut und kann deshalb `import.meta.env.VIT
 
 ## Vercel Routing — `vercel.json` Rewrite
 
-Der Rewrite in `vercel.json` leitet `/api/*` an das Railway-Backend weiter. **Wichtig**: die Placeholder-Domain muss vor dem Deploy ersetzt werden.
+Der Rewrite in `vercel.json` leitet `/api/*` an das Railway-Backend weiter. **Wichtig**: `VERCEL_BACKEND_URL` muss gesetzt sein.
 
 **TODO vor Deploy**
-- Ersetze `https://<YOUR_RAILWAY_DOMAIN>/api/$1` in `vercel.json` durch die echte Railway-Domain (ohne zu raten).
+- Setze `VERCEL_BACKEND_URL` in Vercel (z.B. `tradeapp-backend-production.up.railway.app`).
 
 ---
 

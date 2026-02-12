@@ -2,6 +2,11 @@ import { Router } from './http/router.js';
 import {
   handleHealth,
   handleMeta,
+  handleAuthRegister,
+  handleAuthLogin,
+  handleAuthRefresh,
+  handleAuthLogout,
+  handleAuthMe,
   handleJournalList,
   handleJournalGetById,
   handleJournalCreate,
@@ -49,6 +54,13 @@ export function createApp(): Router {
   router.get('/health', handleHealth);
   router.get('/meta', handleMeta);
   router.get('/usage/summary', handleUsageSummary);
+
+  // Auth (cookie-backed)
+  router.post('/auth/register', handleAuthRegister);
+  router.post('/auth/login', handleAuthLogin);
+  router.post('/auth/refresh', handleAuthRefresh);
+  router.post('/auth/logout', handleAuthLogout);
+  router.get('/auth/me', handleAuthMe);
 
   // Settings
   router.get('/settings', handleSettingsGet);
