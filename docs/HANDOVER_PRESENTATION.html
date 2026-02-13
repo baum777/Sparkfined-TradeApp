@@ -1,0 +1,1391 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TradeApp - Handover Präsentation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1e40af;
+            --secondary: #64748b;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --bg-light: #f8fafc;
+            --bg-white: #ffffff;
+            --text-dark: #0f172a;
+            --text-secondary: #475569;
+            --border: #e2e8f0;
+            --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--bg-light);
+            color: var(--text-dark);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 3rem 2rem;
+            margin-bottom: 2rem;
+            border-radius: 12px;
+            box-shadow: var(--shadow-lg);
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            font-weight: 700;
+        }
+
+        header p {
+            font-size: 1.1rem;
+            opacity: 0.95;
+            margin-bottom: 1rem;
+        }
+
+        .meta {
+            display: flex;
+            gap: 2rem;
+            flex-wrap: wrap;
+            margin-top: 1.5rem;
+            font-size: 0.95rem;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .meta-item strong {
+            opacity: 0.9;
+        }
+
+        /* Tab Navigation */
+        .tab-navigation {
+            display: flex;
+            gap: 0.5rem;
+            background: white;
+            padding: 1rem;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            overflow-x: auto;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .tab-button {
+            padding: 0.75rem 1.5rem;
+            border: 2px solid transparent;
+            background: transparent;
+            color: var(--text-secondary);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .tab-button:hover {
+            background: var(--bg-light);
+            color: var(--primary);
+        }
+
+        .tab-button.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        /* Tab Content */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Feature Section */
+        .feature-section {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow);
+        }
+
+        .feature-section h2 {
+            color: var(--primary);
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .feature-section h3 {
+            color: var(--text-dark);
+            margin: 1.5rem 0 1rem 0;
+            font-size: 1.3rem;
+            border-bottom: 2px solid var(--bg-light);
+            padding-bottom: 0.5rem;
+        }
+
+        .feature-section p {
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+            line-height: 1.8;
+        }
+
+        /* Feature Grid */
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .feature-card {
+            background: var(--bg-light);
+            border-radius: 10px;
+            padding: 1.5rem;
+            border-left: 4px solid var(--primary);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .feature-card h4 {
+            color: var(--primary);
+            margin-bottom: 0.75rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .feature-card p {
+            margin-bottom: 0.5rem;
+            font-size: 0.95rem;
+        }
+
+        .feature-card ul {
+            margin-left: 1.25rem;
+            color: var(--text-secondary);
+        }
+
+        .feature-card li {
+            margin-bottom: 0.4rem;
+            font-size: 0.9rem;
+        }
+
+        /* UI Elements Section */
+        .ui-elements {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .ui-element {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            box-shadow: var(--shadow);
+        }
+
+        .ui-element h5 {
+            font-size: 1rem;
+            margin-bottom: 0.75rem;
+            font-weight: 600;
+        }
+
+        .ui-element p {
+            font-size: 0.875rem;
+            opacity: 0.95;
+            color: white;
+        }
+
+        /* Tech Stack */
+        .tech-stack {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            margin: 1.5rem 0;
+        }
+
+        .tech-badge {
+            background: var(--primary);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            box-shadow: var(--shadow);
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: var(--shadow);
+        }
+
+        .stat-card .value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-card .label {
+            font-size: 0.95rem;
+            opacity: 0.95;
+        }
+
+        /* Key Features List */
+        .key-features {
+            background: var(--bg-light);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .key-features ul {
+            list-style: none;
+        }
+
+        .key-features li {
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: start;
+            gap: 0.75rem;
+        }
+
+        .key-features li:last-child {
+            border-bottom: none;
+        }
+
+        .key-features li:before {
+            content: "✓";
+            color: var(--success);
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        /* Screenshot Placeholder */
+        .screenshot {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 10px;
+            padding: 4rem 2rem;
+            text-align: center;
+            margin: 1.5rem 0;
+            border: 2px dashed var(--border);
+        }
+
+        .screenshot p {
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            header {
+                padding: 2rem 1rem;
+            }
+
+            header h1 {
+                font-size: 1.8rem;
+            }
+
+            .tab-navigation {
+                padding: 0.75rem;
+            }
+
+            .tab-button {
+                padding: 0.5rem 1rem;
+                font-size: 0.875rem;
+            }
+
+            .feature-grid,
+            .ui-elements,
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Icon Styles */
+        .icon {
+            width: 24px;
+            height: 24px;
+            display: inline-block;
+        }
+
+        /* Alert Box */
+        .alert {
+            background: #fef3c7;
+            border-left: 4px solid var(--warning);
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            margin: 1.5rem 0;
+        }
+
+        .alert-info {
+            background: #dbeafe;
+            border-left-color: var(--primary);
+        }
+
+        .alert-success {
+            background: #d1fae5;
+            border-left-color: var(--success);
+        }
+
+        .alert p {
+            color: var(--text-dark);
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚀 TradeApp - Handover Präsentation</h1>
+            <p>Trading Journal & Learning Platform - Vollständige Feature-Übersicht mit UI/UX Elementen</p>
+            <div class="meta">
+                <div class="meta-item">
+                    <strong>Version:</strong> <span>1.0.0</span>
+                </div>
+                <div class="meta-item">
+                    <strong>Tech Stack:</strong> <span>React + TypeScript + Vite</span>
+                </div>
+                <div class="meta-item">
+                    <strong>Status:</strong> <span>✅ Production Ready</span>
+                </div>
+                <div class="meta-item">
+                    <strong>Datum:</strong> <span>Februar 2026</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Tab Navigation -->
+        <nav class="tab-navigation">
+            <button class="tab-button active" onclick="switchTab('overview')">Übersicht</button>
+            <button class="tab-button" onclick="switchTab('dashboard')">Dashboard</button>
+            <button class="tab-button" onclick="switchTab('journal')">Journal</button>
+            <button class="tab-button" onclick="switchTab('oracle')">Oracle / Insights</button>
+            <button class="tab-button" onclick="switchTab('chart')">Charts & TA</button>
+            <button class="tab-button" onclick="switchTab('watchlist')">Watchlist</button>
+            <button class="tab-button" onclick="switchTab('alerts')">Alerts</button>
+            <button class="tab-button" onclick="switchTab('learn')">Learning Hub</button>
+            <button class="tab-button" onclick="switchTab('settings')">Settings</button>
+            <button class="tab-button" onclick="switchTab('tech')">Tech Stack</button>
+        </nav>
+
+        <!-- Overview Tab -->
+        <div id="overview" class="tab-content active">
+            <div class="feature-section">
+                <h2>📊 Projekt-Übersicht</h2>
+                <p>TradeApp ist eine umfassende Trading-Plattform, die Trader dabei unterstützt, ihre Performance zu verfolgen, aus ihren Trades zu lernen und ihre Fähigkeiten kontinuierlich zu verbessern.</p>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="value">10+</div>
+                        <div class="label">Haupt-Features</div>
+                    </div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);">
+                        <div class="value">25+</div>
+                        <div class="label">Pages & Views</div>
+                    </div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, var(--warning) 0%, #d97706 100%);">
+                        <div class="value">100+</div>
+                        <div class="label">Komponenten</div>
+                    </div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);">
+                        <div class="value">3</div>
+                        <div class="label">Backend-Optionen</div>
+                    </div>
+                </div>
+
+                <h3>🎯 Kernfunktionen</h3>
+                <div class="key-features">
+                    <ul>
+                        <li><strong>Dashboard</strong> - Zentrale Übersicht mit KPIs, Metriken und Quick Actions</li>
+                        <li><strong>Trading Journal</strong> - Detaillierte Trade-Dokumentation mit Screenshots und Analysen</li>
+                        <li><strong>AI Oracle & Insights</strong> - KI-gestützte Marktanalysen und personalisierte Verbesserungsvorschläge</li>
+                        <li><strong>Charts & Technical Analysis</strong> - Professionelle Chart-Analyse mit Indikatoren</li>
+                        <li><strong>Watchlist</strong> - Asset-Tracking mit Live-Daten und Notizen</li>
+                        <li><strong>Alerts & Notifications</strong> - Preisalarme und System-Benachrichtigungen</li>
+                        <li><strong>Learning Hub</strong> - Strukturierte Lernmodule und Fortschrittstracking</li>
+                        <li><strong>Research</strong> - Marktforschung und Signale</li>
+                        <li><strong>Settings & Preferences</strong> - Umfangreiche Konfigurations optionen</li>
+                    </ul>
+                </div>
+
+                <div class="alert alert-info">
+                    <p><strong>💡 Hinweis:</strong> Diese Präsentation dient als vollständiger Handover-Guide für das Entwicklerteam. Jeder Tab enthält detaillierte Informationen zu UI/UX Elementen und Key-Funktionen.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard Tab -->
+        <div id="dashboard" class="tab-content">
+            <div class="feature-section">
+                <h2>📊 Dashboard</h2>
+                <p>Das Dashboard ist die zentrale Anlaufstelle für Trader und bietet eine übersichtliche Darstellung aller wichtigen Metriken und Aktivitäten.</p>
+
+                <h3>🎨 UI/UX Elemente</h3>
+                <div class="ui-elements">
+                    <div class="ui-element">
+                        <h5>KPI Cards</h5>
+                        <p>Große, gut lesbare Metrikkarten mit visuellen Indikatoren für Trend-Richtung (↑↓)</p>
+                    </div>
+                    <div class="ui-element" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+                        <h5>Performance Charts</h5>
+                        <p>Interaktive Diagramme (Recharts) zur Visualisierung von P&L und Win-Rate</p>
+                    </div>
+                    <div class="ui-element" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                        <h5>Recent Activity Feed</h5>
+                        <p>Chronologische Liste der letzten Journal-Einträge und Trades</p>
+                    </div>
+                    <div class="ui-element" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">
+                        <h5>Quick Actions</h5>
+                        <p>Floating Action Buttons für häufige Aktionen (+ Trade, Insights, etc.)</p>
+                    </div>
+                </div>
+
+                <h3>⚙️ Key Funktionen</h3>
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h4>Performance Metriken</h4>
+                        <ul>
+                            <li>Gesamtprofit / -verlust</li>
+                            <li>Win-Rate Prozentsatz</li>
+                            <li>Durchschnittlicher Trade-Gewinn</li>
+                            <li>Anzahl der Trades (gesamt)</li>
+                            <li>Profit Factor</li>
+                            <li>Risk/Reward Ratio</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card">
+                        <h4>Visualisierungen</h4>
+                        <ul>
+                            <li>P&L Line Chart (Zeitverlauf)</li>
+                            <li>Win/Loss Bar Chart</li>
+                            <li>Strategy Distribution (Pie)</li>
+                            <li>Equity Curve</li>
+                            <li>Drawdown Visualisierung</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card">
+                        <h4>Smart Recommendations</h4>
+                        <ul>
+                            <li>Nächste empfohlene Aktion</li>
+                            <li>Learning Suggestions</li>
+                            <li>Review-Erinnerungen</li>
+                            <li>Streak-Tracking</li>
+                            <li>Goal-Progress Anzeige</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card">
+                        <h4>Quick Access</h4>
+                        <ul>
+                            <li>Neuer Journal-Eintrag</li>
+                            <li>Watchlist öffnen</li>
+                            <li>Oracle Insights abrufen</li>
+                            <li>Letzte Charts anzeigen</li>
+                            <li>Aktive Alerts anzeigen</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="screenshot">
+                    <p>📸 Dashboard Screenshot: KPI-Leiste oben, Performance Charts mittig, Recent Activity & Quick Actions seitlich</p>
+                </div>
+
+                <div class="alert alert-success">
+                    <p><strong>✅ Implementiert:</strong> Vollständig responsive, Dark Mode Support, Real-time Updates via React Query</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Journal Tab -->
+        <div id="journal" class="tab-content">
+            <div class="feature-section">
+                <h2>📝 Trading Journal</h2>
+                <p>Das Herzstück der App - ein detailliertes Trading Journal zur Dokumentation, Analyse und Verbesserung der Trading-Performance.</p>
+
+                <h3>🎨 UI/UX Elemente</h3>
+                <div class="ui-elements">
+                    <div class="ui-element">
+                        <h5>Trade Entry Form</h5>
+                        <p>Multi-Step Formular mit Validierung (React Hook Form + Zod)</p>
+                    </div>
+                    <div class="ui-element" style="background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);">
+                        <h5>Screenshot Upload</h5>
+                        <p>Drag & Drop Bildupload mit Vorschau und Annotations</p>
+                    </div>
+                    <div class="ui-element" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);">
+                        <h5>Tag System</h5>
+                        <p>Flexible Tagging für Strategien, Fehler, Emotions</p>
+                    </div>
+                    <div class="ui-element" style="background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);">
+                        <h5>Filter & Search</h5>
+                        <p>Erweiterte Filtermöglichkeiten (Date Range, Tags, P&L)</p>
+                    </div>
+                </div>
+
+                <h3>⚙️ Key Funktionen</h3>
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h4>Trade Dokumentation</h4>
+                        <ul>
+                            <li>Symbol / Asset auswahl</li>
+                            <li>Entry & Exit Preise</li>
+                            <li>Position Size & Leverage</li>
+                            <li>Stop Loss & Take Profit</li>
+                            <li>P&L Berechnung (automatisch)</li>
+                            <li>Trade Duration</li>
+                            <li>Timeframe</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card">
+                        <h4>Analyse & Reflection</h4>
+                        <ul>
+                            <li>Pre-Trade Plan / Hypothesis</li>
+                            <li>Post-Trade Review</li>
+                            <li>Emotional State Tracking</li>
+                            <li>Fehleranalyse</li>
+                            <li>What Went Well / WWW</li>
+                            <li>Lessons Learned</li>
+                            <li>Screenshot Annotations</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card">
+                        <h4>Organisation</h4>
+                        <ul>
+                            <li>Strategie-Tags</li>
+                            <li>Fehler-Tags (FOMO, Revenge, etc.)</li>
+                            <li>Custom Tags</li>
+                            <li>Favoriten / Pinning</li>
+                            <li>Archivierung</li>
+                            <li>Bulk Actions</li>
+                            <li>Export (CSV, JSON)</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card">
+                        <h4>Insights & AI</h4>
+                        <ul>
+                            <li>AI Trade Review</li>
+                            <li>Pattern Recognition</li>
+                            <li>Similarity Search</li>
+                            <li>Performance Trends</li>
+                            <li>Habit Detection</li>
+                            <li>Improvement Suggestions</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="screenshot">
+                    <p>📸 Journal View: Liste aller Trades mit Cards, Filter-Bar oben, FAB für neuen Eintrag</p>
+                </div>
+
+                <div class="alert alert-info">
+                    <p><strong>💾 Offline Support:</strong> Journal-Einträge werden lokal in IndexedDB gecacht und bei Verbindung synchronisiert (Queue-System)</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Oracle/Insights Tab -->
+        <div id="oracle" class="tab-content">
+            <div class="feature-section">
+                <h2>🔮 Oracle & Insights</h2>
+                <p>AI-powered Insights Engine, die personalisierte Verbesserungsvorschläge, Marktanalysen und Lern-Empfehlungen generiert.</p>
+
+                <h3>🎨 UI/UX Elemente</h3>
+                <div class="ui-elements">
+                    <div class="ui-element">
+                        <h5>Insight Cards</h5>
+                        <p>Visuelle Karten mit Kategorie-Icons und Severity-Indikatoren</p>
+                    </div>
+                    <div class="ui-element" style="background: linear-gradient(135deg, #f472b6 0%, #ec4899 100%);">
+                        <h5>Daily Oracle</h5>
+                        <p>Täglicher AI-generierter Markt-Insight mit Actionable Items</p>
+                    </div>
+                    <div class="ui-element" style="background: linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%);">
+                        <h5>Insight Feed</h5>
+                        <p>Chronologischer Stream von AI-Analysen und Empfehlungen</p>
+                    </div>
+                    <div class="ui-element" style="background: linear-gradient(135deg, #34d399 0%, #10b981 100%);">
+                        <h5>Critic Mode</h5>
+                        <p>Detaillierte Trade-Kritik mit Verbesserungsvorschlägen</p>
+                    </div>
+                </div>
+
+                <h3>⚙️ Key Funktionen</h3>
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h4>Insight Kategorien</h4>
+                        <ul>
+                            <li><strong>Market:</strong> Markttrends & News</li>
+                            <li><strong>Personal:</strong> Performance-Analyse</li>
+                            <li><strong>Educational:</strong> Lernempfehlungen</li>
+                            <li><strong>Tactical:</strong> Setup-Vorschläge</li>
+                            <li><strong>Risk:</strong> Risiko-Warnungen</li>
+                            <li><strong>Psychological:</strong> Mental Game</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card">
+                        <h4>Oracle Services</h4>
+                        <ul>
+                            <li>Daily Oracle (1x täglich)</li>
+                            <li>Trade Review Insights</li>
+                            <li>Session Review</li>
+                            <li>Pattern Detection</li>
+                            <li>Performance Anomalies</li>
+                            <li>Grok Pulse (X/Twitter Sentiment)</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card">
+                        <h4>Interaktionen</h4>
+                        <ul>
+                            <li>Pin wichtige Insights</li>
+                            <li>Mark as Read/Unread</li>
+                            <li>Insight Rating (Helpful/Not)</li>
+                            <li>Filtering nach Kategorie</li>
+                            <li>Zeitbasierte Filter</li>
+                            <li>Export & Sharing</li>
+                            <li>Inline Actions</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card">
+                        <h4>AI Integration</h4>
+                        <ul>
+                            <li>LLM Reasoning Layer</li>
+                            <li>Prompt Engineering</li>
+                            <li>Response Caching</li>
+                            <li>Budget Management</li>
+                            <li>Local Insight Engine (Fallback)</li>
+                            <li>Multi-Provider Support</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="screenshot">
+                    <p>📸 Oracle View: Insight Cards mit Icons, Filter-Chips, Daily Oracle prominent oben</p>
+                </div>
+
+                <div class="alert alert-success">
+                    <p><strong>🤖 AI Provider:</strong> Unterstützung für OpenAI, Anthropic, Groq, Together AI - konfigurierbar über Settings</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chart & TA Tab -->
+        <div id="chart" class="tab-content">
+            <div class="feature-section">
+                <h2>📈 Charts & Technical Analysis</h2>
+                <p>Professionelle Chart-Analyse-Tools mit technischen Indikatoren und Drawing-Tools für Setup-Planung.</p>
+
+                <h3>🎨 UI/UX Elemente</h3>
+                <div class="ui-elements">
+                    <div class="ui-element">
+                        <h5>Chart Canvas</h5>
+                        <p>Vollbildfähiger Chart mit Zoom, Pan und Touch-Gesten</p>
+                    </div>
+                    <div class="ui-element" style="background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);">
+                        <h5>Indicator Panel</h5>
+                        <p>Sidebar mit verfügbaren Indikatoren und Einstellungen</p>
+                    </div>
+                    <div class="ui-element" style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);">
+                        <h5>Timeframe Selector</h5>
+                        <p>Quick-Switch zwischen 1m, 5m, 15m, 1h, 4h, 1d</p>
+                    </div>
+                    <div class="ui-element" style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);">
+                        <h5>Drawing Toolbar</h5>
+                        <p>Tools für Trendlines, Horizontal Lines, Fibonacci, etc.</p>
+                    </div>
+                </div>
+
+                <h3>⚙️ Key Funktionen</h3>
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h4>Technische Indikatoren</h4>
+                        <ul>
+                            <li>Simple Moving Average (SMA)</li>
+                            <li>Exponential Moving Average (EMA)</li>
+                            <li>Relative Strength Index (RSI)</li>
+                            <li>MACD</li>
+                            <li>Bollinger Bands</li>
+                            <li>Volume Profile</li>
+                            <li>ATR (Average True Range)</li>
+                            <li>Stochastic Oscillator</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card">
+                        <h4>Drawing Tools</h4>
+                        <ul>
+                            <li>Trendlines</li>
+                            <li>Horizontal Lines (S/R)</li>
+                            <li>Vertical Lines (Events)</li>
+                            <li>Fibonacci Retracements</li>
+                            <li>Fibonacci Extensions</li>
+                            <li>Rectangles (Zones)</li>
+                            <li>Text Labels</li>
+                            <li>Arrows & Shapes</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card">
+                        <h4>Chart Features</h4>
+                        <ul>
+                            <li>Multiple Timeframes</li>
+                            <li>Candlestick / Line / Bar</li>
+                            <li>Volume Histogram</li>
+                            <li>Cross-hair Tool</li>
+                            <li>Zoom & Pan</li>
+                            <li>Auto-Scale</li>
+                            <li>Price Alerts direkt im Chart</li>
+                            <li>Chart Templates</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card">
+                        <h4>Advanced</h4>
+                        <ul>
+                            <li>Chart Replay Mode</li>
+                            <li>Speed-Control (1x, 2x, 5x)</li>
+                            <li>Historical Analysis</li>
+                            <li>Pattern Scanner (AI)</li>
+                            <li>Multi-Chart Layout</li>
+                            <li>Watchlist Integration</li>
+                            <li>Export Charts (PNG)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="screenshot">
+                    <p>📸 Chart View: Fullscreen-fähiger Chart, Indicator-Sidebar links, Timeframe-Bar oben, Drawing-Tools unten</p>
+                </div>
+
+                <div class="alert alert-info">
+                    <p><strong>📊 Data Source:</strong> Integration mit Crypto-Providern (Helius, Birdeye) und Traditional Markets (Alpha Vantage, Polygon)</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Watchlist Tab -->
+        <div id="watchlist" class="tab-content">
+            <div class="feature-section">
+                <h2>👁️ Watchlist</h2>
+                <p>Asset-Tracking und Überwachung mit Live-Preisen, Notizen und direktem Zugriff auf Charts und Analysen.</p>
+
+                <h3>🎨 UI/UX Elemente</h3>
+                <div class="ui-elements">
+                    <div class="ui-element">
+                        <h5>Asset Cards/List</h5>
+                        <p>Kompakte Darstellung mit Symbol, Preis, 24h Change, Sparkline</p>
+                    </div>
+                    <div class="ui-element" style="background: linear-gradient(135deg, #fb923c 0%, #f97316 100%);">
+                        <h5>Quick Actions</h5>
+                        <p>Swipe-Actions für Alert, Chart, Remove</p>
+                    </div>
+                    <div class="ui-element" style="background: linear-gradient(135deg, #22d3ee 0%, #06b6d4 100%);">
+                        <h5>Asset Search</h5>
+                        <p>Typeahead-Search mit Auto-Suggest für Symbols</p>
+                    </div>
+                    <div class="ui-element" style="background: linear-gradient(135deg, #a3e635 0%, #84cc16 100%);">
+                        <h5>Detail Panel</h5>
+                        <p>Slide-in Panel mit erweiterten Infos und Notizen</p>
+                    </div>
+                </div>
+
+                <h3>⚙️ Key Funktionen</h3>
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h4>Asset Management</h4>
+                        <ul>
+                            <li>Symbol hinzufügen/entfernen</li>
+                            <li>Gruppierung (Folders)</li>
+                            <li>Favoriten-System</li>
+                            <li>Sortierung (Preis, Change, Alpha)</li>
+                            <li>Bulk-Operationen</li>
+                            <li>Import/Export Listen</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card">
+                        <h4>Live-Daten</h4>
+                        <ul>
+                            <li>Echtzeit-Preise (WebSocket)</li>
+                            <li>24h Price Change (%)</li>
+                            <li>Volume Tracking</li>
+                            <li>Market Cap</li>
+                            <li>Mini-Sparkline Charts</li>
+                            <li>Bid/Ask Spread</li>
+                            <li>Auto-Refresh (configurable)</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card">
+                        <h4>Notizen & Analyse</h4>
+                        <ul>
+                            <li>Asset-spezifische Notes</li>
+                            <li>Setup-Beschreibungen</li>
+                            <li>Entry/Exit Levels</li>
+                            <li>Tags & Labels</li>
+                            <li>Attachments (Screenshots)</li>
+                            <li>Rich-Text Editor</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card">
+                        <h4>Integrationen</h4>
+                        <ul>
+                            <li>Direkter Chart-Zugriff</li>
+                            <li>Alert-Erstellung</li>
+                            <li>Journal-Integration</li>
+                            <li>Oracle Insights für Assets</li>
+                            <li>News Feed per Symbol</li>
+                            <li>Social Sentiment</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="screenshot">
+                    <p>📸 Watchlist View: Grid/List-View mit Asset Cards, Search-Bar oben, FAB zum Hinzufügen</p>
+                </div>
+
+                <div class="alert alert-success">
+                    <p><strong>🔄 Real-time Updates:</strong> WebSocket-Integration für Live-Preise, Fallback auf Polling bei Verbindungsproblemen</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alerts Tab -->
+        <div id="alerts" class="tab-content">
+            <div class="feature-section">
+                <h2>🔔 Alerts & Notifications</h2>
+                <p>Umfassendes Alert-System für Preisalarme, Erinnerungen und System-Benachrichtigungen mit Push-Support.</p>
+
+                <h3>🎨 UI/UX Elemente</h3>
+                <div class="ui-elements">
+                    <div class="ui-element">
+                        <h5>Alert Cards</h5>
+                        <p>Status-farbcodierte Cards (Active, Triggered, Expired)</p>
+                    </div>
+                    <div class="ui-element" style="background: linear-gradient(135deg, #f87171 0%, #ef4444 100%);">
+                        <h5>Alert Creation Modal</h5>
+                        <p>Step-by-Step Formular für neue Alerts</p>
+                    </div>
+                    <div class="ui-element" style="background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);">
+                        <h5>Notification Toast</h5>
+                        <p>Non-intrusive Toasts für getriggerte Alerts</p>
+                    </div>
+                    <div class="ui-element" style="background: linear-gradient(135deg, #818cf8 0%, #6366f1 100%);">
+                        <h5>Alert History</h5>
+                        <p>Timeline-View aller vergangenen Alerts</p>
+                    </div>
+                </div>
+
+                <h3>⚙️ Key Funktionen</h3>
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h4>Alert-Typen</h4>
+                        <ul>
+                            <li><strong>Price Alerts:</strong> Above/Below Schwellenwert</li>
+                            <li><strong>% Change Alerts:</strong> Prozentuale Bewegung</li>
+                            <li><strong>Volume Alerts:</strong> Ungewöhnliche Volume</li>
+                            <li><strong>Reminder Alerts:</strong> Zeit-basiert</li>
+                            <li><strong>Indicator Alerts:</strong> RSI, MACD, etc.</li>
+                            <li><strong>News Alerts:</strong> Symbol-spezifische News</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card">
+                        <h4>Konfiguration</h4>
+                        <ul>
+                            <li>Symbol/Asset Auswahl</li>
+                            <li>Trigger-Bedingungen (>, <, =)</li>
+                            <li>Schwellenwerte (Price/Percent)</li>
+                            <li>Wiederholungs-Optionen</li>
+                            <li>Gültigkeit (Ablaufdatum)</li>
+                            <li>Notification-Methode</li>
+                            <li>Priorität (Low/Medium/High)</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card">
+                        <h4>Benachrichtigungen</h4>
+                        <ul>
+                            <li>Browser Push Notifications</li>
+                            <li>In-App Toasts</li>
+                            <li>Email Notifications (optional)</li>
+                            <li>Sound-Alerts</li>
+                            <li>Vibration (Mobile)</li>
+                            <li>Do-Not-Disturb Zeiten</li>
+                            <li>Notification Grouping</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card">
+                        <h4>Management</h4>
+                        <ul>
+                            <li>Active Alerts Dashboard</li>
+                            <li>Alert History & Logs</li>
+                            <li>Quick Enable/Disable</li>
+                            <li>Bulk Edit/Delete</li>
+                            <li>Alert Templates</li>
+                            <li>Import/Export</li>
+                            <li>Performance Stats</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="screenshot">
+                    <p>📸 Alerts View: Liste aktiver Alerts mit Status-Badges, FAB für neue Alerts, Filter-Tabs (All/Active/Triggered)</p>
+                </div>
+
+                <div class="alert alert-info">
+                    <p><strong>🔧 Backend:</strong> Separater Alerts-Service (Express + Postgres) mit SSE für Real-time Updates und Worker-Queue für Checks</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Learning Hub Tab -->
+        <div id="learn" class="tab-content">
+            <div class="feature-section">
+                <h2>📚 Learning Hub</h2>
+                <p>Strukturierte Lernplattform mit Modulen, Lektionen und Fortschrittstracking für kontinuierliche Weiterbildung.</p>
+
+                <h3>🎨 UI/UX Elemente</h3>
+                <div class="ui-elements">
+                    <div class="ui-element">
+                        <h5>Lesson Cards</h5>
+                        <p>Visuelle Karten mit Fortschritts-Ring und Difficulty-Badge</p>
+                    </div>
+                    <div class="ui-element" style="background: linear-gradient(135deg, #c084fc 0%, #a855f7 100%);">
+                        <h5>Module View</h5>
+                        <p>Accordion-basierte Module mit Lesson-List</p>
+                    </div>
+                    <div class="ui-element" style="background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);">
+                        <h5>Content Viewer</h5>
+                        <p>Multi-format Viewer (Video, Text, Interactive)</p>
+                    </div>
+                    <div class="ui-element" style="background: linear-gradient(135deg, #fb7185 0%, #f43f5e 100%);">
+                        <h5>Progress Tracker</h5>
+                        <p>Übersicht über absolvierte Lessons und Achievements</p>
+                    </div>
+                </div>
+
+                <h3>⚙️ Key Funktionen</h3>
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h4>Lern-Inhalte</h4>
+                        <ul>
+                            <li>Video-Lektionen (eingebettet)</li>
+                            <li>Text-Artikel (Markdown/Rich)</li>
+                            <li>Interaktive Quizzes</li>
+                            <li>Praktische Übungen</li>
+                            <li>Code-Examples</li>
+                            <li>Chart-Analysis Challenges</li>
+                            <li>Case Studies</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card">
+                        <h4>Organisation</h4>
+                        <ul>
+                            <li>Kategorien (Basics, TA, Psychology, etc.)</li>
+                            <li>Schwierigkeitsgrade (Beginner to Advanced)</li>
+                            <li>Lernpfade (Curated Tracks)</li>
+                            <li>Prerequisites (Unlock-System)</li>
+                            <li>Tags für Themen</li>
+                            <li>Suche & Filter</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card">
+                        <h4>Fortschrittstracking</h4>
+                        <ul>
+                            <li>Lesson Completion Status</li>
+                            <li>Module Progress (%)</li>
+                            <li>Time Spent Learning</li>
+                            <li>Quiz Scores</li>
+                            <li>Achievements/Badges</li>
+                            <li>Learning Streak</li>
+                            <li>Certificates (Modul-Abschluss)</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card">
+                        <h4>Interaktivität</h4>
+                        <ul>
+                            <li>Notes zu Lessons</li>
+                            <li>Bookmarks</li>
+                            <li>Review-Modus</li>
+                            <li>Practice Mode</li>
+                            <li>Spaced Repetition</li>
+                            <li>Daily Challenges</li>
+                            <li>Community-Diskussionen (Future)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="screenshot">
+                    <p>📸 Learning Hub: Grid von Lesson Cards, Filter-Bar für Kategorien, Progress-Summary Header</p>
+                </div>
+
+                <div class="alert alert-success">
+                    <p><strong>🎓 Content CMS:</strong> Lessons werden als JSON/Markdown verwaltet, einfach erweiterbar ohne Code-Changes</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Tab -->
+        <div id="settings" class="tab-content">
+            <div class="feature-section">
+                <h2>⚙️ Settings & Preferences</h2>
+                <p>Umfangreiches Einstellungs-Panel für Personalisierung, Provider-Konfiguration und Datenverwaltung.</p>
+
+                <h3>🎨 UI/UX Elemente</h3>
+                <div class="ui-elements">
+                    <div class="ui-element">
+                        <h5>Settings Sections</h5>
+                        <p>Gruppierte Einstellungen mit Collapsible-Sections</p>
+                    </div>
+                    <div class="ui-element" style="background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);">
+                        <h5>Provider Cards</h5>
+                        <p>Konfiguration für AI, Data, News Provider mit Status</p>
+                    </div>
+                    <div class="ui-element" style="background: linear-gradient(135deg, #f472b6 0%, #ec4899 100%);">
+                        <h5>Theme Switcher</h5>
+                        <p>Visual Toggle (Light/Dark/System) mit Live-Preview</p>
+                    </div>
+                    <div class="ui-element" style="background: linear-gradient(135deg, #facc15 0%, #eab308 100%);">
+                        <h5>Data Export</h5>
+                        <p>Buttons für Export in verschiedenen Formaten</p>
+                    </div>
+                </div>
+
+                <h3>⚙️ Key Funktionen</h3>
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h4>Appearance</h4>
+                        <ul>
+                            <li>Theme (Light/Dark/System)</li>
+                            <li>Accent Color Auswahl</li>
+                            <li>Font Size Adjustment</li>
+                            <li>Layout Density (Compact/Comfortable)</li>
+                            <li>Animation Preferences</li>
+                            <li>Reduce Motion</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card">
+                        <h4>Provider Configuration</h4>
+                        <ul>
+                            <li>AI Provider (OpenAI, Anthropic, Groq)</li>
+                            <li>API Keys Management</li>
+                            <li>Data Provider (Helius, Birdeye)</li>
+                            <li>News Sources</li>
+                            <li>Provider Priority/Fallback</li>
+                            <li>Usage Monitoring</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card">
+                        <h4>Notifications</h4>
+                        <ul>
+                            <li>Push Notification Enable/Disable</li>
+                            <li>Alert Preferences</li>
+                            <li>Sound Settings</li>
+                            <li>Email Notifications</li>
+                            <li>Quiet Hours</li>
+                            <li>Notification Grouping</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card">
+                        <h4>Datenschutz & Daten</h4>
+                        <ul>
+                            <li>Datenexport (JSON, CSV)</li>
+                            <li>Datenlöschung</li>
+                            <li>Cache Management</li>
+                            <li>Offline Data Sync</li>
+                            <li>Analytics Opt-out</li>
+                            <li>GDPR Compliance Tools</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h4>Trading Preferences</h4>
+                        <ul>
+                            <li>Default Leverage</li>
+                            <li>Risk Percentage</li>
+                            <li>Default Timeframes</li>
+                            <li>Preferred Indicators</li>
+                            <li>Chart Template</li>
+                            <li>Journal Template</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card">
+                        <h4>Experiments & Features</h4>
+                        <ul>
+                            <li>Beta Features Toggle</li>
+                            <li>Debug Mode</li>
+                            <li>Feature Flags</li>
+                            <li>A/B Testing Opt-in</li>
+                            <li>Performance Metrics</li>
+                            <li>Developer Tools</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card">
+                        <h4>Account & Profile</h4>
+                        <ul>
+                            <li>Username & Avatar</li>
+                            <li>Email Address</li>
+                            <li>Timezone Settings</li>
+                            <li>Language Preferences</li>
+                            <li>Currency Display</li>
+                            <li>Profile Visibility (Future)</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card">
+                        <h4>Advanced</h4>
+                        <ul>
+                            <li>API Access (für Devs)</li>
+                            <li>Webhook Configuration</li>
+                            <li>Custom Integrations</li>
+                            <li>Backup & Restore</li>
+                            <li>Import Settings</li>
+                            <li>Factory Reset</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="screenshot">
+                    <p>📸 Settings View: Tab-Navigation für Sections (General, Providers, Privacy, etc.), Forms mit Validation</p>
+                </div>
+
+                <div class="alert alert-info">
+                    <p><strong>💾 Persistence:</strong> Settings werden lokal (localStorage + IndexedDB) und optional cloud-synced gespeichert</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tech Stack Tab -->
+        <div id="tech" class="tab-content">
+            <div class="feature-section">
+                <h2>🛠️ Tech Stack & Architektur</h2>
+                <p>Übersicht über verwendete Technologien, Architektur-Entscheidungen und technische Implementation-Details.</p>
+
+                <h3>Frontend Stack</h3>
+                <div class="tech-stack">
+                    <span class="tech-badge">React 18</span>
+                    <span class="tech-badge">TypeScript 5</span>
+                    <span class="tech-badge">Vite 5</span>
+                    <span class="tech-badge">React Router v6</span>
+                    <span class="tech-badge">TanStack Query</span>
+                    <span class="tech-badge">Zustand</span>
+                    <span class="tech-badge">React Hook Form</span>
+                    <span class="tech-badge">Zod</span>
+                    <span class="tech-badge">Tailwind CSS</span>
+                    <span class="tech-badge">shadcn/ui</span>
+                    <span class="tech-badge">Radix UI</span>
+                    <span class="tech-badge">Lucide Icons</span>
+                    <span class="tech-badge">Recharts</span>
+                    <span class="tech-badge">date-fns</span>
+                </div>
+
+                <h3>Backend Stack</h3>
+                <div class="tech-stack">
+                    <span class="tech-badge" style="background: var(--success);">Node.js 20</span>
+                    <span class="tech-badge" style="background: var(--success);">Express</span>
+                    <span class="tech-badge" style="background: var(--success);">TypeScript</span>
+                    <span class="tech-badge" style="background: var(--success);">Drizzle ORM</span>
+                    <span class="tech-badge" style="background: var(--success);">SQLite / Postgres</span>
+                    <span class="tech-badge" style="background: var(--success);">BullMQ</span>
+                    <span class="tech-badge" style="background: var(--success);">Redis</span>
+                    <span class="tech-badge" style="background: var(--success);">Zod</span>
+                </div>
+
+                <h3>DevOps & Tools</h3>
+                <div class="tech-stack">
+                    <span class="tech-badge" style="background: var(--warning);">pnpm</span>
+                    <span class="tech-badge" style="background: var(--warning);">Vitest</span>
+                    <span class="tech-badge" style="background: var(--warning);">Playwright</span>
+                    <span class="tech-badge" style="background: var(--warning);">ESLint</span>
+                    <span class="tech-badge" style="background: var(--warning);">Vercel</span>
+                    <span class="tech-badge" style="background: var(--warning);">Railway</span>
+                    <span class="tech-badge" style="background: var(--warning);">Docker</span>
+                    <span class="tech-badge" style="background: var(--warning);">GitHub Actions</span>
+                </div>
+
+                <h3>Architektur-Übersicht</h3>
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h4>Frontend Architektur</h4>
+                        <ul>
+                            <li><strong>SPA:</strong> Single Page Application mit React Router</li>
+                            <li><strong>State:</strong> Zustand für global, TanStack Query für Server</li>
+                            <li><strong>API Client:</strong> Typed fetch-wrapper mit error handling</li>
+                            <li><strong>Offline:</strong> Service Worker + IndexedDB Queue</li>
+                            <li><strong>PWA:</strong> Installierbar, Offline-fähig</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card">
+                        <h4>Backend Architektur</h4>
+                        <ul>
+                            <li><strong>3 Backend-Optionen:</strong> Node, Vercel Serverless, Alerts-Service</li>
+                            <li><strong>Node Backend:</strong> Always-on, SQLite/Postgres, Jobs</li>
+                            <li><strong>Vercel Functions:</strong> Serverless, cold-start optimiert</li>
+                            <li><strong>Alerts Service:</strong> Dedicated, Express + Postgres + SSE</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card">
+                        <h4>Data Layer</h4>
+                        <ul>
+                            <li><strong>ORM:</strong> Drizzle mit Type-safe queries</li>
+                            <li><strong>Migrations:</strong> SQL-basiert, versioniert</li>
+                            <li><strong>Caching:</strong> Multi-layer (Memory, Redis, IndexedDB)</li>
+                            <li><strong>Queue:</strong> BullMQ für async Jobs</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card">
+                        <h4>API Design</h4>
+                        <ul>
+                            <li><strong>Contracts:</strong> Shared Zod schemas (Single Source of Truth)</li>
+                            <li><strong>Envelope:</strong> { status: "ok", data } / { error: {...} }</li>
+                            <li><strong>Versioning:</strong> URL-basiert (/api/v1/...)</li>
+                            <li><strong>REST:</strong> Standard REST mit semantic routes</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <h3>Deployment</h3>
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h4>Production Setup</h4>
+                        <ul>
+                            <li><strong>Frontend:</strong> Vercel (Edge Network)</li>
+                            <li><strong>Backend:</strong> Railway (Node Backend)</li>
+                            <li><strong>Database:</strong> Railway Postgres</li>
+                            <li><strong>Redis:</strong> Railway Redis</li>
+                            <li><strong>Alerts:</strong> Separate Railway Service</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card">
+                        <h4>CI/CD</h4>
+                        <ul>
+                            <li><strong>GitHub Actions:</strong> Test & Lint</li>
+                            <li><strong>Vercel:</strong> Auto-deploy PRs & main</li>
+                            <li><strong>Railway:</strong> Auto-deploy main branch</li>
+                            <li><strong>E2E Tests:</strong> Playwright in CI</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card">
+                        <h4>Monitoring</h4>
+                        <ul>
+                            <li><strong>Performance:</strong> Web Vitals tracking</li>
+                            <li><strong>Errors:</strong> Error Boundary + Logging</li>
+                            <li><strong>Analytics:</strong> Optional (Privacy-first)</li>
+                            <li><strong>Uptime:</strong> Health-Check Endpoints</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card">
+                        <h4>Security</h4>
+                        <ul>
+                            <li><strong>API Keys:</strong> Env Variables, nie im Frontend</li>
+                            <li><strong>CORS:</strong> Configured für production domains</li>
+                            <li><strong>Rate Limiting:</strong> Per IP und Route</li>
+                            <li><strong>Input Validation:</strong> Zod auf allen Ebenen</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="alert alert-success">
+                    <p><strong>📦 Monorepo:</strong> Workspace-Setup mit pnpm, shared contracts zwischen Frontend und Backend</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function switchTab(tabId) {
+            // Remove active class from all tabs and buttons
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.classList.remove('active');
+            });
+
+            // Add active class to selected tab and button
+            document.getElementById(tabId).classList.add('active');
+            event.target.classList.add('active');
+
+            // Scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Add keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+                const buttons = Array.from(document.querySelectorAll('.tab-button'));
+                const activeIndex = buttons.findIndex(btn => btn.classList.contains('active'));
+                
+                let newIndex;
+                if (e.key === 'ArrowRight') {
+                    newIndex = (activeIndex + 1) % buttons.length;
+                } else {
+                    newIndex = (activeIndex - 1 + buttons.length) % buttons.length;
+                }
+                
+                buttons[newIndex].click();
+            }
+        });
+
+        // Print button functionality
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('✅ TradeApp Handover Presentation loaded successfully');
+            console.log('💡 Tip: Use Arrow Keys (← →) to navigate between tabs');
+        });
+    </script>
+</body>
+</html>
