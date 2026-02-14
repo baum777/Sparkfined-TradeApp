@@ -6,12 +6,11 @@
  */
 
 import type { AtTradeMarketSnapshot } from './snapshot.service.js';
-import type { ResolvedTier } from '../../config/tiers.js';
 import { canIncludeDeltas } from '../contextPack/gates.js';
 import * as priceProvider from './providers/price.provider.js';
 import * as volumeProvider from './providers/volume.provider.js';
 import { buildAtTradeSnapshot } from './snapshot.service.js';
-import type { DeltaSnapshots } from '../contextPack/types.js';
+import type { DeltaSnapshots, ResolvedTier } from '../contextPack/types.js';
 
 export type DeltaWindow = '+15m' | '+1h' | '+4h';
 

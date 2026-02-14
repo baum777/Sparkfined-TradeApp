@@ -4,7 +4,6 @@
  * Per BACKEND MAP section 1: market.snapshot.service.ts must also hard-gate fields (defense in depth)
  */
 
-import type { ResolvedTier } from '../../config/tiers.js';
 import { tierGte } from '../../config/tiers.js';
 import { canIncludeMarket, canIncludeIndicators, canIncludeOrderPressure } from '../contextPack/gates.js';
 import * as priceProvider from './providers/price.provider.js';
@@ -13,7 +12,7 @@ import * as holdersProvider from './providers/holders.provider.js';
 import * as liquidityProvider from './providers/liquidity.provider.js';
 import * as rsiIndicator from './indicators/rsi.js';
 import * as trendIndicator from './indicators/trend.js';
-import type { MarketSnapshotAtTime } from '../contextPack/types.js';
+import type { MarketSnapshotAtTime, ResolvedTier } from '../contextPack/types.js';
 
 export interface AtTradeMarketSnapshot {
   capturedAt: string; // ISO timestamp

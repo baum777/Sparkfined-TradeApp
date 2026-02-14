@@ -46,8 +46,8 @@ export async function handleJournalInsights(req: ParsedRequest, res: ServerRespo
   const includeGrok = body.includeGrok === true;
   const includeContextPack = body.includeContextPack === true;
   const contextPackAnchorMode = body.contextPackAnchorMode || 'trade_centered';
-  const includeDeltas = body.includeDeltas === true;
   const tier = resolveTierFromAuthUser(req.user);
+  const contextPackTier = tier ?? 'free';
 
   // Server-side gating: include Grok narrative ONLY if explicitly requested and enabled.
   if (includeGrok) {
@@ -81,7 +81,7 @@ export async function handleJournalInsights(req: ParsedRequest, res: ServerRespo
     
     const contextPack = await buildContextPack({
       userId: req.userId,
-      tier,
+      tier: contextPackTier,
       asset: {
         mint: assetMint,
         symbol: entry.capture?.assetSymbol || entry.symbolOrAddress || undefined,

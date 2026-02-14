@@ -5,7 +5,7 @@
  */
 
 import type { ResolvedTier } from './types.js';
-import type { UserSettings } from '../settings/types.js';
+import type { UserSettings } from '../settings/settings.types.js';
 
 /**
  * Check if tier allows market snapshot
