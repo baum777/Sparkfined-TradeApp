@@ -35,7 +35,7 @@ function cleanupTestDb(): void {
   }
 }
 
-beforeAll(() => {
+beforeAll(async () => {
   // Clean up before starting
   cleanupTestDb();
   
@@ -49,8 +49,8 @@ beforeAll(() => {
   // In that case we skip DB-backed test setup to allow non-DB suites (e.g. routing/contract)
   // to execute.
   try {
-    initDatabase(TEST_DB_PATH);
-    runMigrations(join(process.cwd(), 'migrations'));
+    await initDatabase(process.env.DATABASE_URL || TEST_DB_PATH);
+    await runMigrations(join(process.cwd(), 'migrations'));
     (globalThis as any).__DB_READY__ = true;
   } catch (err) {
     (globalThis as any).__DB_READY__ = false;
@@ -83,9 +83,9 @@ beforeEach(() => {
   db.exec('PRAGMA foreign_keys = ON');
 });
 
-afterAll(() => {
+afterAll(async () => {
   if ((globalThis as any).__DB_READY__) {
-    closeDatabase();
+    await closeDatabase();
   }
   cleanupTestDb();
 });

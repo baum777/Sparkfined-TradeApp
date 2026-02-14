@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getDatabase } from '../../src/db/sqlite';
+import { getDatabase } from '../../src/db/index';
 import { journalGetById, journalIngestCapture } from '../../src/domain/journal/repo';
 
 function requireDb() {

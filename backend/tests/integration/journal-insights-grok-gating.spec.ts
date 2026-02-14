@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { createServer, type Server } from 'http';
 import { createApp } from '../../src/app';
 import { signToken } from '../../src/lib/auth/jwt';
-import { getDatabase } from '../../src/db/sqlite';
+import { getDatabase } from '../../src/db/index';
 import * as grokPulseAdapter from '../../src/domain/grokPulse/grokPulseAdapter';
 
 async function readJson(res: Response): Promise<any> {
