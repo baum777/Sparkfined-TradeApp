@@ -35,6 +35,8 @@ function defaultGoldenSubsetForGroup(g: string): string {
  * Shared/touch-conflicting files are not auto-detected here; callers may enforce serial execution.
  */
 export function sliceWorkstreams(ctx: SparkfinedContext, diff: SparkfinedDiffStats): SparkfinedWorkstream[] {
+  // Keep ctx as first-class parameter (propagation rule); mark as used for TS noUnusedParameters.
+  void ctx;
   const byGroup = new Map<string, string[]>();
   for (const p of diff.touchedPaths) {
     const g = groupKeyForPath(p);
