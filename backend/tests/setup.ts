@@ -1,5 +1,5 @@
 import { beforeAll, afterAll, beforeEach } from 'vitest';
-import { initDatabase, closeDatabase, getDatabase, resetDatabase } from '../src/db/sqlite';
+import { initDatabase, closeDatabase, getDatabase, resetDatabase } from '../src/db/index';
 import { runMigrations } from '../src/db/migrate';
 import { resetEnvCache } from '../src/config/env';
 import { resetConfigCache } from '../src/config/config';
