@@ -1,1 +1,1 @@
-
+[2026-02-14T23:21:17Z] FINDING v1 | runId=cursor_run_backend_subset_2026-02-14 | severity=block | area="ci_deploy/pnpm-lock.yaml" | finding="pnpm -C backend install --frozen-lockfile failed after reverting root lockfile; indicates repo lockfile is outdated vs backend/package.json (pg + @types/pg missing from lockfile)" | evidence="ERR_PNPM_OUTDATED_LOCKFILE: specifiers don't match; added deps: pg@^8.13.3, @types/pg@^8.11.10"
