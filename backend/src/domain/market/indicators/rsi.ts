@@ -58,6 +58,7 @@ export function calculateRSI14(prices: number[]): RSIData {
  * This is a stub - in production, fetch historical OHLC data
  */
 export async function getRSI14(symbolOrAddress: string): Promise<RSIData> {
+  void symbolOrAddress;
   // TODO: Fetch historical price data and calculate RSI
   // For now, return null (insufficient data)
   return { rsi14: null };

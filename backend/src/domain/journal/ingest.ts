@@ -22,6 +22,7 @@ export async function journalIngestCapture(
   capture: JournalCaptureIngest,
   tier: ResolvedTier
 ): Promise<JournalEntryV1> {
+  const contextPackTier = tier ?? 'free';
   // Create entry first
   const entry = await repoIngestCapture(userId, capture);
   
@@ -31,7 +32,7 @@ export async function journalIngestCapture(
   
   // Tier >= standard: capture basic market snapshot
   if (tierGte(tier, 'standard') && symbolOrAddress) {
-    const snapshot = await buildAtTradeSnapshot(tier, symbolOrAddress, capturedAt);
+    const snapshot = await buildAtTradeSnapshot(contextPackTier, symbolOrAddress, capturedAt);
     
     // Persist market snapshot
     const db = getDatabase();

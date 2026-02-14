@@ -4,7 +4,7 @@
  * Pure functions - no side effects
  */
 
-import type { JournalEntryV1, JournalStatusV1 } from './types.js';
+import type { JournalEntryV1 } from './types.js';
 import type { AutoArchiveReason } from './autoArchive.js';
 
 export type ArchiveReason = AutoArchiveReason | 'user_ignore';

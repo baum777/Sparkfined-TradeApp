@@ -45,6 +45,7 @@ export function calculateTrend(prices: number[]): TrendData {
  * This is a stub - in production, fetch historical price data
  */
 export async function getTrendState(symbolOrAddress: string): Promise<TrendData> {
+  void symbolOrAddress;
   // TODO: Fetch historical price data and calculate trend
   // For now, return unknown
   return { trendState: 'unknown' };

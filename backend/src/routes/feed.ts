@@ -12,7 +12,6 @@ import { resolveTierFromAuthUser } from '../domain/settings/tier.js';
 import { getSettings } from '../domain/settings/settings.service.js';
 import { buildContextPack } from '../domain/contextPack/build.js';
 import { buildPulseContextExtension } from '../domain/contextPack/pulseExtension.js';
-import { buildOracleContextExtension } from '../domain/contextPack/oracleExtension.js';
  
 /**
  * Canonical Feed Endpoints
@@ -79,7 +78,7 @@ export async function handleFeedPulse(req: ParsedRequest, res: ServerResponse): 
       tier,
       asset: {
         mint: resolved.address,
-        symbol: resolved.symbol,
+        symbol: resolved.kind === 'ticker' ? resolved.symbol : undefined,
       },
       anchor: {
         mode: 'now_centered',
