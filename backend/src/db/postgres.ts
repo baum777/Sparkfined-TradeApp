@@ -105,12 +105,12 @@ export async function createPostgresClient(databaseUrl: string): Promise<Databas
           const result = await runQuery(text, values);
           return { changes: result.rowCount ?? 0 };
         },
-        get: async <T = unknown>(...params: unknown[]): Promise<T | undefined> => {
+        get: async <T extends QueryResultRow = QueryResultRow>(...params: unknown[]): Promise<T | undefined> => {
           const { text, values } = normalizeQuery(sql, params);
           const result = await runQuery<T>(text, values);
           return result.rows[0];
         },
-        all: async <T = unknown>(...params: unknown[]): Promise<T[]> => {
+        all: async <T extends QueryResultRow = QueryResultRow>(...params: unknown[]): Promise<T[]> => {
           const { text, values } = normalizeQuery(sql, params);
           const result = await runQuery<T>(text, values);
           return result.rows;
