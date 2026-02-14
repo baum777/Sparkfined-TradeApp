@@ -5,14 +5,13 @@
 
 import { createHash } from 'crypto';
 import type { JournalEntryV1 } from '../journal/types.js';
-import type { ResolvedTier, AnchorMode, ContextPack, MarketSnapshotAtTime, DeltaSnapshots } from './types.js';
+import type { ResolvedTier, AnchorMode, ContextPack } from './types.js';
 import { canIncludeMarket, canIncludeDeltas, canIncludeNarrative } from './gates.js';
 import { buildContextCacheKey, getCachedContextPack, setCachedContextPack } from './cache.js';
 import { buildMarketSnapshot } from '../market/snapshot.service.js';
 import { computeDeltaSnapshots } from '../market/delta.service.js';
 import { fetchNarrativeSnapshot } from '../insights/narrative/narrative.service.js';
 import type { UserSettings } from '../settings/settings.types.js';
-import { canIncludeDeltas } from './gates.js';
 
 export interface BuildContextPackParams {
   userId: string;
