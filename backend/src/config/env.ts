@@ -50,6 +50,8 @@ const envSchema = z.object({
   GROK_API_KEY: z.string().optional(),
   GROK_BASE_URL: z.string().default('https://api.x.ai/v1'),
   MORALIS_API_KEY: z.string().optional(),
+  // Dexpaprika (market data)
+  DEXPAPRIKA_API_KEY: z.string().optional(),
   GROK_PULSE_CRON_SECRET: z.string().optional(),
   MAX_DAILY_GROK_CALLS: z.string().transform(Number).default('900'),
   PULSE_TOKEN_ADDRESSES: z.string().default(''), // comma-separated
