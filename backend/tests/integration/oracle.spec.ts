@@ -9,8 +9,8 @@ describe('Oracle Integration', () => {
   const userId = 'test-user';
   
   describe('Daily Feed', () => {
-    it('should return feed with pinned takeaway', () => {
-      const feed = oracleGetDaily(new Date(), userId);
+    it('should return feed with pinned takeaway', async () => {
+      const feed = await oracleGetDaily(new Date(), userId);
       
       expect(feed.pinned).toBeDefined();
       expect(feed.pinned.id).toBe('today-takeaway');
@@ -18,8 +18,8 @@ describe('Oracle Integration', () => {
       expect(feed.pinned.summary).toBeDefined();
     });
     
-    it('should return insights list', () => {
-      const feed = oracleGetDaily(new Date(), userId);
+    it('should return insights list', async () => {
+      const feed = await oracleGetDaily(new Date(), userId);
       
       expect(feed.insights).toBeDefined();
       expect(feed.insights.length).toBeGreaterThanOrEqual(3);
@@ -33,22 +33,22 @@ describe('Oracle Integration', () => {
       });
     });
     
-    it('should generate deterministic feed for same date', () => {
+    it('should generate deterministic feed for same date', async () => {
       const date = new Date('2025-12-31');
       
-      const feed1 = oracleGetDaily(date, userId);
-      const feed2 = oracleGetDaily(date, userId);
+      const feed1 = await oracleGetDaily(date, userId);
+      const feed2 = await oracleGetDaily(date, userId);
       
       expect(feed1.pinned.title).toBe(feed2.pinned.title);
       expect(feed1.insights.length).toBe(feed2.insights.length);
     });
     
-    it('should generate different feed for different dates', () => {
+    it('should generate different feed for different dates', async () => {
       const date1 = new Date('2025-12-31');
       const date2 = new Date('2026-01-01');
       
-      const feed1 = oracleGetDaily(date1, userId);
-      const feed2 = oracleGetDaily(date2, userId);
+      const feed1 = await oracleGetDaily(date1, userId);
+      const feed2 = await oracleGetDaily(date2, userId);
       
       // Titles might differ based on hash
       expect(feed1.insights[0].id).not.toBe(feed2.insights[0].id);
@@ -56,32 +56,32 @@ describe('Oracle Integration', () => {
   });
   
   describe('Read State', () => {
-    it('should set and persist read state', () => {
+    it('should set and persist read state', async () => {
       const date = new Date();
       
       // Initially unread
-      let feed = oracleGetDaily(date, userId);
+      let feed = await oracleGetDaily(date, userId);
       expect(feed.pinned.isRead).toBe(false);
       
       // Mark as read
-      const result = oracleSetReadState(userId, 'today-takeaway', true);
+      const result = await oracleSetReadState(userId, 'today-takeaway', true);
       expect(result.isRead).toBe(true);
       expect(result.updatedAt).toBeDefined();
       
       // Should be reflected in feed
-      feed = oracleGetDaily(date, userId);
+      feed = await oracleGetDaily(date, userId);
       expect(feed.pinned.isRead).toBe(true);
     });
     
-    it('should set read state for insights', () => {
+    it('should set read state for insights', async () => {
       const date = new Date('2025-12-31');
-      let feed = oracleGetDaily(date, userId);
+      let feed = await oracleGetDaily(date, userId);
       
       const insightId = feed.insights[0].id;
       
-      oracleSetReadState(userId, insightId, true);
+      await oracleSetReadState(userId, insightId, true);
       
-      feed = oracleGetDaily(date, userId);
+      feed = await oracleGetDaily(date, userId);
       const insight = feed.insights.find(i => i.id === insightId);
       
       expect(insight?.isRead).toBe(true);
@@ -89,13 +89,13 @@ describe('Oracle Integration', () => {
   });
   
   describe('Bulk Read State', () => {
-    it('should set multiple read states', () => {
+    it('should set multiple read states', async () => {
       const date = new Date('2025-12-31');
-      let feed = oracleGetDaily(date, userId);
+      let feed = await oracleGetDaily(date, userId);
       
       const ids = ['today-takeaway', ...feed.insights.map(i => i.id)];
       
-      const results = oracleBulkSetReadState(userId, ids, true);
+      const results = await oracleBulkSetReadState(userId, ids, true);
       
       expect(results.length).toBe(ids.length);
       results.forEach(r => {
@@ -103,7 +103,7 @@ describe('Oracle Integration', () => {
       });
       
       // Verify all are now read
-      feed = oracleGetDaily(date, userId);
+      feed = await oracleGetDaily(date, userId);
       expect(feed.pinned.isRead).toBe(true);
       feed.insights.forEach(i => {
         expect(i.isRead).toBe(true);
@@ -112,17 +112,17 @@ describe('Oracle Integration', () => {
   });
   
   describe('User Isolation', () => {
-    it('should isolate read states between users', () => {
+    it('should isolate read states between users', async () => {
       const date = new Date('2025-12-31');
       const user1 = 'user-1';
       const user2 = 'user-2';
       
       // User 1 marks as read
-      oracleSetReadState(user1, 'today-takeaway', true);
+      await oracleSetReadState(user1, 'today-takeaway', true);
       
       // User 2 should still see as unread
-      const feed1 = oracleGetDaily(date, user1);
-      const feed2 = oracleGetDaily(date, user2);
+      const feed1 = await oracleGetDaily(date, user1);
+      const feed2 = await oracleGetDaily(date, user2);
       
       expect(feed1.pinned.isRead).toBe(true);
       expect(feed2.pinned.isRead).toBe(false);

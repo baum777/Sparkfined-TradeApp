@@ -22,8 +22,8 @@ const OTHER_USER_ID = 'other-user-456';
 
 describe('Journal Integration', () => {
   describe('Create', () => {
-    it('should create entry with PENDING status', () => {
-      const entry = journalCreate(TEST_USER_ID, {
+    it('should create entry with PENDING status', async () => {
+      const entry = await journalCreate(TEST_USER_ID, {
         summary: 'Test entry',
       }, 'idem-create-1');
       
@@ -35,10 +35,10 @@ describe('Journal Integration', () => {
       expect(entry.updatedAt).toBeDefined();
     });
     
-    it('should use provided timestamp', () => {
+    it('should use provided timestamp', async () => {
       const timestamp = '2025-12-31T12:00:00.000Z';
       
-      const entry = journalCreate(TEST_USER_ID, {
+      const entry = await journalCreate(TEST_USER_ID, {
         summary: 'Test',
         timestamp,
       }, 'idem-create-2');
@@ -46,100 +46,100 @@ describe('Journal Integration', () => {
       expect(entry.timestamp).toBe(timestamp);
     });
 
-    it('should throw error when userId is empty', () => {
-      expect(() => journalCreate('', { summary: 'Test' }, 'idem-create-3'))
-        .toThrow('userId is required');
+    it('should throw error when userId is empty', async () => {
+      await expect(journalCreate('', { summary: 'Test' }, 'idem-create-3'))
+        .rejects.toThrow(/userId is required/i);
     });
   });
   
   describe('Get by ID', () => {
-    it('should return entry by id (userId-scoped)', () => {
-      const created = journalCreate(TEST_USER_ID, {
+    it('should return entry by id (userId-scoped)', async () => {
+      const created = await journalCreate(TEST_USER_ID, {
         summary: 'Find me',
       }, 'idem-get-1');
       
-      const found = journalGetById(TEST_USER_ID, created.id);
+      const found = await journalGetById(TEST_USER_ID, created.id);
       
       expect(found).not.toBeNull();
       expect(found?.id).toBe(created.id);
       expect(found?.summary).toBe('Find me');
     });
     
-    it('should return null for non-existent id', () => {
-      const found = journalGetById(TEST_USER_ID, 'non-existent-id');
+    it('should return null for non-existent id', async () => {
+      const found = await journalGetById(TEST_USER_ID, 'non-existent-id');
       
       expect(found).toBeNull();
     });
 
-    it('should isolate entries by userId (multitenancy)', () => {
-      const created = journalCreate(TEST_USER_ID, {
+    it('should isolate entries by userId (multitenancy)', async () => {
+      const created = await journalCreate(TEST_USER_ID, {
         summary: 'User A only',
       }, 'idem-isolation-1');
       
       // OTHER_USER cannot see it
-      const foundByOther = journalGetById(OTHER_USER_ID, created.id);
+      const foundByOther = await journalGetById(OTHER_USER_ID, created.id);
       expect(foundByOther).toBeNull();
       
       // TEST_USER can see it
-      const foundByOwner = journalGetById(TEST_USER_ID, created.id);
+      const foundByOwner = await journalGetById(TEST_USER_ID, created.id);
       expect(foundByOwner).not.toBeNull();
     });
   });
   
   describe('List', () => {
-    beforeEach(() => {
+    beforeEach(async () => {
       // Create entries with different statuses for TEST_USER
-      journalCreate(TEST_USER_ID, { summary: 'Pending 1' }, 'idem-list-p1');
-      journalCreate(TEST_USER_ID, { summary: 'Pending 2' }, 'idem-list-p2');
+      await journalCreate(TEST_USER_ID, { summary: 'Pending 1' }, 'idem-list-p1');
+      await journalCreate(TEST_USER_ID, { summary: 'Pending 2' }, 'idem-list-p2');
       
-      const toConfirm = journalCreate(TEST_USER_ID, { summary: 'To confirm' }, 'idem-list-c1');
-      journalConfirm(TEST_USER_ID, toConfirm.id);
+      const toConfirm = await journalCreate(TEST_USER_ID, { summary: 'To confirm' }, 'idem-list-c1');
+      await journalConfirm(TEST_USER_ID, toConfirm.id);
       
-      const toArchive = journalCreate(TEST_USER_ID, { summary: 'To archive' }, 'idem-list-a1');
-      journalConfirm(TEST_USER_ID, toArchive.id);
-      journalArchive(TEST_USER_ID, toArchive.id);
+      const toArchive = await journalCreate(TEST_USER_ID, { summary: 'To archive' }, 'idem-list-a1');
+      await journalConfirm(TEST_USER_ID, toArchive.id);
+      await journalArchive(TEST_USER_ID, toArchive.id);
     });
     
-    it('should list all entries without filter (userId-scoped)', () => {
-      const result = journalList(TEST_USER_ID);
+    it('should list all entries without filter (userId-scoped)', async () => {
+      const result = await journalList(TEST_USER_ID);
       
       expect(result.items.length).toBe(4);
     });
     
-    it('should filter by pending status', () => {
-      const result = journalList(TEST_USER_ID, 'pending');
+    it('should filter by pending status', async () => {
+      const result = await journalList(TEST_USER_ID, 'pending');
       
       expect(result.items.length).toBe(2);
       expect(result.items.every(e => e.status === 'pending')).toBe(true);
     });
     
-    it('should filter by confirmed status', () => {
-      const result = journalList(TEST_USER_ID, 'confirmed');
+    it('should filter by confirmed status', async () => {
+      const result = await journalList(TEST_USER_ID, 'confirmed');
       
       expect(result.items.length).toBe(1);
       expect(result.items[0].status).toBe('confirmed');
     });
     
-    it('should filter by archived status', () => {
-      const result = journalList(TEST_USER_ID, 'archived');
+    it('should filter by archived status', async () => {
+      const result = await journalList(TEST_USER_ID, 'archived');
       
       expect(result.items.length).toBe(1);
       expect(result.items[0].status).toBe('archived');
     });
     
-    it('should respect limit', () => {
-      const result = journalList(TEST_USER_ID, undefined, 2);
+    it('should respect limit', async () => {
+      const result = await journalList(TEST_USER_ID, undefined, 2);
       
       expect(result.items.length).toBe(2);
     });
 
-    it('should not list entries from other users', () => {
+    it('should not list entries from other users', async () => {
       // Create entry for OTHER_USER
-      journalCreate(OTHER_USER_ID, { summary: 'Other user entry' }, 'idem-other-1');
+      await journalCreate(OTHER_USER_ID, { summary: 'Other user entry' }, 'idem-other-1');
       
       // TEST_USER list should not include it
-      const testUserList = journalList(TEST_USER_ID);
-      const otherUserList = journalList(OTHER_USER_ID);
+      const testUserList = await journalList(TEST_USER_ID);
+      const otherUserList = await journalList(OTHER_USER_ID);
       
       expect(testUserList.items.length).toBe(4); // Only TEST_USER entries
       expect(otherUserList.items.length).toBe(1); // Only OTHER_USER entry
@@ -147,74 +147,74 @@ describe('Journal Integration', () => {
   });
   
   describe('Confirm', () => {
-    it('should change status to CONFIRMED', () => {
-      const entry = journalCreate(TEST_USER_ID, { summary: 'Test' }, 'idem-confirm-1');
+    it('should change status to CONFIRMED', async () => {
+      const entry = await journalCreate(TEST_USER_ID, { summary: 'Test' }, 'idem-confirm-1');
       
-      const confirmed = journalConfirm(TEST_USER_ID, entry.id);
+      const confirmed = await journalConfirm(TEST_USER_ID, entry.id);
       
       expect(confirmed?.status).toBe('confirmed');
       expect(confirmed?.confirmedAt).toBeDefined();
     });
     
-    it('should be idempotent', () => {
-      const entry = journalCreate(TEST_USER_ID, { summary: 'Test' }, 'idem-confirm-2');
+    it('should be idempotent', async () => {
+      const entry = await journalCreate(TEST_USER_ID, { summary: 'Test' }, 'idem-confirm-2');
       
-      journalConfirm(TEST_USER_ID, entry.id);
-      const second = journalConfirm(TEST_USER_ID, entry.id);
+      await journalConfirm(TEST_USER_ID, entry.id);
+      const second = await journalConfirm(TEST_USER_ID, entry.id);
       
       expect(second?.status).toBe('confirmed');
     });
 
-    it('should not confirm other users entries', () => {
-      const entry = journalCreate(TEST_USER_ID, { summary: 'Test' }, 'idem-confirm-3');
+    it('should not confirm other users entries', async () => {
+      const entry = await journalCreate(TEST_USER_ID, { summary: 'Test' }, 'idem-confirm-3');
       
-      const result = journalConfirm(OTHER_USER_ID, entry.id);
+      const result = await journalConfirm(OTHER_USER_ID, entry.id);
       
       expect(result).toBeNull();
     });
   });
   
   describe('Archive', () => {
-    it('should change status to ARCHIVED', () => {
-      const entry = journalCreate(TEST_USER_ID, { summary: 'Test' }, 'idem-archive-1');
-      journalConfirm(TEST_USER_ID, entry.id);
+    it('should change status to ARCHIVED', async () => {
+      const entry = await journalCreate(TEST_USER_ID, { summary: 'Test' }, 'idem-archive-1');
+      await journalConfirm(TEST_USER_ID, entry.id);
       
-      const archived = journalArchive(TEST_USER_ID, entry.id);
+      const archived = await journalArchive(TEST_USER_ID, entry.id);
       
       expect(archived?.status).toBe('archived');
       expect(archived?.archivedAt).toBeDefined();
     });
     
-    it('should be idempotent', () => {
-      const entry = journalCreate(TEST_USER_ID, { summary: 'Test' }, 'idem-archive-2');
-      journalConfirm(TEST_USER_ID, entry.id);
+    it('should be idempotent', async () => {
+      const entry = await journalCreate(TEST_USER_ID, { summary: 'Test' }, 'idem-archive-2');
+      await journalConfirm(TEST_USER_ID, entry.id);
       
-      journalArchive(TEST_USER_ID, entry.id);
-      const second = journalArchive(TEST_USER_ID, entry.id);
+      await journalArchive(TEST_USER_ID, entry.id);
+      const second = await journalArchive(TEST_USER_ID, entry.id);
       
       expect(second?.status).toBe('archived');
     });
 
-    it('should not archive other users entries', () => {
-      const entry = journalCreate(TEST_USER_ID, { summary: 'Test' }, 'idem-archive-3');
-      journalConfirm(TEST_USER_ID, entry.id);
+    it('should not archive other users entries', async () => {
+      const entry = await journalCreate(TEST_USER_ID, { summary: 'Test' }, 'idem-archive-3');
+      await journalConfirm(TEST_USER_ID, entry.id);
       
-      const result = journalArchive(OTHER_USER_ID, entry.id);
+      const result = await journalArchive(OTHER_USER_ID, entry.id);
       
       expect(result).toBeNull();
     });
 
-    it('blocks user archive of pending entry', () => {
-      const entry = journalCreate(TEST_USER_ID, { summary: 'Test' }, 'idem-archive-pending-1');
+    it('blocks user archive of pending entry', async () => {
+      const entry = await journalCreate(TEST_USER_ID, { summary: 'Test' }, 'idem-archive-pending-1');
       
-      expect(() => journalArchive(TEST_USER_ID, entry.id)).toThrow(AppError);
-      expect(() => journalArchive(TEST_USER_ID, entry.id)).toThrow('Cannot archive a pending entry');
+      await expect(journalArchive(TEST_USER_ID, entry.id)).rejects.toThrow(AppError);
+      await expect(journalArchive(TEST_USER_ID, entry.id)).rejects.toThrow('Cannot archive a pending entry');
     });
 
-    it('allows system auto-archive for matched_sell', () => {
-      const entry = journalCreate(TEST_USER_ID, { summary: 'Test' }, 'idem-archive-matched-1');
+    it('allows system auto-archive for matched_sell', async () => {
+      const entry = await journalCreate(TEST_USER_ID, { summary: 'Test' }, 'idem-archive-matched-1');
       
-      const archived = journalSystemArchive({
+      const archived = await journalSystemArchive({
         userId: TEST_USER_ID,
         id: entry.id,
         reason: 'matched_sell',
@@ -226,70 +226,70 @@ describe('Journal Integration', () => {
   });
   
   describe('Restore', () => {
-    it('restore matched_sell -> pending; user_action -> confirmed', () => {
+    it('restore matched_sell -> pending; user_action -> confirmed', async () => {
       // Test restore from matched_sell archive -> pending
-      const entry1 = journalCreate(TEST_USER_ID, { summary: 'Test 1' }, 'idem-restore-matched-1');
-      journalSystemArchive({
+      const entry1 = await journalCreate(TEST_USER_ID, { summary: 'Test 1' }, 'idem-restore-matched-1');
+      await journalSystemArchive({
         userId: TEST_USER_ID,
         id: entry1.id,
         reason: 'matched_sell',
       });
       
-      const restored1 = journalRestore(TEST_USER_ID, entry1.id);
+      const restored1 = await journalRestore(TEST_USER_ID, entry1.id);
       expect(restored1?.status).toBe('pending');
 
       // Test restore from user_action archive -> confirmed
-      const entry2 = journalCreate(TEST_USER_ID, { summary: 'Test 2' }, 'idem-restore-user-1');
-      journalConfirm(TEST_USER_ID, entry2.id);
-      journalArchive(TEST_USER_ID, entry2.id);
+      const entry2 = await journalCreate(TEST_USER_ID, { summary: 'Test 2' }, 'idem-restore-user-1');
+      await journalConfirm(TEST_USER_ID, entry2.id);
+      await journalArchive(TEST_USER_ID, entry2.id);
       
-      const restored2 = journalRestore(TEST_USER_ID, entry2.id);
+      const restored2 = await journalRestore(TEST_USER_ID, entry2.id);
       expect(restored2?.status).toBe('confirmed');
     });
 
-    it('should throw error when restoring non-archived entry', () => {
-      const entry = journalCreate(TEST_USER_ID, { summary: 'Test' }, 'idem-restore-error-1');
-      journalConfirm(TEST_USER_ID, entry.id);
+    it('should throw error when restoring non-archived entry', async () => {
+      const entry = await journalCreate(TEST_USER_ID, { summary: 'Test' }, 'idem-restore-error-1');
+      await journalConfirm(TEST_USER_ID, entry.id);
       
-      expect(() => journalRestore(TEST_USER_ID, entry.id)).toThrow(AppError);
-      expect(() => journalRestore(TEST_USER_ID, entry.id)).toThrow('Cannot restore a non-archived entry');
+      await expect(journalRestore(TEST_USER_ID, entry.id)).rejects.toThrow(AppError);
+      await expect(journalRestore(TEST_USER_ID, entry.id)).rejects.toThrow('Cannot restore a non-archived entry');
     });
 
-    it('should not restore other users entries', () => {
-      const entry = journalCreate(TEST_USER_ID, { summary: 'Test' }, 'idem-restore-3');
-      journalConfirm(TEST_USER_ID, entry.id);
-      journalArchive(TEST_USER_ID, entry.id);
+    it('should not restore other users entries', async () => {
+      const entry = await journalCreate(TEST_USER_ID, { summary: 'Test' }, 'idem-restore-3');
+      await journalConfirm(TEST_USER_ID, entry.id);
+      await journalArchive(TEST_USER_ID, entry.id);
       
-      const result = journalRestore(OTHER_USER_ID, entry.id);
+      const result = await journalRestore(OTHER_USER_ID, entry.id);
       
       expect(result).toBeNull();
     });
   });
   
   describe('Delete', () => {
-    it('should remove entry', () => {
-      const entry = journalCreate(TEST_USER_ID, { summary: 'Test' }, 'idem-delete-1');
+    it('should remove entry', async () => {
+      const entry = await journalCreate(TEST_USER_ID, { summary: 'Test' }, 'idem-delete-1');
       
-      const deleted = journalDelete(TEST_USER_ID, entry.id);
+      const deleted = await journalDelete(TEST_USER_ID, entry.id);
       
       expect(deleted).toBe(true);
-      expect(journalGetById(TEST_USER_ID, entry.id)).toBeNull();
+      expect(await journalGetById(TEST_USER_ID, entry.id)).toBeNull();
     });
     
-    it('should return false for non-existent', () => {
-      const deleted = journalDelete(TEST_USER_ID, 'non-existent');
+    it('should return false for non-existent', async () => {
+      const deleted = await journalDelete(TEST_USER_ID, 'non-existent');
       
       expect(deleted).toBe(false);
     });
 
-    it('should not delete other users entries', () => {
-      const entry = journalCreate(TEST_USER_ID, { summary: 'Test' }, 'idem-delete-2');
+    it('should not delete other users entries', async () => {
+      const entry = await journalCreate(TEST_USER_ID, { summary: 'Test' }, 'idem-delete-2');
       
-      const deleted = journalDelete(OTHER_USER_ID, entry.id);
+      const deleted = await journalDelete(OTHER_USER_ID, entry.id);
       
       expect(deleted).toBe(false);
       // Entry still exists for owner
-      expect(journalGetById(TEST_USER_ID, entry.id)).not.toBeNull();
+      expect(await journalGetById(TEST_USER_ID, entry.id)).not.toBeNull();
     });
   });
 });
