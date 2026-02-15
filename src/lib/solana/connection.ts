@@ -17,6 +17,13 @@ export function getCommitment(): Commitment {
   return 'confirmed';
 }
 
+export function getCluster(): Cluster {
+  const clusterRaw =
+    getEnvString('VITE_SOLANA_CLUSTER') ||
+    getEnvString('NEXT_PUBLIC_SOLANA_CLUSTER');
+  return clusterRaw === 'devnet' ? 'devnet' : 'mainnet-beta';
+}
+
 export function getRpcEndpoint(): string {
   const explicit =
     getEnvString('VITE_SOLANA_RPC_URL') ||
@@ -24,12 +31,7 @@ export function getRpcEndpoint(): string {
 
   if (explicit?.trim()) return explicit.trim();
 
-  const clusterRaw =
-    getEnvString('VITE_SOLANA_CLUSTER') ||
-    getEnvString('NEXT_PUBLIC_SOLANA_CLUSTER');
-
-  const cluster: Cluster = clusterRaw === 'devnet' ? 'devnet' : 'mainnet-beta';
-  return clusterApiUrl(cluster);
+  return clusterApiUrl(getCluster());
 }
 
 export function getConnection(): Connection {

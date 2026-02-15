@@ -22,6 +22,7 @@ export interface TerminalQuoteState {
   data?: TerminalQuoteData;
   error?: string;
   updatedAt?: number;
+  paramsKey?: string;
 }
 
 export interface TerminalTxState {
@@ -62,6 +63,7 @@ export interface TerminalStoreState {
 
 let quoteDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 let quoteRequestSeq = 0;
+let scheduledSeq = 0;
 
 function normalizeAmount(value: string): string {
   const v = value.trim();
@@ -102,13 +104,41 @@ function requiredParams(state: TerminalStoreState): {
   };
 }
 
+function buildParamsKey(p: NonNullable<ReturnType<typeof requiredParams>>): string {
+  return [
+    p.baseMint,
+    p.quoteMint,
+    p.side,
+    p.amountMode,
+    p.amount,
+    String(p.slippageBps),
+    String(p.feeBps),
+    p.priorityFeeEnabled ? 'pf1' : 'pf0',
+    String(p.priorityFeeMicroLamports ?? 0),
+  ].join('|');
+}
+
 function isQuoteStale(quote: TerminalQuoteState): boolean {
   const updatedAt = quote.updatedAt ?? 0;
   return !updatedAt || Date.now() - updatedAt > 25_000;
 }
 
+function decodeBase64ToBytes(base64: string): Uint8Array {
+  const g: any = globalThis as any;
+  if (typeof g.atob === 'function') {
+    const bin = g.atob(base64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return bytes;
+  }
+  // Node/test fallback
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const buf = Buffer.from(base64, 'base64');
+  return new Uint8Array(buf);
+}
+
 function decodeSwapTx(base64: string): Transaction | VersionedTransaction {
-  const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+  const bytes = decodeBase64ToBytes(base64);
   // Prefer v0 deserialization (Jupiter default).
   try {
     return V0Transaction.deserialize(bytes);
@@ -171,6 +201,9 @@ export const useTerminalStore = create<TerminalStoreState>((set, get) => ({
   clearTx: () => set({ tx: { status: 'idle' } }),
 
   scheduleQuoteFetch: () => {
+    // Mark any in-flight response as obsolete even before the next fetch starts
+    // (prevents older in-flight from "winning" if the user changes inputs quickly).
+    scheduledSeq++;
     if (quoteDebounceTimer) clearTimeout(quoteDebounceTimer);
     quoteDebounceTimer = setTimeout(() => {
       get().fetchQuote().catch(() => {
@@ -192,7 +225,8 @@ export const useTerminalStore = create<TerminalStoreState>((set, get) => ({
     }
 
     const requestId = ++quoteRequestSeq;
-    set({ quote: { status: 'loading' } });
+    const paramsKey = buildParamsKey(params);
+    set({ quote: { status: 'loading', paramsKey } });
 
     try {
       const data = await quoteService.getQuote({
@@ -210,7 +244,7 @@ export const useTerminalStore = create<TerminalStoreState>((set, get) => ({
       // Drop out-of-order responses
       if (requestId !== quoteRequestSeq) return data;
 
-      set({ quote: { status: 'success', data, updatedAt: Date.now() } });
+      set({ quote: { status: 'success', data, updatedAt: Date.now(), paramsKey } });
       return data;
     } catch (e) {
       const error = e instanceof Error ? e.message : String(e);
@@ -221,26 +255,48 @@ export const useTerminalStore = create<TerminalStoreState>((set, get) => ({
   },
 
   executeSwap: async ({ wallet, connection }) => {
-    const state = get();
-    const params = requiredParams(state);
+    // Snapshot inputs at the moment execute starts (prevents drift during signing/sending)
+    const stateAtStart = get();
+    const params = requiredParams(stateAtStart);
     if (!params) throw new Error('Ungültige Eingaben (Pair/Amount)');
     if (!wallet.publicKey) throw new Error('Wallet nicht verbunden');
+    const paramsKey = buildParamsKey(params);
+    const priorityFeeSnapshot = { ...stateAtStart.priorityFee };
 
     set({ tx: { status: 'signing' } });
 
-    // Stale check: ensure fresh quote
-    let quote = state.quote;
-    if (quote.status !== 'success' || !quote.data || isQuoteStale(quote)) {
-      const refreshed = await get().fetchQuote({ force: true });
-      if (!refreshed) {
-        const err = get().quote.error || 'Quote konnte nicht geladen werden';
-        set({ tx: { status: 'failed', error: err } });
-        throw new Error(err);
-      }
-      quote = get().quote;
+    // Stale check: ensure fresh quote for the SNAPSHOT params (do not depend on live UI state)
+    let quoteData: TerminalQuoteData | null = null;
+    const currentQuote = get().quote;
+    if (
+      currentQuote.status === 'success' &&
+      currentQuote.data &&
+      currentQuote.paramsKey === paramsKey &&
+      !isQuoteStale(currentQuote)
+    ) {
+      quoteData = currentQuote.data;
+    } else {
+      // Fetch directly for snapshot params; avoid overwriting store quote if UI has moved on.
+      quoteData = await quoteService.getQuote({
+        baseMint: params.baseMint,
+        quoteMint: params.quoteMint,
+        side: params.side,
+        amount: params.amount,
+        amountMode: params.amountMode,
+        slippageBps: params.slippageBps,
+        feeBps: params.feeBps,
+        priorityFeeEnabled: params.priorityFeeEnabled,
+        priorityFeeMicroLamports: params.priorityFeeMicroLamports,
+      }).catch(() => null);
     }
 
-    const providerQuote = quote.data?.provider?.quoteResponse;
+    if (!quoteData) {
+      const err = get().quote.error || 'Quote konnte nicht geladen werden';
+      set({ tx: { status: 'failed', error: err } });
+      throw new Error(err);
+    }
+
+    const providerQuote = quoteData?.provider?.quoteResponse;
     if (!providerQuote) {
       const err = 'Interner Fehler: Quote fehlt (providerQuote)';
       set({ tx: { status: 'failed', error: err } });
@@ -257,7 +313,7 @@ export const useTerminalStore = create<TerminalStoreState>((set, get) => ({
         amountMode: params.amountMode,
         slippageBps: params.slippageBps,
         feeBps: params.feeBps,
-        priorityFee: state.priorityFee,
+        priorityFee: priorityFeeSnapshot,
         providerQuote,
       });
 

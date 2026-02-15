@@ -9,12 +9,23 @@ function assertBps(name: string, value: number) {
   }
 }
 
+function assertPlatformFeeConfigured(feeBps: number) {
+  // Phase 1 requirement: fee preview must match execution (no silent drop).
+  // Jupiter platform fee requires a fee token account to receive fees.
+  if (feeBps <= 0) return;
+  const { JUPITER_PLATFORM_FEE_ACCOUNT } = getEnv();
+  if (!JUPITER_PLATFORM_FEE_ACCOUNT) {
+    throw badRequest('Platform fee not configured (missing JUPITER_PLATFORM_FEE_ACCOUNT)');
+  }
+}
+
 export const jupiterProvider: SwapProvider = {
   name: 'jupiter',
 
   async getQuote(params: GetQuoteParams): Promise<QuoteResult> {
     assertBps('slippageBps', params.slippageBps);
     assertBps('feeBps', params.feeBps);
+    assertPlatformFeeConfigured(params.feeBps);
 
     const baseUrl = getEnv().JUPITER_BASE_URL.replace(/\/$/, '');
     const url = new URL(`${baseUrl}/quote`);
@@ -59,6 +70,7 @@ export const jupiterProvider: SwapProvider = {
   async getSwapTx(params: GetSwapTxParams): Promise<SwapTxResult> {
     assertBps('slippageBps', params.slippageBps);
     assertBps('feeBps', params.feeBps);
+    assertPlatformFeeConfigured(params.feeBps);
 
     const baseUrl = getEnv().JUPITER_BASE_URL.replace(/\/$/, '');
     const url = `${baseUrl}/swap`;
@@ -81,9 +93,7 @@ export const jupiterProvider: SwapProvider = {
     }
 
     const { JUPITER_PLATFORM_FEE_ACCOUNT } = getEnv();
-    if (JUPITER_PLATFORM_FEE_ACCOUNT) {
-      body.platformFeeAccount = JUPITER_PLATFORM_FEE_ACCOUNT;
-    }
+    body.platformFeeAccount = JUPITER_PLATFORM_FEE_ACCOUNT;
 
     const res = await fetch(url, {
       method: 'POST',
