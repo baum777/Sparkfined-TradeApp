@@ -15,7 +15,7 @@ describe('Journal auto-archive on SELL capture', () => {
     const userId = 'u-autoarchive-1';
     const mint = 'So11111111111111111111111111111111111111112';
 
-    const buy1 = journalIngestCapture(userId, {
+    const buy1 = await journalIngestCapture(userId, {
       source: 'onchain',
       captureKey: 'tx1:leg0:buy',
       txSignature: 'tx1',
@@ -24,7 +24,7 @@ describe('Journal auto-archive on SELL capture', () => {
       timestampISO: '2026-01-01T00:00:00.000Z',
     });
 
-    const buy2 = journalIngestCapture(userId, {
+    const buy2 = await journalIngestCapture(userId, {
       source: 'onchain',
       captureKey: 'tx2:leg0:buy',
       txSignature: 'tx2',
@@ -33,7 +33,7 @@ describe('Journal auto-archive on SELL capture', () => {
       timestampISO: '2026-01-01T01:00:00.000Z',
     });
 
-    const sell = journalIngestCapture(userId, {
+    const sell = await journalIngestCapture(userId, {
       source: 'onchain',
       captureKey: 'tx3:leg0:sell',
       txSignature: 'tx3',
@@ -45,16 +45,18 @@ describe('Journal auto-archive on SELL capture', () => {
     // Sell stays pending.
     expect(sell.status).toBe('pending');
 
-    const refreshedBuy1 = journalGetById(userId, buy1.id)!;
-    const refreshedBuy2 = journalGetById(userId, buy2.id)!;
+    const refreshedBuy1 = await journalGetById(userId, buy1.id);
+    const refreshedBuy2 = await journalGetById(userId, buy2.id);
+    expect(refreshedBuy1).not.toBeNull();
+    expect(refreshedBuy2).not.toBeNull();
 
-    expect(refreshedBuy1.status).toBe('pending');
-    expect(refreshedBuy2.status).toBe('archived');
-    expect(refreshedBuy2.autoArchiveReason).toBe('matched_sell');
-    expect(refreshedBuy2.capture?.linkedEntryId).toBe(sell.id);
+    expect(refreshedBuy1?.status).toBe('pending');
+    expect(refreshedBuy2?.status).toBe('archived');
+    expect(refreshedBuy2?.autoArchiveReason).toBe('matched_sell');
+    expect(refreshedBuy2?.capture?.linkedEntryId).toBe(sell.id);
 
     // Sanity: only one of the buys is archived.
-    const archivedCount = db
+    const archivedCount = await db
       .prepare(`SELECT COUNT(*) as c FROM journal_entries_v2 WHERE user_id = ? AND status = 'archived'`)
       .get(userId) as { c: number };
     expect(archivedCount.c).toBe(1);
@@ -67,7 +69,7 @@ describe('Journal auto-archive on SELL capture', () => {
     const userId = 'u-autoarchive-2';
     const mint = 'MintNoBuys';
 
-    const sell = journalIngestCapture(userId, {
+    const sell = await journalIngestCapture(userId, {
       source: 'onchain',
       captureKey: 'txX:leg0:sell',
       txSignature: 'txX',
@@ -78,7 +80,7 @@ describe('Journal auto-archive on SELL capture', () => {
 
     expect(sell.status).toBe('pending');
 
-    const archivedCount = db
+    const archivedCount = await db
       .prepare(`SELECT COUNT(*) as c FROM journal_entries_v2 WHERE user_id = ? AND status = 'archived'`)
       .get(userId) as { c: number };
     expect(archivedCount.c).toBe(0);
@@ -91,7 +93,7 @@ describe('Journal auto-archive on SELL capture', () => {
     const userId = 'u-autoarchive-3';
     const mint = 'MintDupSell';
 
-    const buy = journalIngestCapture(userId, {
+    const buy = await journalIngestCapture(userId, {
       source: 'onchain',
       captureKey: 'txB:leg0:buy',
       txSignature: 'txB',
@@ -100,7 +102,7 @@ describe('Journal auto-archive on SELL capture', () => {
       timestampISO: '2026-01-01T01:00:00.000Z',
     });
 
-    const sell1 = journalIngestCapture(userId, {
+    const sell1 = await journalIngestCapture(userId, {
       source: 'onchain',
       captureKey: 'txS:leg0:sell',
       txSignature: 'txS',
@@ -109,7 +111,7 @@ describe('Journal auto-archive on SELL capture', () => {
       timestampISO: '2026-01-01T02:00:00.000Z',
     });
 
-    const sell2 = journalIngestCapture(userId, {
+    const sell2 = await journalIngestCapture(userId, {
       source: 'onchain',
       captureKey: 'txS:leg0:sell',
       txSignature: 'txS',
@@ -120,11 +122,11 @@ describe('Journal auto-archive on SELL capture', () => {
 
     expect(sell2.id).toBe(sell1.id);
 
-    const refreshedBuy = journalGetById(userId, buy.id)!;
-    expect(refreshedBuy.status).toBe('archived');
-    expect(refreshedBuy.autoArchiveReason).toBe('matched_sell');
+    const refreshedBuy = await journalGetById(userId, buy.id);
+    expect(refreshedBuy?.status).toBe('archived');
+    expect(refreshedBuy?.autoArchiveReason).toBe('matched_sell');
 
-    const archivedCount = db
+    const archivedCount = await db
       .prepare(`SELECT COUNT(*) as c FROM journal_entries_v2 WHERE user_id = ? AND status = 'archived'`)
       .get(userId) as { c: number };
     expect(archivedCount.c).toBe(1);
@@ -139,7 +141,7 @@ describe('Journal auto-archive on SELL capture', () => {
     const ts = '2026-01-01T01:00:00.000Z';
 
     // Insert two candidates with same timestamp but different created_at and id.
-    db.prepare(
+    await db.prepare(
       `
         INSERT INTO journal_entries_v2 (
           id, user_id, side, status, timestamp, summary, day_key, created_at, updated_at,
@@ -160,7 +162,7 @@ describe('Journal auto-archive on SELL capture', () => {
       mint
     );
 
-    db.prepare(
+    await db.prepare(
       `
         INSERT INTO journal_entries_v2 (
           id, user_id, side, status, timestamp, summary, day_key, created_at, updated_at,
@@ -181,7 +183,7 @@ describe('Journal auto-archive on SELL capture', () => {
       mint
     );
 
-    const sell = journalIngestCapture(userId, {
+    const sell = await journalIngestCapture(userId, {
       source: 'onchain',
       captureKey: 'txT:leg0:sell',
       txSignature: 'txT',
@@ -190,13 +192,15 @@ describe('Journal auto-archive on SELL capture', () => {
       timestampISO: '2026-01-01T02:00:00.000Z',
     });
 
-    const a = journalGetById(userId, 'cap-a')!;
-    const b = journalGetById(userId, 'cap-b')!;
+    const a = await journalGetById(userId, 'cap-a');
+    const b = await journalGetById(userId, 'cap-b');
+    expect(a).not.toBeNull();
+    expect(b).not.toBeNull();
 
     // created_at 0.200Z should win => cap-b archived.
-    expect(b.status).toBe('archived');
-    expect(b.capture?.linkedEntryId).toBe(sell.id);
-    expect(a.status).toBe('pending');
+    expect(b?.status).toBe('archived');
+    expect(b?.capture?.linkedEntryId).toBe(sell.id);
+    expect(a?.status).toBe('pending');
   });
 });
 

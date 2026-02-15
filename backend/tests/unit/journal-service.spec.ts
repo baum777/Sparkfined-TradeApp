@@ -61,6 +61,7 @@ describe('Journal Service - Index Consistency (SQLite)', () => {
 
       expect(entry.status).toBe('pending');
 
+      await journalConfirm(TEST_USER, entry.id);
       const archived = await journalArchive(TEST_USER, entry.id);
 
       expect(archived?.status).toBe('archived');
@@ -72,6 +73,7 @@ describe('Journal Service - Index Consistency (SQLite)', () => {
         summary: 'Test entry',
       }, 'idem-unit-archive-2');
 
+      await journalConfirm(TEST_USER, entry.id);
       const first = await journalArchive(TEST_USER, entry.id);
       const second = await journalArchive(TEST_USER, entry.id);
 
@@ -81,25 +83,25 @@ describe('Journal Service - Index Consistency (SQLite)', () => {
   });
 
   describe('archived → pending (restore) flow', () => {
-    it('should change status from ARCHIVED to PENDING', async () => {
+    it('should change status from ARCHIVED to CONFIRMED (user_action default)', async () => {
       const entry = await journalCreate(TEST_USER, {
         summary: 'Test entry',
       }, 'idem-unit-restore-1');
+      await journalConfirm(TEST_USER, entry.id);
       await journalArchive(TEST_USER, entry.id);
 
       const restored = await journalRestore(TEST_USER, entry.id);
 
-      expect(restored?.status).toBe('pending');
+      expect(restored?.status).toBe('confirmed');
     });
 
-    it('should be idempotent - restore on pending returns pending', async () => {
+    it('restore requires archived state', async () => {
       const entry = await journalCreate(TEST_USER, {
         summary: 'Test entry',
       }, 'idem-unit-restore-2');
 
-      const result = await journalRestore(TEST_USER, entry.id);
-
-      expect(result?.status).toBe('pending');
+      await expect(journalRestore(TEST_USER, entry.id))
+        .rejects.toThrow('Cannot restore a non-archived entry');
     });
   });
 
@@ -135,6 +137,7 @@ describe('Journal Service - Index Consistency (SQLite)', () => {
       const entry = await journalCreate(TEST_USER, {
         summary: 'User 1 entry',
       }, 'idem-unit-mt-3');
+      await journalConfirm(TEST_USER, entry.id);
       await journalArchive(TEST_USER, entry.id);
 
       const result = await journalRestore(OTHER_USER, entry.id);
