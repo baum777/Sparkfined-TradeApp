@@ -11,7 +11,7 @@ import { getSettings } from '../domain/settings/settings.service.js';
 import { classifyPulseAsset, resolvePulseAsset } from '../domain/grokPulse/assetResolver.js';
 import * as grokPulseAdapter from '../domain/grokPulse/grokPulseAdapter.js';
 import { buildInsightContext } from '../domain/insights/context.js';
-import { generateInsights, getHighestTierModule } from '../domain/insights/index.js';
+import { generateInsights } from '../domain/insights/index.js';
 import type { InsightSnapshot } from '../domain/insights/types.js';
 import { buildContextPack } from '../domain/contextPack/build.js';
 import type { ContextPack } from '../domain/contextPack/types.js';
@@ -46,8 +46,8 @@ export async function handleJournalInsights(req: ParsedRequest, res: ServerRespo
   const includeGrok = body.includeGrok === true;
   const includeContextPack = body.includeContextPack === true;
   const contextPackAnchorMode = body.contextPackAnchorMode || 'trade_centered';
-  const includeDeltas = body.includeDeltas === true;
   const tier = resolveTierFromAuthUser(req.user);
+  const contextPackTier = tier ?? 'free';
 
   // Server-side gating: include Grok narrative ONLY if explicitly requested and enabled.
   if (includeGrok) {
@@ -81,10 +81,10 @@ export async function handleJournalInsights(req: ParsedRequest, res: ServerRespo
     
     const contextPack = await buildContextPack({
       userId: req.userId,
-      tier,
+      tier: contextPackTier,
       asset: {
         mint: assetMint,
-        symbol: entry.capture?.assetSymbol || entry.symbolOrAddress || undefined,
+        symbol: entry.symbolOrAddress || undefined,
       },
       anchor: {
         mode: contextPackAnchorMode as 'trade_centered' | 'now_centered' | 'launch_centered' | 'latest_only',

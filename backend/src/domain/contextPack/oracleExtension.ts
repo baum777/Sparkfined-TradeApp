@@ -7,10 +7,7 @@ import type { ContextPack } from './types.js';
 import type {
   OracleContextExtension,
   OraclePattern,
-  OraclePatternCode,
   OracleBiasFlag,
-  EvidenceLevel,
-  NoiseLevel,
 } from './types.js';
 
 /**
@@ -103,9 +100,10 @@ function computeOraclePatterns(contextPack: ContextPack): OraclePattern[] {
   if (rsi14 !== undefined && rsi14 >= 70) {
     const hasHighVolume = volume24hUsd !== undefined && volume24hUsd > 1000000; // Threshold TBD
     const isBullishNarrative = narrative && narrative.sentiment.label === 'bullish';
-    const narrativeUsable = narrative && 
-                             narrative.quality.evidenceLevel !== 'low' && 
-                             !narrative.flags.highNoise;
+    const narrativeUsable =
+      !!narrative &&
+      narrative.quality.evidenceLevel !== 'low' &&
+      !narrative.flags.highNoise;
     
     if (hasHighVolume || (isBullishNarrative && narrativeUsable)) {
       const evidence: Array<{ ref: string; detail: string }> = [

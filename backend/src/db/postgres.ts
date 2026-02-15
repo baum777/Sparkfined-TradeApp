@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { Pool, type PoolClient, type QueryResult } from 'pg';
+import { Pool, type PoolClient, type QueryResult, type QueryResultRow } from 'pg';
 import { logger } from '../observability/logger.js';
 import type { DatabaseClient, PreparedStatement, StatementResult } from './types.js';
 
@@ -86,12 +86,12 @@ function splitStatements(sql: string): string[] {
 export async function createPostgresClient(databaseUrl: string): Promise<DatabaseClient> {
   const pool = new Pool({ connectionString: databaseUrl });
 
-  async function runQuery<T>(text: string, values: unknown[]): Promise<QueryResult<T>> {
+  async function runQuery(text: string, values: unknown[]): Promise<QueryResult<QueryResultRow>> {
     const txClient = transactionStore.getStore();
     if (txClient) {
-      return txClient.query(text, values as any[]);
+      return txClient.query<QueryResultRow>(text, values as any[]);
     }
-    return pool.query(text, values as any[]);
+    return pool.query<QueryResultRow>(text, values as any[]);
   }
 
   const client: DatabaseClient = {
@@ -104,13 +104,13 @@ export async function createPostgresClient(databaseUrl: string): Promise<Databas
         },
         get: async <T = unknown>(...params: unknown[]): Promise<T | undefined> => {
           const { text, values } = normalizeQuery(sql, params);
-          const result = await runQuery<T>(text, values);
-          return result.rows[0];
+          const result = await runQuery(text, values);
+          return result.rows[0] as unknown as T | undefined;
         },
         all: async <T = unknown>(...params: unknown[]): Promise<T[]> => {
           const { text, values } = normalizeQuery(sql, params);
-          const result = await runQuery<T>(text, values);
-          return result.rows;
+          const result = await runQuery(text, values);
+          return result.rows as unknown as T[];
         },
       };
     },

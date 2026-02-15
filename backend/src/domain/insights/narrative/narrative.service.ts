@@ -12,10 +12,10 @@
 import type {
   JournalNarrativeSnapshot,
   AnchorMode,
+  ResolvedTier,
 } from '../../contextPack/types.js';
 import { getKV } from '../../../lib/kv/store.js';
 import { canIncludeNarrative } from '../../contextPack/gates.js';
-import type { ResolvedTier } from '../../../config/tiers.js';
 import type { UserSettings } from '../../settings/settings.types.js';
 
 export interface FetchNarrativeSnapshotParams {

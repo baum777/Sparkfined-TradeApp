@@ -12,8 +12,8 @@ import type { SimpleAlert, TwoStageAlert, DeadTokenAlert } from '../../src/domai
 
 describe('Alerts Integration', () => {
   describe('Create SIMPLE alert', () => {
-    it('should create with correct defaults', () => {
-      const alert = alertCreate({
+    it('should create with correct defaults', async () => {
+      const alert = await alertCreate({
         type: 'SIMPLE',
         symbolOrAddress: 'BTC',
         timeframe: '1h',
@@ -33,8 +33,8 @@ describe('Alerts Integration', () => {
   });
   
   describe('Create TWO_STAGE_CONFIRMED alert', () => {
-    it('should create with indicators from template', () => {
-      const alert = alertCreate({
+    it('should create with indicators from template', async () => {
+      const alert = await alertCreate({
         type: 'TWO_STAGE_CONFIRMED',
         symbolOrAddress: 'ETH',
         timeframe: '4h',
@@ -53,8 +53,8 @@ describe('Alerts Integration', () => {
   });
   
   describe('Create DEAD_TOKEN_AWAKENING_V2 alert', () => {
-    it('should create with params', () => {
-      const alert = alertCreate({
+    it('should create with params', async () => {
+      const alert = await alertCreate({
         type: 'DEAD_TOKEN_AWAKENING_V2',
         symbolOrAddress: 'BONK',
         timeframe: '5m',
@@ -81,8 +81,8 @@ describe('Alerts Integration', () => {
   });
   
   describe('List', () => {
-    beforeEach(() => {
-      alertCreate({
+    beforeEach(async () => {
+      await alertCreate({
         type: 'SIMPLE',
         symbolOrAddress: 'BTC',
         timeframe: '1h',
@@ -90,7 +90,7 @@ describe('Alerts Integration', () => {
         targetPrice: 50000,
       });
       
-      alertCreate({
+      await alertCreate({
         type: 'SIMPLE',
         symbolOrAddress: 'ETH',
         timeframe: '1h',
@@ -99,21 +99,21 @@ describe('Alerts Integration', () => {
       });
     });
     
-    it('should list all alerts', () => {
-      const alerts = alertList();
+    it('should list all alerts', async () => {
+      const alerts = await alertList();
       
       expect(alerts.length).toBe(2);
     });
     
-    it('should filter by status', () => {
-      const active = alertList('active');
+    it('should filter by status', async () => {
+      const active = await alertList('active');
       
       expect(active.length).toBe(2);
       expect(active.every(a => a.status === 'active')).toBe(true);
     });
     
-    it('should filter by symbol', () => {
-      const btcAlerts = alertList('all', 'BTC');
+    it('should filter by symbol', async () => {
+      const btcAlerts = await alertList('all', 'BTC');
       
       expect(btcAlerts.length).toBe(1);
       expect(btcAlerts[0].symbolOrAddress).toBe('BTC');
@@ -121,8 +121,8 @@ describe('Alerts Integration', () => {
   });
   
   describe('Update', () => {
-    it('should toggle enabled and update status', () => {
-      const alert = alertCreate({
+    it('should toggle enabled and update status', async () => {
+      const alert = await alertCreate({
         type: 'SIMPLE',
         symbolOrAddress: 'BTC',
         timeframe: '1h',
@@ -130,14 +130,14 @@ describe('Alerts Integration', () => {
         targetPrice: 50000,
       });
       
-      const updated = alertUpdate(alert.id, { enabled: false });
+      const updated = await alertUpdate(alert.id, { enabled: false });
       
       expect(updated?.enabled).toBe(false);
       expect(updated?.status).toBe('paused');
     });
     
-    it('should update note', () => {
-      const alert = alertCreate({
+    it('should update note', async () => {
+      const alert = await alertCreate({
         type: 'SIMPLE',
         symbolOrAddress: 'BTC',
         timeframe: '1h',
@@ -145,15 +145,15 @@ describe('Alerts Integration', () => {
         targetPrice: 50000,
       });
       
-      const updated = alertUpdate(alert.id, { note: 'Important!' });
+      const updated = await alertUpdate(alert.id, { note: 'Important!' });
       
       expect(updated?.note).toBe('Important!');
     });
   });
   
   describe('Cancel Watch', () => {
-    it('should set stage to CANCELLED', () => {
-      const alert = alertCreate({
+    it('should set stage to CANCELLED', async () => {
+      const alert = await alertCreate({
         type: 'TWO_STAGE_CONFIRMED',
         symbolOrAddress: 'ETH',
         timeframe: '4h',
@@ -162,7 +162,7 @@ describe('Alerts Integration', () => {
         cooldownMinutes: 15,
       });
       
-      const cancelled = alertCancelWatch(alert.id);
+      const cancelled = await alertCancelWatch(alert.id);
       
       expect(cancelled?.stage).toBe('CANCELLED');
       expect(cancelled?.enabled).toBe(false);
@@ -171,8 +171,8 @@ describe('Alerts Integration', () => {
   });
   
   describe('Delete', () => {
-    it('should remove alert', () => {
-      const alert = alertCreate({
+    it('should remove alert', async () => {
+      const alert = await alertCreate({
         type: 'SIMPLE',
         symbolOrAddress: 'BTC',
         timeframe: '1h',
@@ -180,15 +180,15 @@ describe('Alerts Integration', () => {
         targetPrice: 50000,
       });
       
-      const deleted = alertDelete(alert.id);
+      const deleted = await alertDelete(alert.id);
       
       expect(deleted).toBe(true);
-      expect(alertGetById(alert.id)).toBeNull();
+      expect(await alertGetById(alert.id)).toBeNull();
     });
   });
   
   describe('Events', () => {
-    it('should create and query events', () => {
+    it('should create and query events', async () => {
       const event = {
         eventId: 'test-event-1',
         type: 'SIMPLE_TRIGGERED' as const,
@@ -207,15 +207,15 @@ describe('Alerts Integration', () => {
         },
       };
       
-      alertEventCreate(event);
+      await alertEventCreate(event);
       
-      const events = alertEventsQuery();
+      const events = await alertEventsQuery();
       
       expect(events.length).toBe(1);
       expect(events[0].eventId).toBe('test-event-1');
     });
     
-    it('should query events since timestamp', () => {
+    it('should query events since timestamp', async () => {
       const oldEvent = {
         eventId: 'old-event',
         type: 'SIMPLE_TRIGGERED' as const,
@@ -240,11 +240,11 @@ describe('Alerts Integration', () => {
         status: 'triggered' as const,
       };
       
-      alertEventCreate(oldEvent);
-      alertEventCreate(newEvent);
+      await alertEventCreate(oldEvent);
+      await alertEventCreate(newEvent);
       
       const since = new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString();
-      const events = alertEventsQuery(since);
+      const events = await alertEventsQuery(since);
       
       expect(events.length).toBe(1);
       expect(events[0].eventId).toBe('new-event');

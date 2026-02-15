@@ -16,8 +16,8 @@ describe('State Machines', () => {
   describe('TWO_STAGE_CONFIRMED', () => {
     let alert: TwoStageAlert;
     
-    beforeEach(() => {
-      const created = alertCreate({
+    beforeEach(async () => {
+      const created = await alertCreate({
         type: 'TWO_STAGE_CONFIRMED',
         symbolOrAddress: 'BTC',
         timeframe: '1h',
@@ -34,7 +34,7 @@ describe('State Machines', () => {
       expect(alert.triggeredCount).toBe(0);
     });
     
-    it('should confirm when 2-of-3 indicators trigger', () => {
+    it('should confirm when 2-of-3 indicators trigger', async () => {
       const ctx: TwoStageEvaluationContext = {
         now: new Date(),
         indicatorValues: new Map([
@@ -44,7 +44,7 @@ describe('State Machines', () => {
         ]),
       };
       
-      const result = evaluateTwoStageAlert(alert, ctx);
+      const result = await evaluateTwoStageAlert(alert, ctx);
       
       expect(result.transitioned).toBe(true);
       expect(result.alert.stage).toBe('CONFIRMED');
@@ -52,7 +52,7 @@ describe('State Machines', () => {
       expect(result.event?.type).toBe('TWO_STAGE_CONFIRMED');
     });
     
-    it('should not confirm with only 1-of-3', () => {
+    it('should not confirm with only 1-of-3', async () => {
       const ctx: TwoStageEvaluationContext = {
         now: new Date(),
         indicatorValues: new Map([
@@ -62,15 +62,15 @@ describe('State Machines', () => {
         ]),
       };
       
-      const result = evaluateTwoStageAlert(alert, ctx);
+      const result = await evaluateTwoStageAlert(alert, ctx);
       
       expect(result.alert.stage).toBe('WATCHING');
       expect(result.event?.type).toBe('TWO_STAGE_PROGRESS');
     });
     
-    it('should expire after expiry time', () => {
+    it('should expire after expiry time', async () => {
       // Create alert that expires immediately
-      const expiredAlert = alertCreate({
+      const expiredAlert = await alertCreate({
         type: 'TWO_STAGE_CONFIRMED',
         symbolOrAddress: 'ETH',
         timeframe: '1h',
@@ -84,7 +84,7 @@ describe('State Machines', () => {
         indicatorValues: new Map(),
       };
       
-      const result = evaluateTwoStageAlert(expiredAlert, ctx);
+      const result = await evaluateTwoStageAlert(expiredAlert, ctx);
       
       expect(result.transitioned).toBe(true);
       expect(result.alert.stage).toBe('EXPIRED');
@@ -133,25 +133,25 @@ describe('State Machines', () => {
       });
     });
     
-    it('should start in INITIAL stage', () => {
-      const alert = alertCreate({
+    it('should start in INITIAL stage', async () => {
+      const alert = (await alertCreate({
         type: 'DEAD_TOKEN_AWAKENING_V2',
         symbolOrAddress: 'BONK',
         timeframe: '5m',
         params: defaultParams,
-      }) as DeadTokenAlert;
+      })) as DeadTokenAlert;
       
       expect(alert.deadTokenStage).toBe('INITIAL');
       expect(alert.stage).toBe('WATCHING');
     });
     
-    it('should transition to AWAKENING when conditions met', () => {
-      const alert = alertCreate({
+    it('should transition to AWAKENING when conditions met', async () => {
+      const alert = (await alertCreate({
         type: 'DEAD_TOKEN_AWAKENING_V2',
         symbolOrAddress: 'BONK',
         timeframe: '5m',
         params: defaultParams,
-      }) as DeadTokenAlert;
+      })) as DeadTokenAlert;
       
       // For awakening, the token must be "dead" AND meet 2-of-3 awakening conditions
       // Dead: volume <= 100, trades <= 5, holderDelta6h <= 0
@@ -180,7 +180,7 @@ describe('State Machines', () => {
         metrics: awakeningMetrics,
       };
       
-      const result = evaluateDeadTokenAlert(alert, ctx);
+      const result = await evaluateDeadTokenAlert(alert, ctx);
       
       // The token is dead but doesn't meet 2-of-3 awakening multiplier conditions
       // because volume/trades are too low. This is expected behavior.

@@ -7,8 +7,6 @@ import type { ContextPack } from './types.js';
 import type {
   PulseContextExtension,
   PulseOverlay,
-  PulseOverlayCode,
-  OverlaySeverity,
 } from './types.js';
 
 /**
@@ -43,7 +41,6 @@ function computePulseOverlays(contextPack: ContextPack): PulseOverlay[] {
   // Pro+ tier required for indicators
   if (contextPack.tier === 'pro' || contextPack.tier === 'high') {
     const rsi14 = contextPack.market?.indicators?.rsi14;
-    const trendState = contextPack.market?.indicators?.trendState;
     
     // OVERBOUGHT overlay (pro+)
     if (rsi14 !== undefined && rsi14 >= 70) {
@@ -187,7 +184,7 @@ function computeNarrativeTag(
   const evidenceLevel = contextPack.narrative.quality.evidenceLevel;
   
   // Map sentiment to label
-  let label = sentiment;
+  let label: string = sentiment;
   if (sentiment === 'bullish') {
     label = 'Bullish narrative';
   } else if (sentiment === 'bearish') {
