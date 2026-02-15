@@ -1,0 +1,43 @@
+import { Connection, clusterApiUrl, type Commitment } from '@solana/web3.js';
+
+let cachedConnection: Connection | null = null;
+let cachedEndpoint: string | null = null;
+
+type Cluster = 'devnet' | 'mainnet-beta';
+
+function getEnvString(key: string): string | undefined {
+  // Vite only exposes VITE_* by default. We still read NEXT_PUBLIC_* as a best-effort
+  // for repo parity with Next.js configs (will be undefined unless explicitly exposed).
+  const env = (import.meta as any).env as Record<string, string | boolean | undefined> | undefined;
+  const v = env?.[key];
+  return typeof v === 'string' ? v : undefined;
+}
+
+export function getCommitment(): Commitment {
+  return 'confirmed';
+}
+
+export function getRpcEndpoint(): string {
+  const explicit =
+    getEnvString('VITE_SOLANA_RPC_URL') ||
+    getEnvString('NEXT_PUBLIC_SOLANA_RPC_URL');
+
+  if (explicit?.trim()) return explicit.trim();
+
+  const clusterRaw =
+    getEnvString('VITE_SOLANA_CLUSTER') ||
+    getEnvString('NEXT_PUBLIC_SOLANA_CLUSTER');
+
+  const cluster: Cluster = clusterRaw === 'devnet' ? 'devnet' : 'mainnet-beta';
+  return clusterApiUrl(cluster);
+}
+
+export function getConnection(): Connection {
+  const endpoint = getRpcEndpoint();
+  if (cachedConnection && cachedEndpoint === endpoint) return cachedConnection;
+
+  cachedEndpoint = endpoint;
+  cachedConnection = new Connection(endpoint, { commitment: getCommitment() });
+  return cachedConnection;
+}
+
