@@ -64,6 +64,16 @@ const envSchema = z.object({
   HELIUS_API_KEY: z.string().optional(),
   HELIUS_WEBHOOK_ID: z.string().optional(),
   HELIUS_SOURCE_LABEL: z.string().default('helius'),
+
+  // ─────────────────────────────────────────────────────────────
+  // Phase 1: Terminal / Swap (Jupiter)
+  // ─────────────────────────────────────────────────────────────
+  JUPITER_BASE_URL: z.string().default('https://quote-api.jup.ag/v6'),
+  /**
+   * Token account (ATA) that receives platform fees on Jupiter swaps.
+   * Note: Jupiter requires a token account matching the output mint.
+   */
+  JUPITER_PLATFORM_FEE_ACCOUNT: z.string().optional(),
 });
 
 export type BackendEnv = z.infer<typeof envSchema>;
