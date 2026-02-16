@@ -10,6 +10,10 @@ import { logger } from './logger';
 import { verifyJwtFromAuthHeader } from './auth/jwt';
 import { maybeBlockInProduction } from './production-guard';
 
+type RequestWithLogControl = VercelRequest & {
+  __suppressDefaultRequestLog?: boolean;
+};
+
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
 export interface HandlerContext {
@@ -34,6 +38,10 @@ export interface RouteConfig {
   PUT?: HandlerFunction;
   PATCH?: HandlerFunction;
   DELETE?: HandlerFunction;
+}
+
+export function suppressDefaultRequestLog(req: VercelRequest): void {
+  (req as RequestWithLogControl).__suppressDefaultRequestLog = true;
 }
 
 function setCorsHeaders(res: VercelResponse): void {
@@ -95,12 +103,14 @@ export function createHandler(config: RouteConfig) {
       await handler(ctx);
       
       const duration = Date.now() - startTime;
-      logger.info('Request completed', {
-        method,
-        path: req.url,
-        duration: `${duration}ms`,
-        userId,
-      });
+      if (!(req as RequestWithLogControl).__suppressDefaultRequestLog) {
+        logger.info('Request completed', {
+          method,
+          path: req.url,
+          duration: `${duration}ms`,
+          userId,
+        });
+      }
       
     } catch (error) {
       handleError(res, error);

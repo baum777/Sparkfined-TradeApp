@@ -1,9 +1,10 @@
 import { z } from 'zod';
-import { createHandler } from '../_lib/handler';
+import { createHandler, suppressDefaultRequestLog } from '../_lib/handler';
 import { sendJson, setCacheHeaders } from '../_lib/response';
 import { validateQuery } from '../_lib/validation';
 import { checkRateLimit } from '../_lib/rate-limit';
 import { getEnv } from '../_lib/env';
+import { logger } from '../_lib/logger';
 import type { DiscoverToken } from '../_lib/discover/types';
 
 const DISCOVER_CACHE_TTL_MS = 45_000;
@@ -247,23 +248,46 @@ function getRequesterIdentifier(reqHeaders: Record<string, string | string[] | u
 export default createHandler({
   auth: 'none',
   GET: async ({ req, res }) => {
-    setCacheHeaders(res, { public: true, maxAge: Math.floor(DISCOVER_CACHE_TTL_MS / 1000) });
+    const startedAt = Date.now();
+    let payloadBytes = 0;
+    let tokenCount = 0;
+    let cursor: number | null = null;
+    let limit: number | null = null;
 
-    const query = validateQuery(querySchema, req.query);
-    const requester = getRequesterIdentifier(req.headers);
-    if (requester) {
-      await checkRateLimit('discover', requester, { limit: 120, windowSeconds: 60 });
+    try {
+      setCacheHeaders(res, { public: true, maxAge: Math.floor(DISCOVER_CACHE_TTL_MS / 1000) });
+
+      const query = validateQuery(querySchema, req.query);
+      const requester = getRequesterIdentifier(req.headers);
+      if (requester) {
+        await checkRateLimit('discover', requester, { limit: 120, windowSeconds: 60 });
+      }
+
+      const allTokens = await getDiscoverTokensCached();
+      const start = query.cursor ?? 0;
+      const end = query.limit ? Math.min(start + query.limit, allTokens.length) : allTokens.length;
+      const page = allTokens.slice(start, end);
+
+      if (query.limit && end < allTokens.length) {
+        res.setHeader('x-next-cursor', String(end));
+      }
+
+      cursor = start;
+      limit = query.limit ?? null;
+      tokenCount = page.length;
+      payloadBytes = Buffer.byteLength(JSON.stringify({ status: 'ok', data: page }), 'utf8');
+
+      sendJson(res, page);
+    } finally {
+      suppressDefaultRequestLog(req);
+      logger.info('Discover tokens request completed', {
+        route: '/api/discover/tokens',
+        durationMs: Date.now() - startedAt,
+        payloadBytes,
+        tokenCount,
+        cursor,
+        limit,
+      });
     }
-
-    const allTokens = await getDiscoverTokensCached();
-    const start = query.cursor ?? 0;
-    const end = query.limit ? Math.min(start + query.limit, allTokens.length) : allTokens.length;
-    const page = allTokens.slice(start, end);
-
-    if (query.limit && end < allTokens.length) {
-      res.setHeader('x-next-cursor', String(end));
-    }
-
-    sendJson(res, page);
   },
 });
