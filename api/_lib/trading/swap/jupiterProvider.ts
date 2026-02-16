@@ -1,7 +1,7 @@
 import { getEnv } from '../../env';
 import { badRequest, internalError } from '../../errors';
 import type { SwapProvider, GetQuoteParams, QuoteResult, GetSwapTxParams, SwapTxResult } from '../../../../shared/trading/swap/SwapProvider';
-import type { JupiterQuoteResponseLike } from '../../../../shared/trading/fee/feeQuote';
+import { isJupiterQuoteResponseLike, parseJupiterSwapResponse } from './jupiterTypes';
 
 function assertBps(name: string, value: number) {
   if (!Number.isFinite(value) || value < 0 || value > 5000) {
@@ -42,8 +42,8 @@ export const jupiterProvider: SwapProvider = {
       throw internalError(`Jupiter quote failed: HTTP ${res.status} ${text}`.trim());
     }
 
-    const json = (await res.json()) as JupiterQuoteResponseLike;
-    if (!json || typeof json !== 'object' || typeof (json as any).outAmount !== 'string') {
+    const json = (await res.json()) as unknown;
+    if (!isJupiterQuoteResponseLike(json)) {
       throw internalError('Invalid Jupiter quote response');
     }
 
@@ -52,7 +52,7 @@ export const jupiterProvider: SwapProvider = {
       outputMint: params.outputMint,
       inputToken: params.inputToken,
       outputToken: params.outputToken,
-      providerQuote: json as unknown,
+      providerQuote: json,
       preview: {
         expectedOutBaseUnits: json.outAmount,
         minOutBaseUnits: json.otherAmountThreshold,
@@ -106,17 +106,16 @@ export const jupiterProvider: SwapProvider = {
       throw internalError(`Jupiter swap failed: HTTP ${res.status} ${text}`.trim());
     }
 
-    const json = (await res.json()) as any;
-    const swapTransactionBase64 = json?.swapTransaction;
-    if (typeof swapTransactionBase64 !== 'string' || !swapTransactionBase64.length) {
+    const json = (await res.json()) as unknown;
+    const swapResponse = parseJupiterSwapResponse(json);
+    if (!swapResponse) {
       throw internalError('Invalid Jupiter swap response: missing swapTransaction');
     }
 
     return {
-      swapTransactionBase64,
-      lastValidBlockHeight: typeof json?.lastValidBlockHeight === 'number' ? json.lastValidBlockHeight : undefined,
-      prioritizationFeeLamports:
-        typeof json?.prioritizationFeeLamports === 'number' ? json.prioritizationFeeLamports : undefined,
+      swapTransactionBase64: swapResponse.swapTransaction,
+      lastValidBlockHeight: swapResponse.lastValidBlockHeight,
+      prioritizationFeeLamports: swapResponse.prioritizationFeeLamports,
     };
   },
 };
