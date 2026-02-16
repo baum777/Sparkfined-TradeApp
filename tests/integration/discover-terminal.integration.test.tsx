@@ -2,6 +2,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import React from 'react';
 import { DiscoverTokenCard } from '@/components/discover/DiscoverTokenCard';
 import { DiscoverTokenList } from '@/components/discover/DiscoverTokenList';
 import { DiscoverReasonChips } from '@/components/discover/DiscoverReasonChips';
