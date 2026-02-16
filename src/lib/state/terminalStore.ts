@@ -8,9 +8,11 @@ import { swapService } from '@/lib/trading/swap/swapService';
 import { confirmSignature, extractTxError, sendSignedTransaction, simulateSignedTransaction } from '@/lib/solana/tx';
 import { isDev } from '@/lib/env';
 
+type SignableTransaction = Transaction | VersionedTransaction;
+
 type WalletLike = {
   publicKey: PublicKey | null;
-  signTransaction: <T extends Transaction | VersionedTransaction>(tx: T) => Promise<T>;
+  signTransaction: <T extends SignableTransaction>(tx: T) => Promise<T>;
 };
 
 export interface TerminalAmountState {
@@ -125,20 +127,23 @@ function isQuoteStale(quote: TerminalQuoteState): boolean {
 }
 
 function decodeBase64ToBytes(base64: string): Uint8Array {
-  const g: any = globalThis as any;
-  if (typeof g.atob === 'function') {
-    const bin = g.atob(base64);
+  if (typeof globalThis.atob === 'function') {
+    const bin = globalThis.atob(base64);
     const bytes = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
     return bytes;
   }
+
   // Node/test fallback
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const buf = Buffer.from(base64, 'base64');
-  return new Uint8Array(buf);
+  const nodeBuffer = (globalThis as { Buffer?: { from: (input: string, encoding: string) => Uint8Array } }).Buffer;
+  if (nodeBuffer) {
+    return new Uint8Array(nodeBuffer.from(base64, 'base64'));
+  }
+
+  throw new Error('Base64 decoding not supported in this environment');
 }
 
-function decodeSwapTx(base64: string): Transaction | VersionedTransaction {
+function decodeSwapTx(base64: string): SignableTransaction {
   const bytes = decodeBase64ToBytes(base64);
   // Prefer v0 deserialization (Jupiter default).
   try {
@@ -146,6 +151,17 @@ function decodeSwapTx(base64: string): Transaction | VersionedTransaction {
   } catch {
     return LegacyTransaction.from(bytes);
   }
+}
+
+function isSimulationFailureError(error: unknown): error is Error {
+  return error instanceof Error && error.message.startsWith('Simulation fehlgeschlagen');
+}
+
+function getRecentBlockhashFromSignedTx(tx: SignableTransaction): string | undefined {
+  if (tx instanceof V0Transaction) {
+    return tx.message.recentBlockhash;
+  }
+  return tx.recentBlockhash;
 }
 
 export const useTerminalStore = create<TerminalStoreState>((set, get) => ({
@@ -332,16 +348,16 @@ export const useTerminalStore = create<TerminalStoreState>((set, get) => ({
         if (sim.err) {
           throw new Error(`Simulation fehlgeschlagen: ${JSON.stringify(sim.err)}\n${(sim.logs ?? []).slice(-10).join('\n')}`);
         }
-      } catch (e: any) {
+      } catch (e: unknown) {
         // If it was our logic error above, rethrow it so the user sees it.
-        if (e.message && e.message.startsWith('Simulation fehlgeschlagen')) {
+        if (isSimulationFailureError(e)) {
           throw e;
         }
         // Otherwise ignore underlying RPC errors (rate limits, simulation not supported)
         console.warn('Simulation skipped due to RPC error', e);
       }
 
-      const signed = await wallet.signTransaction(tx as any);
+      const signed = await wallet.signTransaction(tx);
       set({ tx: { status: 'sending' } });
 
       const { signature } = await sendSignedTransaction({ connection, signedTx: signed, maxRetries: 3 });
@@ -350,7 +366,7 @@ export const useTerminalStore = create<TerminalStoreState>((set, get) => ({
         connection,
         signature,
         commitment: 'confirmed',
-        blockhash: (signed as any).message?.recentBlockhash || (signed as any).recentBlockhash,
+        blockhash: getRecentBlockhashFromSignedTx(signed),
         lastValidBlockHeight: swapTx.lastValidBlockHeight,
       });
 

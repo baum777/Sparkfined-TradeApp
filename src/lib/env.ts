@@ -3,8 +3,17 @@ import { getCommitment, getRpcEndpoint } from '@/lib/solana/connection';
 
 export type SolanaCluster = 'devnet' | 'mainnet-beta';
 
+interface ImportMetaEnvLike {
+  DEV?: boolean;
+  [key: string]: string | boolean | undefined;
+}
+
+function getImportMetaEnv(): ImportMetaEnvLike {
+  return (import.meta as ImportMeta & { env?: ImportMetaEnvLike }).env ?? {};
+}
+
 function getEnvString(key: string): string | undefined {
-  const env = (import.meta as any).env as Record<string, string | boolean | undefined> | undefined;
+  const env = getImportMetaEnv();
   const v = env?.[key];
   return typeof v === 'string' ? v : undefined;
 }
@@ -33,8 +42,7 @@ export function logSolanaEnvOnce(): void {
   didLog = true;
 
   // Only in dev
-  const isDev = (import.meta as any).env?.DEV === true;
-  if (!isDev) return;
+  if (!isDev()) return;
 
   // Best-effort detection of whether endpoint is explicit or derived
   const explicit =
@@ -48,5 +56,9 @@ export function logSolanaEnvOnce(): void {
     commitment: getSolanaCommitment(),
     rpcSource: explicit ? 'explicit' : 'cluster-fallback',
   });
+}
+
+export function isDev(): boolean {
+  return getImportMetaEnv().DEV === true;
 }
 

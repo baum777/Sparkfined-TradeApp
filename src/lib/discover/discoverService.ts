@@ -12,13 +12,11 @@ export const discoverService = {
    */
   async getTokens(): Promise<Token[]> {
     try {
-      // Try to fetch from API endpoint
-      const response = await apiClient.get<Token[]>('/api/discover/tokens');
+      // API client already prefixes "/api", endpoint path must stay relative.
+      const response = await apiClient.get<Token[]>('/discover/tokens');
       return response;
     } catch (error) {
-      // If endpoint doesn't exist, return empty array
-      // In production, this would be a real endpoint
-      console.warn('Discover tokens endpoint not available, returning empty list');
+      console.warn('Discover tokens endpoint unavailable, returning empty list', error);
       return [];
     }
   },

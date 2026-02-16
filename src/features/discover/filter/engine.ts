@@ -1,53 +1,53 @@
-import type { Token, Tab, PresetId, Decision, Reason } from './types';
+import type { Decision, EvaluateTokenInput, PresetId, Reason, Token } from './types';
 import { filterSpec } from './spec';
 import { applyPreset } from './presets';
 import { applyFallbacks } from './fallbacks';
 import { computeRankScore } from './scoring';
 import { trimReasonsForUI } from './explain';
 
+type NotBondedFixedRules = typeof filterSpec.tabs.not_bonded.fixed;
+type BondedFixedRules = typeof filterSpec.tabs.bonded.fixed;
+type RankedFixedRules = typeof filterSpec.tabs.ranked.fixed;
+
 /**
  * Haupt-Filter-Engine
  * Evaluates a token and returns a decision (allow/downrank/reject) with reasons
  */
-export function evaluateToken(input: {
-  token: Token;
-  tab: Tab;
-  preset?: PresetId;
-  now?: Date;
-}): Decision {
+export function evaluateToken(input: EvaluateTokenInput): Decision {
   const { token, tab, preset, now = new Date() } = input;
 
-  // 1. Lade fixed rules des Tabs
-  const fixedRules = filterSpec.tabs[tab]?.fixed;
-  if (!fixedRules) {
-    return {
-      action: 'reject',
-      reasons: [{ code: 'invalid_tab', message: 'Ungültiger Tab' }],
-    };
-  }
+  void now;
 
-  // 2. Wende hard_reject Regeln an
-  const hardRejectResult = applyHardRejectRules(token, fixedRules);
-  if (hardRejectResult) {
-    return hardRejectResult;
-  }
-
-  // 3. Wende requirements an (min liquidity, caps, activity floors)
+  // 1-3. Fixed rules (hard reject + requirements)
   let decision: Decision = { action: 'allow', reasons: [] };
 
-  // Requirements für not_bonded
-  if (tab === 'not_bonded') {
-    decision = applyNotBondedRequirements(token, fixedRules, decision);
-  }
-
-  // Requirements für bonded
-  if (tab === 'bonded') {
-    decision = applyBondedRequirements(token, fixedRules, decision);
-  }
-
-  // Requirements für ranked
-  if (tab === 'ranked') {
-    decision = applyRankedRequirements(token, fixedRules, decision);
+  switch (tab) {
+    case 'not_bonded': {
+      const fixedRules = filterSpec.tabs.not_bonded.fixed;
+      const hardRejectResult = applyHardRejectRules(token, fixedRules);
+      if (hardRejectResult) return hardRejectResult;
+      decision = applyNotBondedRequirements(token, fixedRules, decision);
+      break;
+    }
+    case 'bonded': {
+      const fixedRules = filterSpec.tabs.bonded.fixed;
+      const hardRejectResult = applyHardRejectRules(token, fixedRules);
+      if (hardRejectResult) return hardRejectResult;
+      decision = applyBondedRequirements(token, fixedRules, decision);
+      break;
+    }
+    case 'ranked': {
+      const fixedRules = filterSpec.tabs.ranked.fixed;
+      const decisionAfterHardReject = applyHardRejectRules(token, fixedRules);
+      if (decisionAfterHardReject) return decisionAfterHardReject;
+      decision = applyRankedRequirements(token, fixedRules, decision);
+      break;
+    }
+    default:
+      return {
+        action: 'reject',
+        reasons: [{ code: 'invalid_tab', message: 'Ungültiger Tab' }],
+      };
   }
 
   // Wenn bereits rejected, return early
@@ -59,7 +59,7 @@ export function evaluateToken(input: {
   }
 
   // 4. Wende preset an (Default pro tab aus ui.mapping, oder override)
-  const presetId = preset || filterSpec.ui.overlay_tabs[tab].default_preset;
+  const presetId: PresetId = preset || filterSpec.ui.overlay_tabs[tab].default_preset;
   if (presetId) {
     decision = applyPreset(token, tab, presetId, decision);
   }
@@ -103,9 +103,9 @@ export function evaluateToken(input: {
  */
 function applyHardRejectRules(
   token: Token,
-  fixedRules: any
+  fixedRules: NotBondedFixedRules | BondedFixedRules | RankedFixedRules
 ): Decision | null {
-  if (!fixedRules.hard_reject) {
+  if (!('hard_reject' in fixedRules) || !fixedRules.hard_reject) {
     return null;
   }
 
@@ -126,7 +126,7 @@ function applyHardRejectRules(
  */
 function applyNotBondedRequirements(
   token: Token,
-  fixedRules: any,
+  fixedRules: NotBondedFixedRules,
   currentDecision: Decision
 ): Decision {
   const reasons: Reason[] = [...currentDecision.reasons];
@@ -278,7 +278,7 @@ function applyNotBondedRequirements(
  */
 function applyBondedRequirements(
   token: Token,
-  fixedRules: any,
+  fixedRules: BondedFixedRules,
   currentDecision: Decision
 ): Decision {
   const reasons: Reason[] = [...currentDecision.reasons];
@@ -405,7 +405,7 @@ function applyBondedRequirements(
  */
 function applyRankedRequirements(
   token: Token,
-  fixedRules: any,
+  fixedRules: RankedFixedRules,
   currentDecision: Decision
 ): Decision {
   const reasons: Reason[] = [...currentDecision.reasons];
