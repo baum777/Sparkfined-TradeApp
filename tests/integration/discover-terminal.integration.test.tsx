@@ -5,7 +5,6 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import React from 'react';
 import { DiscoverTokenCard } from '@/components/discover/DiscoverTokenCard';
 import { DiscoverTokenList } from '@/components/discover/DiscoverTokenList';
-import { DiscoverReasonChips } from '@/components/discover/DiscoverReasonChips';
 import { useDiscoverStore } from '@/lib/state/discoverStore';
 import { useTerminalStore } from '@/lib/state/terminalStore';
 import { quoteService } from '@/lib/trading/quote/quoteService';
@@ -158,7 +157,9 @@ describe('Discover/Terminal Integration', () => {
   });
 
   afterEach(() => {
-    vi.runOnlyPendingTimers();
+    if (vi.isFakeTimers()) {
+      vi.runOnlyPendingTimers();
+    }
     vi.useRealTimers();
     cleanup();
   });
@@ -227,6 +228,8 @@ describe('Discover/Terminal Integration', () => {
   });
 
   it('preset merge logic is reflected at UI list level', async () => {
+    vi.useRealTimers();
+
     const rejectedByPreset = createToken({
       mint: '7dHbWXadNqiH4uM2nA8fLnb6N6byN1Nsx3Rp3bV5w7kF',
       symbol: 'SLOW',
@@ -300,10 +303,9 @@ describe('Discover/Terminal Integration', () => {
     );
     expect(screen.queryByText('88')).not.toBeInTheDocument();
 
-    const reasonChipRender = render(<DiscoverReasonChips reasons={reasons} />);
-    expect(reasonChipRender.queryByText('Bundler risk')).toBeInTheDocument();
-    expect(reasonChipRender.queryByText('Low liquidity')).toBeInTheDocument();
-    expect(reasonChipRender.queryByText('Low quality social')).not.toBeInTheDocument();
-    expect(reasonChipRender.queryByText('Missing LP data')).not.toBeInTheDocument();
+    const renderedReasonMessages = screen.getAllByText(/Bundler risk|Low liquidity/i);
+    expect(renderedReasonMessages).toHaveLength(2);
+    expect(screen.queryByText('Low quality social')).not.toBeInTheDocument();
+    expect(screen.queryByText('Missing LP data')).not.toBeInTheDocument();
   });
 });
