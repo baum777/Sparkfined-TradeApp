@@ -1,3 +1,4 @@
+import { VersionedTransaction as V0Transaction } from '@solana/web3.js';
 import type { Commitment, Connection, Transaction, VersionedTransaction } from '@solana/web3.js';
 
 export interface SendSignedTransactionOpts {
@@ -16,7 +17,10 @@ export async function simulateSignedTransaction(
   signedTx: Transaction | VersionedTransaction,
   commitment: Commitment = 'processed'
 ): Promise<{ logs?: string[]; err?: unknown }> {
-  const res = await connection.simulateTransaction(signedTx as any, { commitment });
+  const res =
+    signedTx instanceof V0Transaction
+      ? await connection.simulateTransaction(signedTx, { commitment })
+      : await connection.simulateTransaction(signedTx);
   return { logs: res.value.logs ?? undefined, err: res.value.err ?? undefined };
 }
 
@@ -26,9 +30,9 @@ export function extractTxError(e: unknown): string {
   if (e instanceof Error) return e.message || 'Transaktion fehlgeschlagen';
 
   // Best-effort parsing for web3.js-ish errors
-  const anyErr = e as any;
-  const msg = typeof anyErr?.message === 'string' ? anyErr.message : null;
-  const logs = Array.isArray(anyErr?.logs) ? anyErr.logs : null;
+  const maybeErr = e as { message?: unknown; logs?: unknown };
+  const msg = typeof maybeErr.message === 'string' ? maybeErr.message : null;
+  const logs = Array.isArray(maybeErr.logs) ? maybeErr.logs : null;
   if (msg && logs?.length) return `${msg}\n${logs.slice(-10).join('\n')}`;
   return msg || 'Transaktion fehlgeschlagen';
 }
