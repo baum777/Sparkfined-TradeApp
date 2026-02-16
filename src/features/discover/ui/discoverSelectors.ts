@@ -48,8 +48,9 @@ function runSelectorPipeline(input: DiscoverSelectorInput): EvaluatedTokenRow[] 
     filtered = filtered.filter((token) => filters.launchpads.includes(token.launchpad));
   }
 
-  if (filters.minLiquiditySol != null && filters.minLiquiditySol > 0) {
-    filtered = filtered.filter((token) => (token.liquidity.liq_sol ?? 0) >= filters.minLiquiditySol);
+  const minLiquiditySol = filters.minLiquiditySol;
+  if (minLiquiditySol != null && minLiquiditySol > 0) {
+    filtered = filtered.filter((token) => (token.liquidity.liq_sol ?? 0) >= minLiquiditySol);
   }
 
   if (filters.timeWindow !== 'all') {
