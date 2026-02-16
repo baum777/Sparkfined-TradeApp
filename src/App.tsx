@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useSearchParams, useParams } from "react-router-dom";
 import { AppShell } from "@/components/layout/AppShell";
+import { DiscoverOverlay } from "@/components/discover";
 
 // Primary pages (canonical)
 import Dashboard from "@/pages/Dashboard";
@@ -14,6 +15,7 @@ import JournalEntry from "@/pages/JournalEntry";
 import Insights from "@/pages/Insights";
 import Alerts from "@/pages/Alerts";
 import SettingsPage from "@/pages/SettingsPage";
+import Terminal from "@/pages/Terminal";
 import NotFound from "@/pages/NotFound";
 
 // Journal queue sync runner
@@ -157,6 +159,7 @@ const App = () => {
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        <DiscoverOverlay />
         <BrowserRouter>
           <Routes>
             <Route element={<AppShell />}>
@@ -173,6 +176,7 @@ const App = () => {
               <Route path="/insights/:insightId" element={<Insights />} />
               <Route path="/alerts" element={<Alerts />} />
               <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/terminal" element={<Terminal />} />
 
               {/* LEGACY ROUTE REDIRECTS */}
               <Route path="/chart" element={<ChartRedirect />} />

@@ -43,3 +43,22 @@ export function getConnection(): Connection {
   return cachedConnection;
 }
 
+export function validateSolanaEnv(): void {
+  const cluster = getCluster();
+  const endpoint = getRpcEndpoint();
+  const isDev = (import.meta as any).env?.DEV === true;
+
+  if (isDev) {
+    if (cluster === 'devnet' && endpoint.includes('mainnet')) {
+      console.warn(
+        '[Terminal] ⚠️ Config Mismatch: Cluster is "devnet" but RPC URL looks like "mainnet". This may cause transaction failures.'
+      );
+    }
+    if (cluster === 'mainnet-beta' && endpoint.includes('devnet')) {
+      console.warn(
+        '[Terminal] ⚠️ Config Mismatch: Cluster is "mainnet-beta" but RPC URL looks like "devnet".'
+      );
+    }
+  }
+}
+

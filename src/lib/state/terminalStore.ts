@@ -6,6 +6,7 @@ import { FEE_TIERS } from '../../../shared/trading/fee/feeTiers';
 import { quoteService } from '@/lib/trading/quote/quoteService';
 import { swapService } from '@/lib/trading/swap/swapService';
 import { confirmSignature, extractTxError, sendSignedTransaction, simulateSignedTransaction } from '@/lib/solana/tx';
+import { isDev } from '@/lib/env';
 
 type WalletLike = {
   publicKey: PublicKey | null;
@@ -226,6 +227,9 @@ export const useTerminalStore = create<TerminalStoreState>((set, get) => ({
 
     const requestId = ++quoteRequestSeq;
     const paramsKey = buildParamsKey(params);
+    if (isDev()) {
+      console.debug('[Terminal] fetchQuote', params);
+    }
     set({ quote: { status: 'loading', paramsKey } });
 
     try {
@@ -259,6 +263,9 @@ export const useTerminalStore = create<TerminalStoreState>((set, get) => ({
     const stateAtStart = get();
     const params = requiredParams(stateAtStart);
     if (!params) throw new Error('Ungültige Eingaben (Pair/Amount)');
+    if (isDev()) {
+      console.debug('[Terminal] executeSwap', params);
+    }
     if (!wallet.publicKey) throw new Error('Wallet nicht verbunden');
     const paramsKey = buildParamsKey(params);
     const priorityFeeSnapshot = { ...stateAtStart.priorityFee };
@@ -325,8 +332,13 @@ export const useTerminalStore = create<TerminalStoreState>((set, get) => ({
         if (sim.err) {
           throw new Error(`Simulation fehlgeschlagen: ${JSON.stringify(sim.err)}\n${(sim.logs ?? []).slice(-10).join('\n')}`);
         }
-      } catch {
-        // ignore simulation failures (RPC may not support / rate-limited)
+      } catch (e: any) {
+        // If it was our logic error above, rethrow it so the user sees it.
+        if (e.message && e.message.startsWith('Simulation fehlgeschlagen')) {
+          throw e;
+        }
+        // Otherwise ignore underlying RPC errors (rate limits, simulation not supported)
+        console.warn('Simulation skipped due to RPC error', e);
       }
 
       const signed = await wallet.signTransaction(tx as any);
