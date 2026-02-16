@@ -1,9 +1,9 @@
 import { signJwt } from '../../_lib/auth/jwt';
 import jwt from 'jsonwebtoken';
 
-export const TEST_SECRET = 'test-secret-must-be-at-least-32-bytes-long';
-export const TEST_ISSUER = 'test-issuer';
-export const TEST_AUDIENCE = 'test-audience';
+export const TEST_SECRET = process.env.AUTH_JWT_SECRET || 'test-secret-must-be-at-least-32-bytes-long';
+export const TEST_ISSUER = process.env.AUTH_JWT_ISSUER || 'test-issuer';
+export const TEST_AUDIENCE = process.env.AUTH_JWT_AUDIENCE || 'test-audience';
 
 export function createValidToken(userId: string = 'test-user') {
   return signJwt({ sub: userId });
