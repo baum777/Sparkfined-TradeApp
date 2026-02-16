@@ -10,31 +10,37 @@ export function createValidToken(userId: string = 'test-user') {
 }
 
 export function createExpiredToken(userId: string = 'test-user') {
-  // signJwt default uses real sign, we can override expiresIn but it might not allow negative.
-  // We can manually sign here to be sure.
-  return jwt.sign({ sub: userId, iss: TEST_ISSUER, aud: TEST_AUDIENCE }, TEST_SECRET, {
+  return jwt.sign({ sub: userId }, TEST_SECRET, {
     algorithm: 'HS256',
+    issuer: TEST_ISSUER,
+    audience: TEST_AUDIENCE,
     expiresIn: '-1h',
   });
 }
 
 export function createTokenWithWrongIssuer(userId: string = 'test-user') {
-  return jwt.sign({ sub: userId, iss: 'wrong-issuer', aud: TEST_AUDIENCE }, TEST_SECRET, {
+  return jwt.sign({ sub: userId }, TEST_SECRET, {
     algorithm: 'HS256',
+    issuer: 'wrong-issuer',
+    audience: TEST_AUDIENCE,
     expiresIn: '1h',
   });
 }
 
 export function createTokenWithWrongAudience(userId: string = 'test-user') {
-  return jwt.sign({ sub: userId, iss: TEST_ISSUER, aud: 'wrong-audience' }, TEST_SECRET, {
+  return jwt.sign({ sub: userId }, TEST_SECRET, {
     algorithm: 'HS256',
+    issuer: TEST_ISSUER,
+    audience: 'wrong-audience',
     expiresIn: '1h',
   });
 }
 
 export function createTokenWithWrongSecret(userId: string = 'test-user') {
-  return jwt.sign({ sub: userId, iss: TEST_ISSUER, aud: TEST_AUDIENCE }, 'wrong-secret-must-be-at-least-32-bytes-long', {
+  return jwt.sign({ sub: userId }, 'wrong-secret-must-be-at-least-32-bytes-long', {
     algorithm: 'HS256',
+    issuer: TEST_ISSUER,
+    audience: TEST_AUDIENCE,
     expiresIn: '1h',
   });
 }
