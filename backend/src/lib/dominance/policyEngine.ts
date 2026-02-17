@@ -1,10 +1,12 @@
 import type {
   SparkfinedAutonomyTier,
+  SparkfinedContext,
   SparkfinedDiffStats,
   SparkfinedGoldenTasksPlan,
   SparkfinedPolicyDecision,
   SparkfinedRiskLevel,
 } from './contracts.js';
+import { appendTeamDecision } from './memoryArtifacts.js';
 
 export function requiresApproval(diff: SparkfinedDiffStats) {
   const reasons: SparkfinedPolicyDecision['approvalReasons'] = [];
@@ -125,9 +127,17 @@ export function planGoldenTasks(diff?: SparkfinedDiffStats): SparkfinedGoldenTas
   return { global, workstreamSubsets: { default: global } };
 }
 
+export function shouldEscalate(ctx: SparkfinedContext): { escalate: boolean; reason: string } {
+  if (ctx.risk.policy.requiresApproval === true) return { escalate: true, reason: 'approval_required' };
+  if (ctx.risk.level === 'critical') return { escalate: true, reason: 'risk_critical' };
+  if (ctx.trace.cost.costRegression?.status === 'block') return { escalate: true, reason: 'cost_regression_block' };
+  return { escalate: false, reason: '' };
+}
+
 export function decideSparkfinedPolicy(input: {
   enabled: boolean;
   diff?: SparkfinedDiffStats;
+  ctx?: SparkfinedContext;
 }): SparkfinedPolicyDecision {
   const risk = deriveRiskLevel(input.diff);
   const approval = input.diff
@@ -154,7 +164,7 @@ export function decideSparkfinedPolicy(input: {
 
   const goldenTaskPlan = !input.enabled ? { global: [], workstreamSubsets: {} } : planGoldenTasks(input.diff);
 
-  return {
+  const basePolicy: SparkfinedPolicyDecision = {
     enabled: input.enabled,
     risk,
     autonomyTier,
@@ -163,6 +173,39 @@ export function decideSparkfinedPolicy(input: {
     guardrails,
     maxAutoFixIterations,
     goldenTaskPlan,
+  };
+
+  if (!input.ctx) return basePolicy;
+
+  const escalationCtx: SparkfinedContext = {
+    ...input.ctx,
+    risk: {
+      ...input.ctx.risk,
+      level: risk,
+      policy: basePolicy,
+    },
+  };
+  const escalation = shouldEscalate(escalationCtx);
+  if (!escalation.escalate) return basePolicy;
+
+  void appendTeamDecision(input.ctx, {
+    kind: 'policy_decision',
+    reason: escalation.reason,
+    meta: {
+      risk,
+      requiresApproval: basePolicy.requiresApproval,
+      autonomyTier: basePolicy.autonomyTier,
+      costRegressionStatus: input.ctx.trace.cost.costRegression?.status,
+    },
+  });
+
+  return {
+    ...basePolicy,
+    autonomyTier: 4,
+    escalation: {
+      required: true,
+      reason: escalation.reason,
+    },
   };
 }
 

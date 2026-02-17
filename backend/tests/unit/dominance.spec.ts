@@ -1,8 +1,9 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { requiresApproval, deriveRiskLevel, planGoldenTasks } from '../../src/lib/dominance/policyEngine';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { requiresApproval, deriveRiskLevel, planGoldenTasks, shouldEscalate } from '../../src/lib/dominance/policyEngine';
 import { estimateCostUsd, computeCostRegression, getSparkfinedPricingTable } from '../../src/lib/dominance/costModel';
 import { buildSparkfinedContext, parseSparkfinedDominanceFlag } from '../../src/lib/dominance/context';
 import { appendTeamPlan, appendTeamProgress, appendTeamFinding, appendTeamDecision } from '../../src/lib/dominance/memoryArtifacts';
+import { structuredWorkflowLoop } from '../../src/lib/dominance/orchestrator';
 import { mkdtempSync, readFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
@@ -131,13 +132,62 @@ describe('Sparkfined Dominance Layer - unit', () => {
     });
     await appendTeamProgress(ctx, { workstreamId: 'ws1', state: 'started', note: 'hello\nworld' });
     await appendTeamFinding(ctx, { severity: 'info', area: 'a', finding: 'f', evidence: 'e' });
-    await appendTeamDecision(ctx, { decision: 'd', alternatives: 'a', rationale: 'r', risks: 'x', rollback: 'rb' });
+    await appendTeamDecision(ctx, {
+      kind: 'policy_decision',
+      reason: 'unit_test',
+      meta: { note: 'hello\nworld' },
+    });
 
     const plan = readFileSync(join(root, 'team_plan.md'), 'utf8');
     expect(plan).toContain('PLAN v1');
     const prog = readFileSync(join(root, 'team_progress.md'), 'utf8');
     expect(prog).toContain('PROGRESS v1');
     expect(prog).not.toContain('\nworld');
+    const decisions = readFileSync(join(root, 'team_decisions.md'), 'utf8');
+    expect(decisions).toContain('"kind":"policy_decision"');
+    expect(decisions).not.toContain('hello\nworld');
+  });
+
+  it('structuredWorkflowLoop returns skipped on flag-off and does not call deps', async () => {
+    const ctx = buildSparkfinedContext({
+      request: { objective: 'skip-test' },
+      enabled: false,
+      env: { ENABLE_SPARKFINED_DOMINANCE: 'false' },
+    });
+    const deps = {
+      implementScoped: vi.fn(async () => undefined),
+      runGoldenSubset: vi.fn(async () => ({ status: 'green' as const, failures: [] })),
+      validateBackcompat: vi.fn(async () => undefined),
+      applyTargetedFix: vi.fn(async () => undefined),
+    };
+
+    const result = await structuredWorkflowLoop(ctx, 'ws_skip', deps, [
+      { phase: 'context_summary', content: 'ctx summary' },
+      { phase: 'problem_definition', content: 'problem' },
+      { phase: 'structural_model', content: 'model' },
+      { phase: 'execution_plan', content: 'plan' },
+      { phase: 'deliverables', content: 'deliverables' },
+      { phase: 'risks', content: 'risks' },
+    ]);
+
+    expect(result).toEqual({ status: 'skipped', reason: 'flag_off' });
+    expect(deps.implementScoped).not.toHaveBeenCalled();
+    expect(deps.runGoldenSubset).not.toHaveBeenCalled();
+    expect(deps.validateBackcompat).not.toHaveBeenCalled();
+    expect(deps.applyTargetedFix).not.toHaveBeenCalled();
+  });
+
+  it('shouldEscalate detects cost regression block as first-class escalation reason', () => {
+    const ctx = buildSparkfinedContext({
+      request: { objective: 'escalation-test' },
+      enabled: true,
+      env: { ENABLE_SPARKFINED_DOMINANCE: 'true' },
+      diff: { filesChanged: 1, linesAdded: 1, linesDeleted: 0, touchedPaths: ['src/x.ts'] },
+    });
+    ctx.trace.cost.costRegression = { status: 'block' };
+
+    const escalation = shouldEscalate(ctx);
+    expect(escalation).toEqual({ escalate: true, reason: 'cost_regression_block' });
   });
 });
 
