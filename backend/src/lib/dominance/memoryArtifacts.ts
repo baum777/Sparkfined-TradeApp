@@ -17,6 +17,17 @@ function resolveMemoryPath(ctx: SparkfinedContext, key: keyof SparkfinedContext[
   return join(ctx.repo.rootPath, rel);
 }
 
+function sanitizeUnknown(value: unknown): unknown {
+  if (typeof value === 'string') return sanitizeValue(value);
+  if (Array.isArray(value)) return value.map(v => sanitizeUnknown(v));
+  if (value && typeof value === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value)) out[k] = sanitizeUnknown(v);
+    return out;
+  }
+  return value;
+}
+
 export async function appendTeamPlan(ctx: SparkfinedContext, input: {
   objective: string;
   workstreams: Array<{ id: string; name: string; scope: string; DoD: string; goldenSubset: string }>;
@@ -54,17 +65,21 @@ export async function appendTeamFinding(ctx: SparkfinedContext, input: {
 }
 
 export async function appendTeamDecision(ctx: SparkfinedContext, input: {
-  decision: string;
-  alternatives: string;
-  rationale: string;
-  risks: string;
-  rollback: string;
+  kind: 'workflow_phases' | 'escalation' | 'policy_decision';
+  workstreamId?: string;
+  phases?: Array<{ phase: string; content: string; artifacts?: string[] }>;
+  reason?: string;
+  meta?: Record<string, unknown>;
 }): Promise<void> {
-  const at = new Date().toISOString();
-  const line =
-    `[${at}] DECISION v1 | runId=${ctx.trace.ids.runId}` +
-    ` | decision="${sanitizeValue(input.decision)}" | alternatives="${sanitizeValue(input.alternatives)}"` +
-    ` | rationale="${sanitizeValue(input.rationale)}" | risks="${sanitizeValue(input.risks)}" | rollback="${sanitizeValue(input.rollback)}"`;
-  await appendLine(resolveMemoryPath(ctx, 'team_decisions_md_path'), line);
+  const record = sanitizeUnknown({
+    ts: new Date().toISOString(),
+    runId: ctx.trace.ids.runId,
+    kind: input.kind,
+    workstreamId: input.workstreamId,
+    phases: input.phases,
+    reason: input.reason,
+    meta: input.meta,
+  });
+  await appendLine(resolveMemoryPath(ctx, 'team_decisions_md_path'), JSON.stringify(record));
 }
 

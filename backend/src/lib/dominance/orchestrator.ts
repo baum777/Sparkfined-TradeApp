@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import type { SparkfinedContext, SparkfinedDiffStats } from './contracts.js';
 import { traceSpan } from './trace.js';
-import { appendTeamPlan, appendTeamProgress, appendTeamFinding } from './memoryArtifacts.js';
+import { appendTeamPlan, appendTeamProgress, appendTeamFinding, appendTeamDecision } from './memoryArtifacts.js';
 
 export interface SparkfinedWorkstream {
   id: string;
@@ -84,24 +84,57 @@ export interface GoldenRunResult {
   failures: Array<{ task: string; summary: string; logRef?: string }>;
 }
 
+export interface AutoCorrectDeps {
+  implementScoped: (ctx: SparkfinedContext, workstreamId: string) => Promise<void>;
+  runGoldenSubset: (ctx: SparkfinedContext, workstreamId: string) => Promise<GoldenRunResult>;
+  validateBackcompat: (ctx: SparkfinedContext, workstreamId: string) => Promise<void>;
+  applyTargetedFix: (
+    ctx: SparkfinedContext,
+    workstreamId: string,
+    failures: GoldenRunResult['failures']
+  ) => Promise<void>;
+}
+
 export type AutoCorrectLoopResult =
   | { status: 'green'; iterations: number }
   | { status: 'disabled'; reason: 'dominance_flag_off' }
+  | { status: 'skipped'; reason: 'flag_off' }
   | { status: 'needs_escalation'; reason: 'max_iterations_exceeded' | 'golden_flaky' };
+
+export type WorkflowPhaseId =
+  | 'context_summary'
+  | 'problem_definition'
+  | 'structural_model'
+  | 'execution_plan'
+  | 'deliverables'
+  | 'risks';
+
+export interface WorkflowPhase {
+  phase: WorkflowPhaseId;
+  content: string;
+  artifacts?: string[];
+}
+
+export async function structuredWorkflowLoop(
+  ctx0: SparkfinedContext,
+  workstreamId: string,
+  deps: AutoCorrectDeps,
+  phases: WorkflowPhase[]
+): Promise<AutoCorrectLoopResult> {
+  if (!ctx0.enabled) return { status: 'skipped', reason: 'flag_off' };
+
+  await appendTeamDecision(ctx0, {
+    kind: 'workflow_phases',
+    workstreamId,
+    phases: phases.map(p => ({ phase: p.phase, content: p.content, artifacts: p.artifacts })),
+  });
+  return autoCorrectLoop(ctx0, workstreamId, deps);
+}
 
 export async function autoCorrectLoop(
   ctx0: SparkfinedContext,
   workstreamId: string,
-  deps: {
-    implementScoped: (ctx: SparkfinedContext, workstreamId: string) => Promise<void>;
-    runGoldenSubset: (ctx: SparkfinedContext, workstreamId: string) => Promise<GoldenRunResult>;
-    validateBackcompat: (ctx: SparkfinedContext, workstreamId: string) => Promise<void>;
-    applyTargetedFix: (
-      ctx: SparkfinedContext,
-      workstreamId: string,
-      failures: GoldenRunResult['failures']
-    ) => Promise<void>;
-  }
+  deps: AutoCorrectDeps
 ): Promise<AutoCorrectLoopResult> {
   if (!ctx0.enabled) return { status: 'disabled', reason: 'dominance_flag_off' };
 
