@@ -887,3 +887,37 @@ Das Sparkfined Terminal ist eine **produktionsreife, hochperformante Trading-Sch
 
 **Version:** 1.0  
 **Letzte Aktualisierung:** 16. Februar 2026
+
+---
+
+## Launch Addendum (Conditional GO → GO)
+**Zweck:** Dieses Addendum dokumentiert die Bedingungen aus dem Pre-Launch Review, um einen sicheren Go-Live zu gewährleisten.
+
+### 1) TypeScript Safety Gate (Release-Bedingung)
+**Bedingung:** Vor Go-Live muss Type-Safety strikt durchgesetzt werden, da Wallet-/Provider-Typen direkt den Swap-Flow beeinflussen.
+
+- `tsconfig.json`: `"noImplicitAny": true`
+- Keine globalen `any`
+- `@ts-expect-error` nur mit kurzer Begründung (kein `@ts-ignore`)
+- `pnpm typecheck` muss **grün** sein
+
+**Warum:** Ein minor bump in `@solana/wallet-adapter-*` kann sonst stillschweigend `executeSwap()` destabilisieren.
+
+### 2) Discover Tokens Cache — Deployment Constraint (Pre-Launch)
+**Aktueller Stand:** `/api/discover/tokens` nutzt In-Memory Cache (TTL ~45s) + Rate-Limit (z. B. 120 req/60s).
+
+**Constraint:** **Pre-Launch Single-Instance Deployment** (keine horizontale Skalierung), damit alle Clients konsistente Token-Listen sehen.
+
+**Post-Launch Plan:** Um horizontale Skalierung zu erlauben, muss ein distributed cache genutzt werden:
+- Redis / Vercel KV / vergleichbare KV-Store Lösung (shared TTL cache)
+
+### 3) Minimal Monitoring (Go-Live Pflicht)
+**Ziel:** Performance-/Payload-Regressions früh erkennen.
+
+Für `/api/discover/tokens` tracken:
+- Response-Time (Target: p95 < 500ms)
+- Payload Size (Zielwert: ideal < 50KB, zuerst messen/monitoren)
+
+**Hinweis:** Eine einzelne strukturierte Log-Line pro Request reicht (nicht noisy).
+
+---
