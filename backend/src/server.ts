@@ -1,4 +1,4 @@
-import { createServer } from 'http';
+import { createServer, type Server as HTTPServer } from 'http';
 import { join } from 'path';
 import { loadEnv } from './config/env.js';
 import { getConfig } from './config/config.js';
@@ -11,6 +11,7 @@ import { taCacheCleanup } from './domain/ta/cacheRepo.js';
 import { createApp } from './app.js';
 import { logger } from './observability/logger.js';
 import { startScheduledJobs } from './jobs/scheduler.js';
+import { setupTerminalSocket } from './services/terminal.socket.js';
 
 /**
  * Backend Server Entry Point
@@ -35,7 +36,7 @@ const app = createApp();
 const scheduledJobs = startScheduledJobs();
 
 // Create HTTP server
-const server = createServer((req, res) => {
+const server: HTTPServer = createServer((req, res) => {
   // CORS headers for development
   if (config.isDev) {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -51,6 +52,9 @@ const server = createServer((req, res) => {
   
   app.handle(req, res);
 });
+
+// Setup Socket.io for terminal streaming
+setupTerminalSocket(server);
 
 // Cleanup jobs
 async function runCleanupJobs(): Promise<void> {

@@ -21,7 +21,9 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { AlertCircle, BarChart3, X, Eye, Play } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ResearchTerminal } from "@/components/Research/ResearchTerminal";
+import { AlertCircle, BarChart3, X, Eye, Play, Terminal as TerminalIcon } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { routeHelpers, isValidSolanaBase58 } from "@/routes/routes";
 import { parseResearchChartQuery } from "@/utils/researchQuery";
@@ -135,6 +137,8 @@ function ResearchWorkspace() {
   const [queryError, setQueryError] = useState<string | null>(null);
   const [toolsSheetOpen, setToolsSheetOpen] = useState(false);
   const [aiAnalyzerOpen, setAiAnalyzerOpen] = useState(false);
+  const [terminalOpen, setTerminalOpen] = useState(false);
+  const [researchQuery, setResearchQuery] = useState<string | undefined>(undefined);
   
   // Research tools store (indicators, drawings, Elliott Wave)
   const toolsStore = useResearchToolsStore();
@@ -389,6 +393,26 @@ function ResearchWorkspace() {
             Watchlist
           </Button>
           
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              if (selectedSymbol) {
+                setResearchQuery(`Research: ${selectedSymbol}`);
+                setTerminalOpen(true);
+              } else {
+                toast({
+                  title: "No symbol selected",
+                  description: "Please select a symbol to start research",
+                });
+              }
+            }}
+            data-testid="research-start-button"
+          >
+            <TerminalIcon className="h-4 w-4 mr-2" />
+            Start Research
+          </Button>
+          
           <MarketsBanner
             selectedMarket={selectedSymbol}
             onSelectMarket={handleSelectMarket}
@@ -477,6 +501,46 @@ function ResearchWorkspace() {
               oracleInsights={oracleInsights}
               journalNotes={journalEntries}
             />
+
+            {/* Research Terminal */}
+            <Collapsible open={terminalOpen} onOpenChange={setTerminalOpen}>
+              <div className="space-y-2">
+                <CollapsibleTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full justify-between"
+                    onClick={() => {
+                      if (!terminalOpen) {
+                        setTerminalOpen(true);
+                      }
+                    }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <TerminalIcon className="h-4 w-4" />
+                      <span>Terminal</span>
+                    </div>
+                    {terminalOpen ? (
+                      <ChevronDown className="h-4 w-4" />
+                    ) : (
+                      <ChevronUp className="h-4 w-4" />
+                    )}
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <ResearchTerminal
+                    query={researchQuery}
+                    onProcessStart={(processId) => {
+                      console.log('Process started:', processId);
+                    }}
+                    onProcessEnd={(processId) => {
+                      console.log('Process ended:', processId);
+                      setResearchQuery(undefined);
+                    }}
+                  />
+                </CollapsibleContent>
+              </div>
+            </Collapsible>
           </div>
 
           {/* Right panel - Tools/Indicators (desktop, lg+) */}

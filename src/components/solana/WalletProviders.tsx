@@ -14,6 +14,8 @@ export function WalletProviders({ children }: { children: ReactNode }) {
     () => [
       new PhantomWalletAdapter(),
       new SolflareWalletAdapter(),
+      // BackpackWalletAdapter not available in current package version
+      // new BackpackWalletAdapter(),
     ],
     []
   );

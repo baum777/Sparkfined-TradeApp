@@ -1,4 +1,7 @@
 import { test, expect } from '@playwright/test';
+import { stubApi } from '../fixtures';
+import { pageTestId, navTestId, PAGE_TESTIDS, NAV_TESTIDS } from '../utils/testids';
+import { clickNavAndWait, getUrlParts } from '../utils/nav';
 
 /**
  * Navigation Tests
@@ -9,93 +12,6 @@ import { test, expect } from '@playwright/test';
 // These specs are navigation/routing focused; disable video to avoid platform-specific artifact issues.
 test.use({ video: 'off' });
 
-function getUrlParts(raw: string) {
-  const url = new URL(raw);
-  return { pathname: url.pathname, searchParams: url.searchParams };
-}
-
-function stubFeedCard() {
-  return {
-    id: "stub-1",
-    kind: "oracle",
-    scope: "market",
-    title: "Stub",
-    why: "Stubbed for routing tests",
-    impact: "low",
-    asOf: new Date().toISOString(),
-    freshness: { status: "fresh", ageSec: 0 },
-    confidence: 0.5,
-  } as const;
-}
-
-async function stubApi(page: import('@playwright/test').Page) {
-  // IMPORTANT: Match only real API calls at /api/... (not source modules under /src/**/api/**)
-  await page.route(/^https?:\/\/[^/]+\/api\//, async (route) => {
-    const req = route.request();
-    const url = new URL(req.url());
-    const path = url.pathname;
-    const nowIso = new Date().toISOString();
-
-    if (path === '/api/journal' && req.method() === 'GET') {
-      return route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ data: { items: [] }, status: 200 }),
-      });
-    }
-
-    if (path === '/api/feed/pulse' && req.method() === 'GET') {
-      return route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          data: {
-            assetResolved: {
-              input: url.searchParams.get('asset') ?? 'SOL',
-              kind: 'ticker',
-              symbol: 'SOL',
-              address: 'So11111111111111111111111111111111111111112',
-            },
-            snapshot: null,
-            history: [],
-            updatedAt: nowIso,
-          },
-          status: 200,
-        }),
-      });
-    }
-    if (path.startsWith('/api/feed/') && req.method() === 'GET') {
-      return route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ data: [], status: 200 }),
-      });
-    }
-
-    if (path === '/api/signals/unified' && req.method() === 'GET') {
-      return route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ data: { user: [], market: [], asOf: nowIso }, status: 200 }),
-      });
-    }
-
-    if (path === '/api/market/daily-bias' && req.method() === 'GET') {
-      return route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ data: { card: stubFeedCard(), asOf: nowIso }, status: 200 }),
-      });
-    }
-
-    return route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ data: {}, status: 200 }),
-    });
-  });
-}
-
 test.describe('Navigation', () => {
   test.beforeEach(async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 720 });
@@ -105,9 +21,8 @@ test.describe('Navigation', () => {
 
   test('sollte Root auf /dashboard redirecten', async ({ page }) => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
-    await expect(page.locator('[data-testid="page-dashboard"]')).toBeVisible({ timeout: 15000 });
     await expect(page).toHaveURL(/\/dashboard/);
-    await expect(page.locator('[data-testid="page-dashboard"]')).toBeVisible();
+    await expect(page.locator(pageTestId('dashboard'))).toBeVisible({ timeout: 15000 });
   });
 
   test('sollte alle Primary Tabs navigierbar machen', async ({ page }) => {
@@ -118,35 +33,36 @@ test.describe('Navigation', () => {
     });
 
     const tabs = [
-      { tab: 'tab-dashboard', url: '/dashboard', page: 'page-dashboard' },
-      { tab: 'tab-journal', url: '/journal', page: 'page-journal' },
-      { tab: 'tab-research', url: '/research', page: 'page-research' },
-      { tab: 'tab-insights', url: '/insights', page: 'page-insights' },
-      { tab: 'tab-alerts', url: '/alerts', page: 'page-alerts' },
-      { tab: 'tab-settings', url: '/settings', page: 'page-settings' },
+      { tab: 'dashboard' as const, url: '/dashboard', page: 'dashboard' as const, expectedParams: {} },
+      { tab: 'journal' as const, url: '/journal', page: 'journal' as const, expectedParams: { view: 'pending' } },
+      { tab: 'research' as const, url: '/research', page: 'research' as const, expectedParams: { view: 'chart' } },
+      { tab: 'insights' as const, url: '/insights', page: 'insights' as const, expectedParams: {} },
+      { tab: 'alerts' as const, url: '/alerts', page: 'alerts' as const, expectedParams: {} },
+      { tab: 'settings' as const, url: '/settings', page: 'settings' as const, expectedParams: {} },
     ] as const;
 
     const sidebar = page.locator('aside');
 
     for (const t of tabs) {
-      await sidebar.locator(`[data-testid="${t.tab}"]`).click();
+      // Use standardized navigation pattern
+      await clickNavAndWait(
+        page,
+        sidebar.locator(navTestId(t.tab)),
+        new RegExp(`^.*${t.url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`),
+        t.page
+      );
 
-      // Canonical URLs may include query params; assert on pathname + required params where needed.
+      // Verify URL and query params
       const { pathname, searchParams } = getUrlParts(page.url());
       expect(pathname).toBe(t.url);
-      if (t.tab === "tab-research") {
-        expect(searchParams.get("view")).toBe("chart");
-      }
-      if (t.tab === "tab-journal") {
-        expect(searchParams.get("view")).toBe("pending");
+      for (const [key, value] of Object.entries(t.expectedParams)) {
+        expect(searchParams.get(key)).toBe(value);
       }
 
-      // Give UI a moment to render while keeping routing tests robust.
-      await page.waitForTimeout(250);
+      // Check for console errors
       if (errors.length > 0) {
         throw new Error(`Console/Page errors:\n- ${errors.join('\n- ')}`);
       }
-      await expect(page.locator(`[data-testid="${t.page}"]`)).toBeVisible({ timeout: 15000 });
     }
   });
 });
@@ -166,14 +82,15 @@ test.describe('Mobile Navigation', () => {
 
     // Bottom Nav sollte sichtbar sein (implizit durch Navigation-Items)
     const bottomNav = page.getByRole('navigation', { name: 'Main navigation' });
-    const dashboardNav = bottomNav.locator('[data-testid="tab-dashboard"]');
+    const dashboardNav = bottomNav.locator(navTestId('dashboard'));
     await expect(dashboardNav).toBeVisible();
   });
 
   test('sollte mobile Navigation funktionieren', async ({ page }) => {
     const bottomNav = page.getByRole('navigation', { name: 'Main navigation' });
+    
     // Navigiere zu Journal
-    await bottomNav.locator('[data-testid="tab-journal"]').click();
+    await clickNavAndWait(page, bottomNav.locator(navTestId('journal')), /\/journal/, 'journal');
     {
       const { pathname, searchParams } = getUrlParts(page.url());
       expect(pathname).toBe('/journal');
@@ -181,7 +98,7 @@ test.describe('Mobile Navigation', () => {
     }
 
     // Navigiere zu Research
-    await bottomNav.locator('[data-testid="tab-research"]').click();
+    await clickNavAndWait(page, bottomNav.locator(navTestId('research')), /\/research/, 'research');
     {
       const { pathname, searchParams } = getUrlParts(page.url());
       expect(pathname).toBe('/research');
@@ -189,8 +106,7 @@ test.describe('Mobile Navigation', () => {
     }
 
     // Navigiere zu Alerts
-    await bottomNav.locator('[data-testid="tab-alerts"]').click();
-    await expect(page).toHaveURL('/alerts');
+    await clickNavAndWait(page, bottomNav.locator(navTestId('alerts')), /\/alerts/, 'alerts');
   });
 });
 
@@ -204,18 +120,19 @@ test.describe('Active Route Highlighting', () => {
   test('sollte aktive Route highlighten', async ({ page }) => {
     // Navigiere zu Journal
     const sidebar = page.locator('aside');
-    await sidebar.locator('[data-testid="tab-journal"]').click();
+    await clickNavAndWait(page, sidebar.locator(navTestId('journal')), /\/journal/, 'journal');
     
     // Prüfe ob Journal-Link die active Klasse hat
-    const journalLink = sidebar.locator('[data-testid="tab-journal"]');
+    const journalLink = sidebar.locator(navTestId('journal'));
     await expect(journalLink).toHaveClass(/nav-item-active/);
   });
 
   test('sollte Dashboard als aktiv markieren bei /dashboard', async ({ page }) => {
     await stubApi(page);
     await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
+    await expect(page.locator(pageTestId('dashboard'))).toBeVisible();
 
-    const dashboardLink = page.locator('aside').locator('[data-testid="tab-dashboard"]');
+    const dashboardLink = page.locator('aside').locator(navTestId('dashboard'));
     await expect(dashboardLink).toHaveClass(/nav-item-active/);
   });
 });
@@ -257,7 +174,7 @@ test.describe('Responsive Sidebar', () => {
 test.describe('404', () => {
   test('unbekannte Route sollte NotFound anzeigen', async ({ page }) => {
     await stubApi(page);
-    await page.goto('/this-route-does-not-exist');
-    await expect(page.locator('[data-testid="page-notfound"]')).toBeVisible();
+    await page.goto('/this-route-does-not-exist', { waitUntil: 'domcontentloaded' });
+    await expect(page.locator(pageTestId('notFound'))).toBeVisible();
   });
 });

@@ -37,6 +37,10 @@ export function getSolanaRpcEndpoint(): string {
 
 let didLog = false;
 
+export function isDev(): boolean {
+  return (import.meta as any).env?.DEV === true;
+}
+
 export function logSolanaEnvOnce(): void {
   if (didLog) return;
   didLog = true;

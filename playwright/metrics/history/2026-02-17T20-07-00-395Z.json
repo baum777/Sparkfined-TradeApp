@@ -1,0 +1,15 @@
+{
+  "timestamp": "2026-02-17T20:07:00.374Z",
+  "gitSha": "dd52c77e061e9866030b3ea881ee95dbb9f4fb6a",
+  "gitBranch": "cursor/dominance-v1_1-governance-upgrade",
+  "projects": [],
+  "topSlowTests": [],
+  "totalDuration": 0,
+  "totalPassed": 0,
+  "totalFailed": 0,
+  "totalSkipped": 0,
+  "regressionFlags": {
+    "warnings": [],
+    "failures": []
+  }
+}

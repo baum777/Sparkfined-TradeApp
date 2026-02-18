@@ -1,9 +1,6 @@
 import { test, expect } from "@playwright/test";
-
-function getUrlParts(raw: string) {
-  const url = new URL(raw);
-  return { pathname: url.pathname, searchParams: url.searchParams };
-}
+import { pageTestId } from "../utils/testids";
+import { getUrlParts } from "../utils/nav";
 
 test.describe("Research chart search validation (strict + escape hatch)", () => {
   test("invalid input shows inline error and 'Search anyway' navigates with raw trimmed", async ({
@@ -28,7 +25,7 @@ test.describe("Research chart search validation (strict + escape hatch)", () => 
     expect(pathname).toBe("/research");
     expect(searchParams.get("view")).toBe("chart");
     expect(searchParams.get("q")).toBe("hello$");
-    await expect(page.locator('[data-testid="page-research"]')).toBeVisible();
+    await expect(page.locator(pageTestId('research'))).toBeVisible();
   });
 
   test("valid ticker normalizes to uppercase and navigates via canonical research route", async ({
@@ -44,7 +41,7 @@ test.describe("Research chart search validation (strict + escape hatch)", () => 
     expect(pathname).toBe("/research");
     expect(searchParams.get("view")).toBe("chart");
     expect(searchParams.get("q")).toBe("SOL");
-    await expect(page.locator('[data-testid="page-research"]')).toBeVisible();
+    await expect(page.locator(pageTestId('research'))).toBeVisible();
   });
 });
 

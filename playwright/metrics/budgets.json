@@ -1,0 +1,15 @@
+{
+  "test_max_ms": 45000,
+  "project_max_ms": {
+    "chromium": 120000,
+    "firefox": 300000,
+    "webkit": 150000
+  },
+  "top_n": 15,
+  "regression_thresholds": {
+    "warn_project_duration_pct": 25,
+    "fail_project_duration_pct": 80,
+    "warn_test_duration_pct": 50
+  }
+}
+
