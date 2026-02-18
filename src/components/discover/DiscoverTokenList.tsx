@@ -1,15 +1,36 @@
-import { useMemo } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { List, type RowComponentProps } from 'react-window';
 import { useDiscoverStore } from '@/lib/state/discoverStore';
-import { useDiscoverFilters } from '@/features/discover/ui/useDiscoverFilters';
-import { useDiscoverRanking } from '@/features/discover/ui/useDiscoverRanking';
-import { evaluateToken } from '@/features/discover/filter/engine';
-import type { Tab, Token, Decision } from '@/features/discover/filter/types';
+import type { Tab } from '@/features/discover/filter/types';
+import {
+  createDiscoverTokenSelector,
+  type EvaluatedTokenRow,
+} from '@/features/discover/ui/discoverSelectors';
 import { DiscoverTokenCard } from './DiscoverTokenCard';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface DiscoverTokenListProps {
   tab: Tab;
+}
+
+interface VirtualRowProps {
+  rows: EvaluatedTokenRow[];
+  tab: Tab;
+}
+
+const ROW_HEIGHT = 172;
+const LIST_OVERSCAN = 8;
+const LIST_FALLBACK_HEIGHT = 480;
+
+function VirtualTokenRow({ index, style, rows, tab }: RowComponentProps<VirtualRowProps>) {
+  const row = rows[index];
+  if (!row) return null;
+
+  return (
+    <div style={style} className="px-2 pb-2">
+      <DiscoverTokenCard token={row.token} decision={row.decision} tab={tab} />
+    </div>
+  );
 }
 
 export function DiscoverTokenList({ tab }: DiscoverTokenListProps) {
@@ -17,74 +38,58 @@ export function DiscoverTokenList({ tab }: DiscoverTokenListProps) {
   const filters = useDiscoverStore((s) => s.filters);
   const selectedPreset = useDiscoverStore((s) => s.selectedPreset[tab]);
   const isLoading = useDiscoverStore((s) => s.isLoading);
+  const listContainerRef = useRef<HTMLDivElement | null>(null);
+  const [listHeight, setListHeight] = useState<number>(0);
+  const selectDiscoverTokens = useMemo(() => createDiscoverTokenSelector(), []);
 
-  // Filter and evaluate tokens
+  // Evaluate tokens via memoized selector (kept outside render logic for stability/perf).
   const filteredTokens = useMemo(() => {
-    let filtered: Token[] = [...tokens];
-
-    // Apply search filter
-    if (filters.searchQuery.trim()) {
-      const query = filters.searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (token) =>
-          token.symbol.toLowerCase().includes(query) ||
-          token.name.toLowerCase().includes(query) ||
-          token.mint.toLowerCase().includes(query)
-      );
-    }
-
-    // Apply launchpad filter
-    if (filters.launchpads.length > 0) {
-      filtered = filtered.filter((token) =>
-        filters.launchpads.includes(token.launchpad)
-      );
-    }
-
-    // Apply min liquidity filter
-    if (filters.minLiquiditySol !== null && filters.minLiquiditySol > 0) {
-      filtered = filtered.filter(
-        (token) => (token.liquidity.liq_sol ?? 0) >= filters.minLiquiditySol!
-      );
-    }
-
-    // Evaluate each token with filter engine
-    const evaluated = filtered.map((token) => {
-      const decision = evaluateToken({
-        token,
-        tab,
-        preset: selectedPreset,
-      });
-      return { token, decision };
+    return selectDiscoverTokens({
+      tokens,
+      filters,
+      tab,
+      preset: selectedPreset,
     });
+  }, [selectDiscoverTokens, tokens, filters, tab, selectedPreset]);
 
-    // Filter out rejected tokens
-    const allowed = evaluated.filter((item) => item.decision.action !== 'reject');
+  const rowProps = useMemo<VirtualRowProps>(
+    () => ({
+      rows: filteredTokens,
+      tab,
+    }),
+    [filteredTokens, tab]
+  );
 
-    // Sort: allow > downrank, then by score (if ranked)
-    const sorted = allowed.sort((a, b) => {
-      if (a.decision.action !== b.decision.action) {
-        return a.decision.action === 'allow' ? -1 : 1;
-      }
-      if (tab === 'ranked') {
-        const scoreA = a.decision.score ?? 0;
-        const scoreB = b.decision.score ?? 0;
-        return scoreB - scoreA;
-      }
-      return 0;
-    });
+  useLayoutEffect(() => {
+    const element = listContainerRef.current;
+    if (!element) return;
 
-    return sorted;
-  }, [tokens, filters, tab, selectedPreset]);
+    const updateHeight = () => {
+      const nextHeight = element.clientHeight;
+      setListHeight(nextHeight > 0 ? nextHeight : LIST_FALLBACK_HEIGHT);
+    };
+
+    updateHeight();
+
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', updateHeight);
+      return () => window.removeEventListener('resize', updateHeight);
+    }
+
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
 
   if (isLoading) {
     return (
-      <ScrollArea className="h-full">
+      <div className="h-full overflow-hidden">
         <div className="space-y-2 p-2">
           {Array.from({ length: 10 }).map((_, i) => (
             <Skeleton key={i} className="h-24 w-full" />
           ))}
         </div>
-      </ScrollArea>
+      </div>
     );
   }
 
@@ -100,18 +105,17 @@ export function DiscoverTokenList({ tab }: DiscoverTokenListProps) {
   }
 
   return (
-    <ScrollArea className="h-full">
-      <div className="space-y-2 p-2">
-        {filteredTokens.map((item) => (
-          <DiscoverTokenCard
-            key={item.token.mint}
-            token={item.token}
-            decision={item.decision}
-            tab={tab}
-          />
-        ))}
-      </div>
-    </ScrollArea>
+    <div ref={listContainerRef} className="h-full">
+      <List
+        rowComponent={VirtualTokenRow}
+        rowCount={filteredTokens.length}
+        rowHeight={ROW_HEIGHT}
+        rowProps={rowProps}
+        overscanCount={LIST_OVERSCAN}
+        defaultHeight={LIST_FALLBACK_HEIGHT}
+        style={{ height: listHeight || LIST_FALLBACK_HEIGHT, width: '100%' }}
+      />
+    </div>
   );
 }
 

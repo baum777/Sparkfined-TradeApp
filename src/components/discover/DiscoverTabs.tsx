@@ -1,14 +1,24 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useDiscoverStore } from '@/lib/state/discoverStore';
+import type { Tab } from '@/features/discover/filter/types';
 import { DiscoverFiltersPanel } from './DiscoverFiltersPanel';
 import { DiscoverTokenList } from './DiscoverTokenList';
 
 export function DiscoverTabs() {
   const activeTab = useDiscoverStore((s) => s.activeTab);
   const setActiveTab = useDiscoverStore((s) => s.setActiveTab);
+  const tabs: Tab[] = ['not_bonded', 'bonded', 'ranked'];
 
   return (
-    <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)} className="flex h-full flex-col">
+    <Tabs
+      value={activeTab}
+      onValueChange={(value) => {
+        if (tabs.includes(value as Tab)) {
+          setActiveTab(value as Tab);
+        }
+      }}
+      className="flex h-full flex-col"
+    >
       <div className="border-b px-4">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="not_bonded">Not Bonded</TabsTrigger>

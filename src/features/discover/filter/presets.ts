@@ -1,6 +1,19 @@
 import type { Token, Tab, PresetId, Decision, Reason } from './types';
 import { filterSpec } from './spec';
 
+type PresetRequirements = {
+  liq_sol_min?: number;
+  top1_pct_max?: number;
+  top10_pct_max?: number;
+  deployer_pct_max?: number;
+  tx_per_min_5m_min?: number;
+  sells_5m_min?: number;
+  holder_count_min?: number;
+  lp_policy?: {
+    accept_if?: ReadonlyArray<(token: Token) => boolean>;
+  };
+};
+
 /**
  * Wende Preset-Regeln an
  * Merge-Strategie: fixed bleibt aktiv; preset ergänzt/verschärft
@@ -22,7 +35,7 @@ export function applyPreset(
   const reasons: Reason[] = [...currentDecision.reasons];
 
   // Hard Reject Rules aus Preset
-  if (preset.hard_reject) {
+  if ('hard_reject' in preset && preset.hard_reject) {
     for (const rule of preset.hard_reject) {
       if (rule.if(token)) {
         return {
@@ -36,7 +49,12 @@ export function applyPreset(
 
   // Downrank Rules aus Preset (vor Requirements, damit sie nicht durch Requirements überschrieben werden)
   let hasDownrankReason = false;
-  const downrankRules = preset.downrank || (preset as any).ranking?.downrank;
+  const downrankRules =
+    'downrank' in preset
+      ? preset.downrank
+      : 'ranking' in preset
+        ? preset.ranking?.downrank
+        : undefined;
   if (downrankRules && currentDecision.action === 'allow') {
     for (const rule of downrankRules) {
       if (rule.if(token)) {
@@ -53,8 +71,8 @@ export function applyPreset(
 
   // Requirements aus Preset (verschärfen fixed thresholds)
   // Wenn bereits eine Downrank-Regel angewendet wurde, sollten Requirements nicht mehr rejected werden
-  if (preset.requirements) {
-    const req = preset.requirements;
+  if ('requirements' in preset && preset.requirements) {
+    const req = preset.requirements as PresetRequirements;
 
     // Liquidity
     if (req.liq_sol_min != null) {

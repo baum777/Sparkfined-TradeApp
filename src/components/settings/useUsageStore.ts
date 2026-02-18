@@ -137,15 +137,18 @@ export function useUsageStore(maxEvents = 200) {
   }, []);
 
   // Computed stats
-  const totalCallsToday = Object.values(usage.counters.callsToday).reduce((acc, providerCalls) => {
-    return acc + Object.values(providerCalls || {}).reduce((sum, count) => sum + (count || 0), 0);
+  const totalCallsToday = Object.values(usage.counters.callsToday).reduce<number>((acc, providerCalls) => {
+    return acc + Object.values(providerCalls || {}).reduce<number>((sum, count) => sum + (count ?? 0), 0);
   }, 0);
 
-  const totalErrorsToday = Object.values(usage.counters.errorsToday).reduce((acc, providerErrors) => {
-    return acc + Object.values(providerErrors || {}).reduce((sum, count) => sum + (count || 0), 0);
+  const totalErrorsToday = Object.values(usage.counters.errorsToday).reduce<number>((acc, providerErrors) => {
+    return acc + Object.values(providerErrors || {}).reduce<number>((sum, count) => sum + (count ?? 0), 0);
   }, 0);
 
-  const totalCacheHits = Object.values(usage.counters.cacheHitsToday).reduce((sum, count) => sum + (count || 0), 0);
+  const totalCacheHits = Object.values(usage.counters.cacheHitsToday).reduce<number>(
+    (sum, count) => sum + (count ?? 0),
+    0
+  );
 
   const overallAvgLatency = (() => {
     let total = 0;

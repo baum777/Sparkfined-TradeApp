@@ -3,8 +3,17 @@ import { getCommitment, getRpcEndpoint } from '@/lib/solana/connection';
 
 export type SolanaCluster = 'devnet' | 'mainnet-beta';
 
+interface ImportMetaEnvLike {
+  DEV?: boolean;
+  [key: string]: string | boolean | undefined;
+}
+
+function getImportMetaEnv(): ImportMetaEnvLike {
+  return (import.meta as ImportMeta & { env?: ImportMetaEnvLike }).env ?? {};
+}
+
 function getEnvString(key: string): string | undefined {
-  const env = (import.meta as any).env as Record<string, string | boolean | undefined> | undefined;
+  const env = getImportMetaEnv();
   const v = env?.[key];
   return typeof v === 'string' ? v : undefined;
 }
@@ -51,5 +60,9 @@ export function logSolanaEnvOnce(): void {
     commitment: getSolanaCommitment(),
     rpcSource: explicit ? 'explicit' : 'cluster-fallback',
   });
+}
+
+export function isDev(): boolean {
+  return getImportMetaEnv().DEV === true;
 }
 

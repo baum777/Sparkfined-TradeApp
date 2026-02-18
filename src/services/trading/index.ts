@@ -1,1 +1,1 @@
-export * from './journal.service';
+export {};

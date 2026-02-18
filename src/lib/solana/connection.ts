@@ -5,10 +5,19 @@ let cachedEndpoint: string | null = null;
 
 type Cluster = 'devnet' | 'mainnet-beta';
 
+interface ImportMetaEnvLike {
+  DEV?: boolean;
+  [key: string]: string | boolean | undefined;
+}
+
+function getImportMetaEnv(): ImportMetaEnvLike {
+  return (import.meta as ImportMeta & { env?: ImportMetaEnvLike }).env ?? {};
+}
+
 function getEnvString(key: string): string | undefined {
   // Vite only exposes VITE_* by default. We still read NEXT_PUBLIC_* as a best-effort
   // for repo parity with Next.js configs (will be undefined unless explicitly exposed).
-  const env = (import.meta as any).env as Record<string, string | boolean | undefined> | undefined;
+  const env = getImportMetaEnv();
   const v = env?.[key];
   return typeof v === 'string' ? v : undefined;
 }
@@ -46,7 +55,7 @@ export function getConnection(): Connection {
 export function validateSolanaEnv(): void {
   const cluster = getCluster();
   const endpoint = getRpcEndpoint();
-  const isDev = (import.meta as any).env?.DEV === true;
+  const isDev = getImportMetaEnv().DEV === true;
 
   if (isDev) {
     if (cluster === 'devnet' && endpoint.includes('mainnet')) {

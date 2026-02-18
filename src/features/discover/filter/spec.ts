@@ -1,4 +1,4 @@
-import type { Tab, PresetId } from './types';
+import type { Tab, PresetId, Token } from './types';
 
 /**
  * Sparkfined Filter Spec v1
@@ -11,15 +11,15 @@ export const filterSpec = {
         require_launchpad_filter: true,
         hard_reject: [
           {
-            if: (token: any) => token.authorities.freeze_authority_revoked === false,
+            if: (token: Token) => token.authorities.freeze_authority_revoked === false,
             reason: { code: 'freeze_authority_present', message: 'Freeze Authority aktiv' },
           },
           {
-            if: (token: any) => token.authorities.mint_authority_revoked === false,
+            if: (token: Token) => token.authorities.mint_authority_revoked === false,
             reason: { code: 'mint_authority_present', message: 'Mint Authority aktiv' },
           },
           {
-            if: (token: any) => token.safety.jupiter_shield_level === 'critical',
+            if: (token: Token) => token.safety.jupiter_shield_level === 'critical',
             reason: { code: 'jupiter_shield_critical', message: 'Jupiter Shield: Critical' },
           },
         ],
@@ -58,15 +58,15 @@ export const filterSpec = {
       fixed: {
         hard_reject: [
           {
-            if: (token: any) => token.authorities.freeze_authority_revoked === false,
+            if: (token: Token) => token.authorities.freeze_authority_revoked === false,
             reason: { code: 'freeze_authority_present', message: 'Freeze Authority aktiv' },
           },
           {
-            if: (token: any) => token.authorities.mint_authority_revoked === false,
+            if: (token: Token) => token.authorities.mint_authority_revoked === false,
             reason: { code: 'mint_authority_present', message: 'Mint Authority aktiv' },
           },
           {
-            if: (token: any) => token.safety.jupiter_shield_level === 'critical',
+            if: (token: Token) => token.safety.jupiter_shield_level === 'critical',
             reason: { code: 'jupiter_shield_critical', message: 'Jupiter Shield: Critical' },
           },
         ],
@@ -76,8 +76,8 @@ export const filterSpec = {
         lp_policy: {
           require_lp_proof: true,
           accept_if: [
-            (token: any) => token.liquidity.lp_burned === true,
-            (token: any) =>
+            (token: Token) => token.liquidity.lp_burned === true,
+            (token: Token) =>
               (token.liquidity.lp_locked_pct ?? 0) >= 80 &&
               (token.liquidity.lp_lock_days ?? 0) >= 30,
           ],
@@ -120,14 +120,14 @@ export const filterSpec = {
         },
         downrank_rules: [
           {
-            if: (token: any) =>
+            if: (token: Token) =>
               token.social.x_velocity_15m != null &&
               token.social.x_velocity_15m > 0 &&
               (token.social.x_account_quality_score ?? 0) < 40,
             reason: { code: 'low_quality_social', message: 'Social Signal: low-quality' },
           },
           {
-            if: (token: any) =>
+            if: (token: Token) =>
               token.manipulation.bundle_score != null && token.manipulation.bundle_score > 35,
             reason: { code: 'bundle_risk', message: 'Bundler-Risiko erhöht' },
           },
@@ -153,15 +153,15 @@ export const filterSpec = {
       apply_to: ['bonded', 'ranked'] as Tab[],
       hard_reject: [
         {
-          if: (token: any) => token.authorities.freeze_authority_revoked === false,
+          if: (token: Token) => token.authorities.freeze_authority_revoked === false,
           reason: { code: 'freeze_authority_present', message: 'Freeze Authority aktiv' },
         },
         {
-          if: (token: any) => token.authorities.mint_authority_revoked === false,
+          if: (token: Token) => token.authorities.mint_authority_revoked === false,
           reason: { code: 'mint_authority_present', message: 'Mint Authority aktiv' },
         },
         {
-          if: (token: any) => token.safety.jupiter_shield_level === 'critical',
+          if: (token: Token) => token.safety.jupiter_shield_level === 'critical',
           reason: { code: 'jupiter_shield_critical', message: 'Jupiter Shield: Critical' },
         },
       ],
@@ -171,8 +171,8 @@ export const filterSpec = {
         top10_pct_max: 30,
         lp_policy: {
           accept_if: [
-            (token: any) => token.liquidity.lp_burned === true,
-            (token: any) =>
+            (token: Token) => token.liquidity.lp_burned === true,
+            (token: Token) =>
               (token.liquidity.lp_locked_pct ?? 0) >= 80 &&
               (token.liquidity.lp_lock_days ?? 0) >= 30,
           ],
@@ -183,18 +183,18 @@ export const filterSpec = {
       apply_to: ['not_bonded'] as Tab[],
       hard_reject: [
         {
-          if: (token: any) =>
+          if: (token: Token) =>
             token.manipulation.bundle_score != null && token.manipulation.bundle_score > 35,
           reason: { code: 'bundle_score_high', message: 'Bundler-Score zu hoch' },
         },
         {
-          if: (token: any) =>
+          if: (token: Token) =>
             token.manipulation.identical_buy_cluster_score != null &&
             token.manipulation.identical_buy_cluster_score > 35,
           reason: { code: 'identical_buy_cluster_high', message: 'Identical Buy Cluster zu hoch' },
         },
         {
-          if: (token: any) =>
+          if: (token: Token) =>
             token.manipulation.same_funder_cluster_score != null &&
             token.manipulation.same_funder_cluster_score > 40,
           reason: { code: 'same_funder_cluster_high', message: 'Same Funder Cluster zu hoch' },
@@ -217,11 +217,11 @@ export const filterSpec = {
       },
       downrank: [
         {
-          if: (token: any) => token.trading.buys_5m > 30 && token.trading.sells_5m === 0,
+          if: (token: Token) => token.trading.buys_5m > 30 && token.trading.sells_5m === 0,
           reason: { code: 'one_sided_flow', message: 'Nur Buys – ungesund' },
         },
         {
-          if: (token: any) =>
+          if: (token: Token) =>
             token.manipulation.wash_trade_score != null && token.manipulation.wash_trade_score > 45,
           reason: { code: 'wash_trade_risk', message: 'Wash-Trading Muster' },
         },
@@ -237,12 +237,12 @@ export const filterSpec = {
           required: true,
           reject_if: [
             // Stub: würde externe Datenquelle benötigen
-            // (token: any) => token.deployer_history?.prior_rugs_count >= 1,
-            // (token: any) => token.deployer_history?.prior_dead_launches_count >= 5,
+            // (token: Token) => token.deployer_history?.prior_rugs_count >= 1,
+            // (token: Token) => token.deployer_history?.prior_dead_launches_count >= 5,
           ],
           boost_if: [
             // Stub: würde externe Datenquelle benötigen
-            // (token: any) => token.deployer_history?.prior_successful_launches_count >= 2,
+            // (token: Token) => token.deployer_history?.prior_successful_launches_count >= 2,
           ],
         },
       },
@@ -259,18 +259,18 @@ export const filterSpec = {
       ranking: {
         oracle_confidence_min: 0.55,
         sentiment_confidence_boost: {
-          if: (token: any) => (token.oracle.confidence ?? 0) >= 0.75,
+          if: (token: Token) => (token.oracle.confidence ?? 0) >= 0.75,
           multiplier: 1.1,
         },
         downrank: [
           {
-            if: (token: any) =>
+            if: (token: Token) =>
               token.social.x_account_quality_score != null &&
               token.social.x_account_quality_score < 40,
             reason: { code: 'social_low_quality', message: 'X Signal low-quality' },
           },
           {
-            if: (token: any) =>
+            if: (token: Token) =>
               token.manipulation.bundle_score != null && token.manipulation.bundle_score > 35,
             reason: { code: 'bundle_risk', message: 'Bundler-Risiko' },
           },
