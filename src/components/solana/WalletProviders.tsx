@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
-import { BackpackWalletAdapter, PhantomWalletAdapter, SolflareWalletAdapter } from '@solana/wallet-adapter-wallets';
+import { PhantomWalletAdapter, SolflareWalletAdapter } from '@solana/wallet-adapter-wallets';
 import { getCommitment, getRpcEndpoint, validateSolanaEnv } from '@/lib/solana/connection';
 import { logSolanaEnvOnce } from '@/lib/env';
 
@@ -14,7 +14,8 @@ export function WalletProviders({ children }: { children: React.ReactNode }) {
     () => [
       new PhantomWalletAdapter(),
       new SolflareWalletAdapter(),
-      new BackpackWalletAdapter(),
+      // BackpackWalletAdapter not available in current package version
+      // new BackpackWalletAdapter(),
     ],
     []
   );

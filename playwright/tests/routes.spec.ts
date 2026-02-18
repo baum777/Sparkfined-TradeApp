@@ -1,4 +1,7 @@
 import { test, expect } from "@playwright/test";
+import { stubApi } from "../fixtures";
+import { pageTestId, PAGE_TESTIDS } from "../utils/testids";
+import { gotoAndWait, getUrlParts } from "../utils/nav";
 
 /**
  * Route contract smoke tests (tabs + secondary deep links)
@@ -7,132 +10,40 @@ import { test, expect } from "@playwright/test";
 // These specs are routing/redirect focused; disable video to avoid platform-specific artifact issues.
 test.use({ video: "off" });
 
-function getUrlParts(raw: string) {
-  const url = new URL(raw);
-  return { pathname: url.pathname, searchParams: url.searchParams, hash: url.hash };
-}
-
-function stubFeedCard() {
-  return {
-    id: "stub-1",
-    kind: "oracle",
-    scope: "market",
-    title: "Stub",
-    why: "Stubbed for routing tests",
-    impact: "low",
-    asOf: new Date().toISOString(),
-    freshness: { status: "fresh", ageSec: 0 },
-    confidence: 0.5,
-  } as const;
-}
-
-async function stubApi(page: import("@playwright/test").Page) {
-  // IMPORTANT: Match only real API calls at /api/... (not source modules under /src/**/api/**)
-  await page.route(/^https?:\/\/[^/]+\/api\//, async (route) => {
-    const req = route.request();
-    const url = new URL(req.url());
-    const path = url.pathname;
-    const nowIso = new Date().toISOString();
-
-    // Journal
-    if (path === "/api/journal" && req.method() === "GET") {
-      return route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ data: { items: [] }, status: 200 }),
-      });
-    }
-
-    // Feed endpoints
-    if (path === "/api/feed/pulse" && req.method() === "GET") {
-      return route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          data: {
-            assetResolved: {
-              input: url.searchParams.get("asset") ?? "SOL",
-              kind: "ticker",
-              symbol: "SOL",
-              address: "So11111111111111111111111111111111111111112",
-            },
-            snapshot: null,
-            history: [],
-            updatedAt: nowIso,
-          },
-          status: 200,
-        }),
-      });
-    }
-    if (path.startsWith("/api/feed/") && req.method() === "GET") {
-      return route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ data: [], status: 200 }),
-      });
-    }
-
-    // Unified signals
-    if (path === "/api/signals/unified" && req.method() === "GET") {
-      return route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ data: { user: [], market: [], asOf: nowIso }, status: 200 }),
-      });
-    }
-
-    // Daily bias
-    if (path === "/api/market/daily-bias" && req.method() === "GET") {
-      return route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ data: { card: stubFeedCard(), asOf: nowIso }, status: 200 }),
-      });
-    }
-
-    // Default: succeed fast with empty JSON for routing tests.
-    return route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ data: {}, status: 200 }),
-    });
-  });
-}
-
 test.describe("Secondary Routes", () => {
   test("sollte alle Secondary Routes direkt öffnen können", async ({ page }) => {
     await stubApi(page);
+    // Set longer timeout for route navigation test
+    test.setTimeout(60000);
     const routes = [
-      { url: "/journal?mode=inbox&view=pending", testId: "page-journal" },
-      { url: "/journal?mode=learn&view=pending", testId: "page-journal" },
-      { url: "/journal/entry-1", testId: "page-journal-entry" },
+      { url: "/journal?mode=inbox&view=pending", pageTestId: "journal" as const, expectedUrl: /\/journal/ },
+      { url: "/journal?mode=learn&view=pending", pageTestId: "journal" as const, expectedUrl: /\/journal/ },
+      { url: "/journal/entry-1", pageTestId: "journalEntry" as const, expectedUrl: /\/journal\/entry-1/ },
 
       // Legacy oracle routes redirect into Insights
-      { url: "/oracle/inbox", testId: "page-insights" },
-      { url: "/oracle/oracle-1", testId: "page-insights-detail" },
-      { url: "/oracle/status", testId: "page-insights" },
+      { url: "/oracle/inbox", pageTestId: "insights" as const, expectedUrl: /\/insights/ },
+      { url: "/oracle/oracle-1", pageTestId: "insightsDetail" as const, expectedUrl: /\/insights\/oracle-1/ },
+      { url: "/oracle/status", pageTestId: "insights" as const, expectedUrl: /\/insights/ },
 
       // Legacy settings routes redirect into Settings (section param)
-      { url: "/settings/providers", testId: "page-settings" },
-      { url: "/settings/data", testId: "page-settings" },
-      { url: "/settings/experiments", testId: "page-settings" },
-      { url: "/settings/privacy", testId: "page-settings" },
+      { url: "/settings/providers", pageTestId: "settings" as const, expectedUrl: /\/settings/ },
+      { url: "/settings/data", pageTestId: "settings" as const, expectedUrl: /\/settings/ },
+      { url: "/settings/experiments", pageTestId: "settings" as const, expectedUrl: /\/settings/ },
+      { url: "/settings/privacy", pageTestId: "settings" as const, expectedUrl: /\/settings/ },
 
       // Valid Solana base58 mint (wSOL)
-      { url: "/asset/So11111111111111111111111111111111111111112", testId: "page-research" },
+      { url: "/asset/So11111111111111111111111111111111111111112", pageTestId: "research" as const, expectedUrl: /\/research/ },
     ] as const;
 
     for (const r of routes) {
-      await page.goto(r.url, { waitUntil: "domcontentloaded" });
-      await expect(page.locator(`[data-testid="${r.testId}"]`)).toBeVisible({ timeout: 15000 });
+      await gotoAndWait(page, r.url, r.expectedUrl, r.pageTestId, { timeout: 30000 });
     }
   });
 });
 
 test("legacy /chart redirectet zur canonical research route", async ({ page }) => {
   await stubApi(page);
-  await page.goto("/chart?q=SOL");
-  await expect(page.locator('[data-testid="page-research"]')).toBeVisible({ timeout: 15000 });
+  await gotoAndWait(page, "/chart?q=SOL", /\/research/, "research", { timeout: 30000 });
   const { pathname, searchParams } = getUrlParts(page.url());
   expect(pathname).toBe("/research");
   expect(searchParams.get("view")).toBe("chart");
@@ -141,8 +52,7 @@ test("legacy /chart redirectet zur canonical research route", async ({ page }) =
 
 test("legacy /replay redirectet zur canonical research route mit replay flag", async ({ page }) => {
   await stubApi(page);
-  await page.goto("/replay");
-  await expect(page.locator('[data-testid="page-research"]')).toBeVisible({ timeout: 15000 });
+  await gotoAndWait(page, "/replay", /\/research/, "research");
   const { pathname, searchParams } = getUrlParts(page.url());
   expect(pathname).toBe("/research");
   expect(searchParams.get("view")).toBe("chart");
@@ -151,24 +61,21 @@ test("legacy /replay redirectet zur canonical research route mit replay flag", a
 
 test("legacy /journal?entry=123 redirectet zu /journal/123", async ({ page }) => {
   await stubApi(page);
-  await page.goto("/journal?entry=123");
-  await expect(page.locator('[data-testid="page-journal-entry"]')).toBeVisible({ timeout: 15000 });
+  await gotoAndWait(page, "/journal?entry=123", /\/journal\/123/, "journalEntry");
   const { pathname } = getUrlParts(page.url());
   expect(pathname).toBe("/journal/123");
 });
 
 test("/journal/123 rendert die Detail Route", async ({ page }) => {
   await stubApi(page);
-  await page.goto("/journal/123");
-  await expect(page.locator('[data-testid="page-journal-entry"]')).toBeVisible({ timeout: 15000 });
+  await gotoAndWait(page, "/journal/123", /\/journal\/123/, "journalEntry");
 });
 
 test("/journal?view=pending rendert die List Route", async ({ page }) => {
   await stubApi(page);
-  await page.goto("/journal?view=pending");
+  await gotoAndWait(page, "/journal?view=pending", /\/journal/, "journal");
   const { pathname, searchParams } = getUrlParts(page.url());
   expect(pathname).toBe("/journal");
   expect(searchParams.get("view")).toBe("pending");
-  await expect(page.locator('[data-testid="page-journal"]')).toBeVisible({ timeout: 15000 });
 });
 

@@ -28,13 +28,16 @@ export function getSolanaRpcEndpoint(): string {
 
 let didLog = false;
 
+export function isDev(): boolean {
+  return (import.meta as any).env?.DEV === true;
+}
+
 export function logSolanaEnvOnce(): void {
   if (didLog) return;
   didLog = true;
 
   // Only in dev
-  const isDev = (import.meta as any).env?.DEV === true;
-  if (!isDev) return;
+  if (!isDev()) return;
 
   // Best-effort detection of whether endpoint is explicit or derived
   const explicit =

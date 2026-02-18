@@ -1,4 +1,6 @@
 import { test, expect } from '@playwright/test';
+import { navTestId } from '../utils/testids';
+import { clickNavAndWait } from '../utils/nav';
 
 /**
  * Journal Tests
@@ -39,13 +41,13 @@ test.describe('Journal Page', () => {
 test.describe('Journal Navigation', () => {
   test('sollte von Dashboard zu Journal navigieren können', async ({ page }) => {
     await page.goto('/');
-    await page.click('[data-testid="tab-journal"]');
-    await expect(page).toHaveURL(/\/journal/);
+    const sidebar = page.locator('aside');
+    await clickNavAndWait(page, sidebar.locator(navTestId('journal')), /\/journal/, 'journal');
   });
 
   test('sollte aktiven Nav-Status zeigen', async ({ page }) => {
     await page.goto('/journal');
-    const journalLink = page.locator('aside').locator('[data-testid="tab-journal"]');
+    const journalLink = page.locator('aside').locator(navTestId('journal'));
     await expect(journalLink).toHaveClass(/nav-item-active/);
   });
 });

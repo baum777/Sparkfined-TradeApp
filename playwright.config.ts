@@ -26,12 +26,15 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   
   /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 1 : undefined,
+  /* Firefox needs workers=1 for stability, other browsers can use 2 */
+  workers: process.env.CI 
+    ? (process.env.PLAYWRIGHT_BROWSER === 'firefox' ? 1 : 2)
+    : undefined,
   
   /* Reporter to use. */
   reporter: [
     ['html'],
-    ['json', { outputFile: 'test-results/results.json' }],
+    ['json', { outputFile: 'playwright-report/results.json' }],
     ['list'],
   ],
   
