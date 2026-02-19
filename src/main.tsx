@@ -6,6 +6,10 @@ import { ToastAction } from "@/components/ui/toast";
 import { toast } from "@/hooks/use-toast";
 import { registerSW } from "virtual:pwa-register";
 import { WalletProviders } from "@/components/solana/WalletProviders";
+import { initSentry } from "@/lib/monitoring/sentry";
+
+// Initialize Sentry early (before app renders)
+initSentry();
 
 if (import.meta.env.PROD) {
   const updateSW = registerSW({

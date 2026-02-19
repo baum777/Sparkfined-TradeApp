@@ -53,3 +53,16 @@ export function logSolanaEnvOnce(): void {
   });
 }
 
+/**
+ * Feature flag: Enable embedded terminal in Research tab
+ * 
+ * When false: Research tab remains unchanged, no terminal integration
+ * When true: Terminal appears as collapsible drawer in Research tab
+ * 
+ * Default: false (disabled by default for safe rollout)
+ */
+export function isResearchEmbedTerminalEnabled(): boolean {
+  const raw = getEnvString('VITE_RESEARCH_EMBED_TERMINAL');
+  return raw === 'true';
+}
+

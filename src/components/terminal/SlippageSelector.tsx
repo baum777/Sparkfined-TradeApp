@@ -7,6 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { AlertTriangle } from 'lucide-react';
 
 const SLIPPAGE_OPTIONS = [
   { label: '0.1%', value: 10 },
@@ -50,6 +51,19 @@ export function SlippageSelector() {
         <p className="mt-1 text-xs text-muted-foreground">
           Current: {(slippageBps / 100).toFixed(2)}%
         </p>
+      )}
+
+      {/* Safety Warning: High Slippage */}
+      {slippageBps > 500 && (
+        <div className="mt-2 flex items-start gap-2 rounded-md bg-yellow-500/10 p-2 text-sm text-yellow-600 dark:text-yellow-500">
+          <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+          <div>
+            <p className="font-medium">High slippage tolerance</p>
+            <p className="text-xs">
+              Slippage of {(slippageBps / 100).toFixed(2)}% is very high. You may receive significantly less than expected.
+            </p>
+          </div>
+        </div>
       )}
     </div>
   );
