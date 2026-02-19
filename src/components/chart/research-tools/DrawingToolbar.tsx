@@ -57,9 +57,9 @@ export function DrawingToolbar({
           <Tooltip key={tool.id}>
             <TooltipTrigger asChild>
               <Button
-                variant={activeTool === tool.id ? "secondary" : "ghost"}
+                variant="ghost"
                 size="icon"
-                className="h-8 w-8"
+                className={activeTool === tool.id ? "sf-iconBtn sf-iconBtn--active" : "sf-iconBtn"}
                 onClick={() => onToolChange(tool.id)}
                 aria-label={tool.label}
                 data-testid={tool.id === "elliott_5" ? "chart-tool-elliott-5" : undefined}
@@ -95,7 +95,7 @@ export function DrawingToolbar({
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8"
+              className="sf-iconBtn"
               onClick={onUndo}
               disabled={!canUndo}
               aria-label="Undo"
@@ -113,7 +113,7 @@ export function DrawingToolbar({
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8"
+              className="sf-iconBtn"
               onClick={onRedo}
               disabled={!canRedo}
               aria-label="Redo"

@@ -84,6 +84,22 @@ export default {
           negative: "hsl(var(--chart-negative))",
           warning: "hsl(var(--chart-warning))",
         },
+        "sf-surface": {
+          base: "hsl(var(--sf-surface-base))",
+          elevated: "hsl(var(--sf-surface-elevated))",
+          overlay: "hsl(var(--sf-surface-overlay))",
+        },
+        "sf-border": {
+          subtle: "hsl(var(--sf-border-subtle))",
+          default: "hsl(var(--sf-border-default))",
+          emphasis: "hsl(var(--sf-border-emphasis))",
+        },
+      },
+      boxShadow: {
+        "sf-sm": "var(--sf-shadow-sm)",
+        "sf-md": "var(--sf-shadow-md)",
+        "sf-lg": "var(--sf-shadow-lg)",
+        "sf-xl": "var(--sf-shadow-xl)",
       },
       borderRadius: {
         lg: "var(--radius)",

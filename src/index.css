@@ -64,6 +64,30 @@
     --chart-positive: 142 72% 42%;
     --chart-negative: 0 72% 51%;
     --chart-warning: 38 92% 50%;
+
+    /* Surface Layering Tokens */
+    --sf-surface-base: 220 18% 10%;
+    --sf-surface-elevated: 220 18% 12%;
+    --sf-surface-overlay: 220 20% 8%;
+
+    /* Border Tokens */
+    --sf-border-subtle: 220 14% 14%;
+    --sf-border-default: 220 14% 18%;
+    --sf-border-emphasis: 220 14% 22%;
+
+    /* Shadow Tokens */
+    --sf-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.15);
+    --sf-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.2);
+    --sf-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.25);
+    --sf-shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.3);
+
+    /* Focus Mode Tokens */
+    --sf-focus-dim-opacity: 0.4;
+    --sf-focus-transition: 200ms ease-in-out;
+
+    /* Icon Button Tokens */
+    --sf-icon-btn-active-bg: 174 72% 46% / 0.15;
+    --sf-icon-btn-hover-bg: 220 16% 18%;
   }
 }
 
@@ -85,6 +109,62 @@
   /* Safe area for mobile bottom nav */
   .safe-area-bottom {
     padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+
+@layer components {
+  /* Panel Base */
+  .sf-panel {
+    @apply border border-border-subtle rounded-lg bg-card;
+    box-shadow: var(--sf-shadow-sm);
+  }
+  
+  .sf-panel--elevated {
+    @apply border-border rounded-lg;
+    background-color: hsl(var(--sf-surface-elevated));
+    box-shadow: var(--sf-shadow-md);
+  }
+  
+  /* Icon Button */
+  .sf-iconBtn {
+    @apply h-8 w-8 rounded-md transition-colors;
+    @apply hover:bg-[hsl(var(--sf-icon-btn-hover-bg))];
+  }
+  
+  .sf-iconBtn--active {
+    background-color: hsl(var(--sf-icon-btn-active-bg));
+    @apply border border-primary/30;
+  }
+  
+  /* Chart Placeholder */
+  .sf-chartPlaceholder {
+    @apply min-h-[360px] md:min-h-[480px] lg:min-h-[520px];
+    @apply border border-border-subtle rounded-lg;
+    @apply bg-gradient-to-br from-card/50 to-card/30;
+    @apply flex flex-col items-center justify-center gap-4;
+    box-shadow: var(--sf-shadow-sm);
+  }
+  
+  /* Focus Mode */
+  .sf-focusMode {
+    /* Applied to root container when Trading Drawer is open */
+  }
+  
+  .sf-dimmable {
+    transition: opacity var(--sf-focus-transition), 
+                filter var(--sf-focus-transition);
+  }
+  
+  .sf-focusMode .sf-dimmable {
+    opacity: var(--sf-focus-dim-opacity);
+    filter: blur(1px);
+    pointer-events: none;
+  }
+  
+  .sf-focusMode .sf-dimmable:has([data-focus-exempt]) {
+    opacity: 1;
+    filter: none;
+    pointer-events: auto;
   }
 }
 
