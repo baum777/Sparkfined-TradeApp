@@ -98,7 +98,7 @@
 ### 1) High-Level Komponenten
 - **SPA (Vite/React)**: `src/` (Routing: `src/App.tsx`, Nav: `src/routes/routes.ts`, `src/config/navigation.ts`).
 - **Service Worker (Workbox)**: `src/sw/service-worker.ts` + Poller (`src/sw/sw-alerts.ts`, `src/sw/sw-oracle.ts`).
-- **Canonical Backend (Always-on Node HTTP + Socket.io)**: `backend/src/server.ts`, Router: `backend/src/app.ts`, Socket path: `/api/terminal/socket` (`backend/src/services/terminal.socket.ts`).
+- **Canonical Backend (Always-on Node HTTP)**: `backend/src/server.ts`, Router: `backend/src/app.ts`.
 - **Vercel Functions Backend (nicht canonical bei aktivem Rewrite)**: `api/*` (duplizierte API + Quote/Swap).
 - **Separater Alerts-Service (Express + Postgres)**: `apps/backend-alerts/src/index.ts` (Watcher + SSE/Push).
 - **Shared Contracts**: `shared/contracts/*` (API Shapes / Domain).
@@ -110,8 +110,6 @@
 - **SW Polling (SW → `/api/*`)**
   - Alerts Events: `GET /api/alerts/events?since=...` (`src/sw/sw-alerts.ts`).
   - Oracle Daily: `GET /api/oracle/daily` (`src/sw/sw-oracle.ts`).
-- **WebSocket (Research Terminal)**
-  - Socket.io path: `/api/terminal/socket` (`src/components/Research/ResearchTerminal.tsx` ↔ `backend/src/services/terminal.socket.ts`).
 - **Externe Provider (Backend)**
   - LLM Routing/Provider: `backend/src/routes/llm.ts`, `backend/src/routes/reasoning/*`.
   - Onchain/Market Provider: referenziert in `shared/docs/PROVIDERS.md`, Backend Domain-Pfade.
@@ -170,20 +168,18 @@
 
 ### 2) Research (`/research?view=chart...`, `/research/:assetId`)
 - **Visuelle Elemente**
-  - ChartTopBar, ChartCanvas/Placeholder, Watchlist Panel/Sheet, Research Tools Panel/Sheet, Chart Feed Panel, Bottom Cards Carousel, GrokPulse Card (asset hub), AI TA Analyzer Dialog, Embedded Trading Terminal (flag), Research Terminal (Socket), Alerts/Banners (`src/pages/Research.tsx`).
+  - ChartTopBar, ChartCanvas/Placeholder, Watchlist Panel/Sheet, Research Tools Panel/Sheet, Chart Feed Panel, Bottom Cards Carousel, GrokPulse Card (asset hub), AI TA Analyzer Dialog, Embedded Trading Terminal (flag), Alerts/Banners (`src/pages/Research.tsx`).
   - Loading/Error: **Ja** (`ChartSkeleton`, `ScreenState`).
 - **Funktion**
-  - Markt auswählen, Watchlist lokal verwalten, Replay-Mode UI, Tools, Feed/Signals, Terminal (2 Varianten).
+  - Markt auswählen, Watchlist lokal verwalten, Replay-Mode UI, Tools, Feed/Signals, Trading Terminal (feature-flagged).
 - **Datenfluss (Ist)**
   - Chart State: `useChartStub()` (Stub).
   - Watchlist: localStorage (`WATCHLIST_STORAGE_KEY`).
   - Feed: `ChartFeedPanel` → `fetchOracleFeed`/`fetchPulseFeed` → `/api/feed/oracle|pulse` (`src/lib/api/feed.ts`).
   - Oracle Insights (für BottomCards): `useOracleStub()` (Stub) + Journal entries real.
-  - Research Terminal: Socket.io `/api/terminal/socket` (`src/components/Research/ResearchTerminal.tsx`).
   - Embedded Trading Terminal: `EmbeddedTerminal` → TerminalStore → `/api/quote` & `/api/swap` (blockiert in Production, siehe P0.1).
   - AI TA Analyzer: **Stub** (`src/components/chart/AITAAnalyzerDialog.tsx`).
 - **UX-Gaps**
-  - Zwei „Terminal“-Konzepte (Research Terminal vs Trading Terminal) ohne klare Capability-Gates.
   - Watchlist Persistenz nur lokal (kein Cross-Device).
 - **Architektur-Gaps**
   - Chart/TA/Oracle teils stub, teils real; unklare Ownership.
@@ -302,10 +298,6 @@
   - `POST /api/llm/execute`
 - **Feed/Signals/Market**
   - `GET /api/feed/oracle`, `GET /api/feed/pulse`, `GET /api/signals/unified`, `GET /api/market/daily-bias`
-- **Terminal (REST + WebSocket)**
-  - REST: `POST /api/terminal/start`, `POST /api/terminal/kill/:processId`, `GET /api/terminal/processes`
-  - WS: Socket.io `path="/api/terminal/socket"` (`backend/src/services/terminal.socket.ts`)
-
 ### 2) Frontend-Konsum (Ist: konsumiert vs. ungenutzt)
 - **Konsumiert (verifiziert in `src/` / `src/sw/`)**
   - `GET /api/oracle/daily` (UI + SW)
@@ -314,12 +306,10 @@
   - `GET /api/signals/unified` (Insights)
   - `POST /api/reasoning/*` (Hooks)
   - `GET /api/alerts/events` (SW)
-  - Socket.io `/api/terminal/socket` (Research Terminal)
 - **Nicht konsumiert (aber implementiert)**
   - `GET /api/meta`, `GET /api/usage/summary` (kein FE Call gefunden)
   - `GET/PATCH /api/settings` (FE nutzt lokale Stores)
   - Alerts CRUD (FE UI nutzt IndexedDB; keine API Calls)
-  - Terminal REST start/kill/processes (Research Terminal nutzt Socket events, nicht REST)
   - Chart/TA endpoints (`/chart/ta`, `/chart/analyze`) (UI nutzt Stub)
 - **Fehlt im canonical Backend (aber Frontend nutzt)**
   - `GET /api/quote`, `POST /api/swap` (Terminal)
@@ -369,7 +359,6 @@
 | Alerts Events (SW) | Real (server) | **hoch** (UI nicht integriert) | server (variiert je Backend) | `src/sw/sw-alerts.ts`, `backend/src/routes/alerts.ts`, `apps/backend-alerts/src/routes/events.ts` |
 | Discover Tokens | Real geplant, faktisch „empty“ | mittel | none | `src/lib/discover/discoverService.ts`, canonical backend ohne Route |
 | Terminal Quote/Swap | Real geplant, faktisch broken | **kritisch** | none (prod) | `src/lib/trading/*`, `vercel.json`, `backend/src/app.ts`, `api/quote.ts`, `api/swap.ts` |
-| Research Terminal Streaming | Real (WS) | niedrig | backend WS | `src/components/Research/ResearchTerminal.tsx`, `backend/src/services/terminal.socket.ts` |
 | Reasoning Insights | Hybrid (IDB cache + server) | mittel | server mit cache | `src/services/reasoning/*`, `backend/src/routes/reasoning/*` |
 | Settings | Local | niedrig | local store | `src/pages/Settings.tsx` |
 
@@ -402,7 +391,6 @@ Vercel (SPA Hosting)
 Railway: canonical backend (backend/src/server.ts)
   |
   +-- REST: /api/journal, /api/oracle, /api/feed, /api/signals, /api/reasoning, /api/alerts, ...
-  +-- WS:   /api/terminal/socket
   |
   X-- fehlt: /api/quote, /api/swap, /api/discover/tokens
 ```

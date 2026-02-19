@@ -1,2 +1,2 @@
-export { ResearchTerminal } from './ResearchTerminal';
+export { ResearchTerminalSync } from './ResearchTerminalSync';
 

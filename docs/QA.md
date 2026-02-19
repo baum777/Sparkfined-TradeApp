@@ -19,7 +19,7 @@
 - ✅ Quote Debounce (400ms)
 
 **Feature Flags:**
-- ✅ Research Terminal Integration feature-flagged
+- ✅ Trading Terminal in Research integration feature-flagged
 - ✅ Rollback-Strategie dokumentiert
 
 ### B) Execution Safety
@@ -57,7 +57,7 @@
 - ✅ Global Error Boundary
 - ✅ Terminal Error Boundary
 - ✅ Discover Error Boundary
-- ✅ Research Terminal Error Boundary
+- ✅ Trading Terminal (embedded in Research) Error Boundary
 
 **Loading States:**
 - ✅ Quote Loading State

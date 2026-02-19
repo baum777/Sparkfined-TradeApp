@@ -22,7 +22,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ResearchTerminal } from "@/components/Research/ResearchTerminal";
 import { ResearchTerminalSync } from "@/components/Research/ResearchTerminalSync";
 import { EmbeddedTerminal } from "@/components/terminal/EmbeddedTerminal";
 import { isResearchEmbedTerminalEnabled } from "@/lib/env";
@@ -143,9 +142,7 @@ function ResearchWorkspace() {
   const [queryError, setQueryError] = useState<string | null>(null);
   const [toolsSheetOpen, setToolsSheetOpen] = useState(false);
   const [aiAnalyzerOpen, setAiAnalyzerOpen] = useState(false);
-  const [terminalOpen, setTerminalOpen] = useState(false);
   const [tradingTerminalOpen, setTradingTerminalOpen] = useState(false);
-  const [researchQuery, setResearchQuery] = useState<string | undefined>(undefined);
   
   // Feature flag: Enable embedded trading terminal
   const isEmbedTerminalEnabled = isResearchEmbedTerminalEnabled();
@@ -414,26 +411,6 @@ function ResearchWorkspace() {
             Watchlist
           </Button>
           
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              if (selectedSymbol) {
-                setResearchQuery(`Research: ${selectedSymbol}`);
-                setTerminalOpen(true);
-              } else {
-                toast({
-                  title: "No symbol selected",
-                  description: "Please select a symbol to start research",
-                });
-              }
-            }}
-            data-testid="research-start-button"
-          >
-            <TerminalIcon className="h-4 w-4 mr-2" />
-            Start Research
-          </Button>
-          
           <MarketsBanner
             selectedMarket={selectedSymbol}
             onSelectMarket={handleSelectMarket}
@@ -550,7 +527,7 @@ function ResearchWorkspace() {
                     </Button>
                   </CollapsibleTrigger>
                   <CollapsibleContent>
-                    <ErrorBoundary scope="ResearchTerminal" onReset={() => {
+                    <ErrorBoundary scope="TradingTerminal" onReset={() => {
                       // Close overlays and reset terminal state
                       closeOverlay();
                       setTradingTerminalOpen(false);
@@ -561,46 +538,6 @@ function ResearchWorkspace() {
                 </div>
               </Collapsible>
             )}
-
-            {/* Research Terminal (LLM Terminal - unchanged) */}
-            <Collapsible open={terminalOpen} onOpenChange={setTerminalOpen}>
-              <div className="space-y-2">
-                <CollapsibleTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full justify-between"
-                    onClick={() => {
-                      if (!terminalOpen) {
-                        setTerminalOpen(true);
-                      }
-                    }}
-                  >
-                    <div className="flex items-center gap-2">
-                      <TerminalIcon className="h-4 w-4" />
-                      <span>Research Terminal</span>
-                    </div>
-                    {terminalOpen ? (
-                      <ChevronDown className="h-4 w-4" />
-                    ) : (
-                      <ChevronUp className="h-4 w-4" />
-                    )}
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <ResearchTerminal
-                    query={researchQuery}
-                    onProcessStart={(processId) => {
-                      console.log('Process started:', processId);
-                    }}
-                    onProcessEnd={(processId) => {
-                      console.log('Process ended:', processId);
-                      setResearchQuery(undefined);
-                    }}
-                  />
-                </CollapsibleContent>
-              </div>
-            </Collapsible>
           </div>
 
           {/* Right panel - Tools/Indicators (desktop, lg+) */}

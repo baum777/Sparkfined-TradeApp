@@ -120,5 +120,10 @@ describe('Theme Group 5: Missing/Expected Endpoints (Feeds & Signals)', () => {
     expect(body.error).toHaveProperty('code');
     expect(body.error).toHaveProperty('message');
   });
+
+  it('GET /api/terminal/processes returns 404 (Research Terminal removed)', async () => {
+    const res = await fetch(`${baseUrl}/api/terminal/processes`);
+    expect(res.status).toBe(404);
+  });
 });
 

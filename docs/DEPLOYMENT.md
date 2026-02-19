@@ -134,7 +134,7 @@ See `PRE_BETA_HARDENING_SUMMARY.md` for implementation details.
 
 **Key Variables:**
 - `VERCEL_BACKEND_URL` - Backend hostname for `/api/*` rewrite
-- `VITE_RESEARCH_EMBED_TERMINAL` - Research Terminal integration flag
+- `VITE_RESEARCH_EMBED_TERMINAL` - Trading Terminal in Research integration flag
 - `VITE_SENTRY_DSN` - Sentry DSN for error tracking
 - `VITE_SOLANA_CLUSTER` - devnet | mainnet-beta
 - `VITE_SOLANA_RPC_URL` - Custom RPC endpoint (optional)
