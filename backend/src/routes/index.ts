@@ -15,4 +15,3 @@ export * from './market.js';
 export * from './reasoningRoute.js';
 export * from './llm.js';
 export * from './settings.js';
-export * from './terminal.js';

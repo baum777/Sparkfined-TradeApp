@@ -11,7 +11,6 @@ import { taCacheCleanup } from './domain/ta/cacheRepo.js';
 import { createApp } from './app.js';
 import { logger } from './observability/logger.js';
 import { startScheduledJobs } from './jobs/scheduler.js';
-import { setupTerminalSocket } from './services/terminal.socket.js';
 
 /**
  * Backend Server Entry Point
@@ -52,9 +51,6 @@ const server: HTTPServer = createServer((req, res) => {
   
   app.handle(req, res);
 });
-
-// Setup Socket.io for terminal streaming
-setupTerminalSocket(server);
 
 // Cleanup jobs
 async function runCleanupJobs(): Promise<void> {

@@ -40,9 +40,6 @@ import {
   handleLlmExecute,
   handleSettingsGet,
   handleSettingsPatch,
-  handleTerminalStart,
-  handleTerminalKill,
-  handleTerminalProcesses,
 } from './routes/index.js';
 
 /**
@@ -117,11 +114,6 @@ export function createApp(): Router {
 
   // Market Aliases
   router.get('/market/daily-bias', handleMarketDailyBias);
-  
-  // Terminal Routes
-  router.post('/terminal/start', handleTerminalStart);
-  router.post('/terminal/kill/:processId', handleTerminalKill);
-  router.get('/terminal/processes', handleTerminalProcesses);
   
   return router;
 }
