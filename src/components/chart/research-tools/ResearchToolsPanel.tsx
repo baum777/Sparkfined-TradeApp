@@ -32,21 +32,21 @@ export function ResearchToolsPanel({ store, onOpenAIAnalyzer }: ResearchToolsPan
     : undefined;
 
   return (
-    <div className="w-56 shrink-0 border border-border/50 rounded-lg bg-card/50 overflow-hidden">
-      <div className="p-3 border-b border-border/50">
+    <div className="w-56 shrink-0 sf-panel--elevated overflow-hidden">
+      <div className="p-3 border-b border-sf-border-subtle">
         <h2 className="text-sm font-semibold text-foreground">Tools</h2>
       </div>
 
       <div className="p-3">
         {/* AI Tools Button */}
         <Button
-          variant="outline"
+          variant="default"
           size="sm"
           className="w-full justify-start gap-2 mb-3"
           onClick={onOpenAIAnalyzer}
           aria-label="Analyze chart with AI"
         >
-          <Sparkles className="h-4 w-4 text-primary" />
+          <Sparkles className="h-4 w-4" />
           AI TA Analyze
         </Button>
 

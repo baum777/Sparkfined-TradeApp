@@ -12,7 +12,7 @@ export function ChartCanvas({ symbol, timeframe, isLoading }: ChartCanvasProps) 
     return (
       <div
         data-testid="chart-canvas-container"
-        className="min-h-[360px] md:min-h-[480px] lg:min-h-[520px] border border-border/50 rounded-lg bg-card/30 flex items-center justify-center"
+        className="sf-chartPlaceholder flex items-center justify-center"
       >
         <Skeleton className="w-full h-full rounded-lg" />
       </div>
@@ -22,7 +22,7 @@ export function ChartCanvas({ symbol, timeframe, isLoading }: ChartCanvasProps) 
   return (
     <div
       data-testid="chart-canvas-container"
-      className="min-h-[360px] md:min-h-[480px] lg:min-h-[520px] border border-border/50 rounded-lg bg-card/30 flex flex-col items-center justify-center gap-4"
+      className="sf-chartPlaceholder"
     >
       <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center">
         <BarChart3 className="h-8 w-8 text-muted-foreground" />

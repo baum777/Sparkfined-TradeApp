@@ -23,7 +23,11 @@ export function EmbeddedTerminal() {
   const isMobile = useIsMobile();
 
   return (
-    <div className="flex flex-col gap-4" data-testid="embedded-terminal">
+    <div 
+      className="flex flex-col gap-4" 
+      data-testid="embedded-terminal"
+      data-focus-exempt
+    >
       {/* Main Content: Chart + Execution */}
       <div className={isMobile ? 'flex flex-col gap-4' : 'flex gap-4'}>
         {/* Chart Panel */}

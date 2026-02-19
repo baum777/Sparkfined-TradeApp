@@ -55,6 +55,7 @@ import {
   ResearchToolsSheet,
 } from "@/components/chart/research-tools";
 import { TradingWalletHint } from "@/components/common";
+import { cn } from "@/lib/utils";
 import type { WatchItemStub } from "@/stubs/contracts";
 
 const WATCHLIST_STORAGE_KEY = "sparkfined_watchlist_v1";
@@ -151,6 +152,9 @@ function ResearchWorkspace() {
   
   // Research tools store (indicators, drawings, Elliott Wave)
   const toolsStore = useResearchToolsStore();
+  
+  // Discover store for overlay management
+  const closeOverlay = useDiscoverStore((s) => s.closeOverlay);
 
   // Sync watchlist to localStorage
   useEffect(() => {
@@ -352,7 +356,10 @@ function ResearchWorkspace() {
   );
 
   return (
-    <PageContainer testId="page-research">
+    <PageContainer 
+      testId="page-research"
+      className={cn(tradingTerminalOpen && "sf-focusMode")}
+    >
       <h1 className="sr-only">Research</h1>
       
       {/* Research → Terminal Sync (one-way, feature-flagged) */}
@@ -438,7 +445,7 @@ function ResearchWorkspace() {
         <div className="flex gap-4">
           {/* Watchlist panel (desktop - inline) */}
           {!isMobile && isWatchlistPanelOpen && (
-            <div className="w-64 shrink-0 border rounded-lg p-4 bg-card">
+            <div className="w-64 shrink-0 sf-panel p-4 sf-dimmable">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-semibold text-foreground">Watchlist</h3>
                 <Button
@@ -455,7 +462,7 @@ function ResearchWorkspace() {
           )}
 
           {/* Center content */}
-          <div className="flex-1 space-y-3 min-w-0">
+          <div className="flex-1 space-y-3 min-w-0 sf-dimmable">
             {!isReplayMode && (
               <DrawingToolbar
                 activeTool={toolsStore.activeTool}
@@ -476,13 +483,13 @@ function ResearchWorkspace() {
             ) : (
               <div
                 data-testid="chart-canvas-container"
-                className="min-h-[360px] md:min-h-[480px] lg:min-h-[520px] border border-border/50 rounded-lg bg-card/30 flex flex-col items-center justify-center gap-4"
+                className="sf-chartPlaceholder"
               >
                 <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center">
                   <BarChart3 className="h-8 w-8 text-muted-foreground" />
                 </div>
                 <div className="text-center space-y-3">
-                  <p className="text-sm text-muted-foreground">Select a market to view chart</p>
+                  <p className="text-sm text-muted-foreground">Select a market to begin…</p>
                   <div className="flex gap-2 justify-center">
                     <Button variant="outline" size="sm" onClick={handleTrySOL}>
                       Try SOL
@@ -519,7 +526,7 @@ function ResearchWorkspace() {
             {/* Trading Terminal (feature-flagged) */}
             {isEmbedTerminalEnabled && (
               <Collapsible open={tradingTerminalOpen} onOpenChange={setTradingTerminalOpen}>
-                <div className="space-y-2">
+                <div className="space-y-2" data-focus-exempt>
                   <CollapsibleTrigger asChild>
                     <Button
                       variant="outline"
@@ -598,7 +605,7 @@ function ResearchWorkspace() {
 
           {/* Right panel - Tools/Indicators (desktop, lg+) */}
           {!isMobile && !isReplayMode && (
-            <div className="hidden lg:block">
+            <div className="hidden lg:block sf-dimmable">
               <ResearchToolsPanel
                 store={toolsStore}
                 onOpenAIAnalyzer={() => setAiAnalyzerOpen(true)}

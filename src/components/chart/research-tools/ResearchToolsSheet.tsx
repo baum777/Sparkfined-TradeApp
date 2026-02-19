@@ -49,7 +49,7 @@ export function ResearchToolsSheet({
         <div className="p-4 space-y-3">
           {/* AI Tools Button */}
           <Button
-            variant="outline"
+            variant="default"
             size="sm"
             className="w-full justify-start gap-2"
             onClick={() => {
@@ -58,7 +58,7 @@ export function ResearchToolsSheet({
             }}
             aria-label="Analyze chart with AI"
           >
-            <Sparkles className="h-4 w-4 text-primary" />
+            <Sparkles className="h-4 w-4" />
             AI TA Analyze
           </Button>
 
