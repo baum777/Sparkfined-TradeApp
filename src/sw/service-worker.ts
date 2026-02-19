@@ -11,7 +11,10 @@ import { pollAlertEvents } from './sw-alerts';
 import { pollOracleDaily } from './sw-oracle';
 import type { SwMessage, SwNotificationData, SwStatusMessage } from './sw-contracts';
 
-declare const self: ServiceWorkerGlobalScope & typeof globalThis;
+type PrecacheManifestEntry = string | { url: string; revision?: string | null };
+declare const self: ServiceWorkerGlobalScope & typeof globalThis & {
+  __WB_MANIFEST: PrecacheManifestEntry[];
+};
 
 cleanupOutdatedCaches();
 precacheAndRoute(self.__WB_MANIFEST);

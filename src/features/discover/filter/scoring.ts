@@ -1,4 +1,4 @@
-import type { Token } from './types';
+import type { PresetId, Token } from './types';
 import { filterSpec } from './spec';
 
 /**
@@ -7,7 +7,7 @@ import { filterSpec } from './spec';
  */
 export function computeRankScore(
   token: Token,
-  presetId?: 'signal_fusion' | 'strict_safety_gate' | 'organic_momentum'
+  presetId?: PresetId
 ): number {
   // Verwende score_formula aus preset oder default
   const formula =

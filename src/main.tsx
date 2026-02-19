@@ -19,6 +19,7 @@ if (import.meta.env.PROD) {
         description: "Lade die neueste Version und starte die App erneut.",
         action: (
           <ToastAction
+            altText="App jetzt neu laden"
             onClick={() => {
               updateSW?.(true);
               swToast.dismiss();

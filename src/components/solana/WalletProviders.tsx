@@ -1,11 +1,11 @@
-import { useMemo } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
 import { PhantomWalletAdapter, SolflareWalletAdapter } from '@solana/wallet-adapter-wallets';
 import { getCommitment, getRpcEndpoint, validateSolanaEnv } from '@/lib/solana/connection';
 import { logSolanaEnvOnce } from '@/lib/env';
 
-export function WalletProviders({ children }: { children: React.ReactNode }) {
+export function WalletProviders({ children }: { children: ReactNode }) {
   logSolanaEnvOnce();
   validateSolanaEnv();
   const endpoint = getRpcEndpoint();
