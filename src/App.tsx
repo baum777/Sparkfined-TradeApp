@@ -3,9 +3,11 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, useSearchParams, useParams } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useSearchParams, useParams, useLocation } from "react-router-dom";
 import { AppShell } from "@/components/layout/AppShell";
 import { DiscoverOverlay } from "@/components/discover";
+import { ErrorBoundary } from "@/components/system/ErrorBoundary";
+import { setRoute } from "@/lib/monitoring/sentry";
 
 // Primary pages (canonical)
 import Dashboard from "@/pages/Dashboard";
@@ -149,20 +151,35 @@ function JournalRoute() {
   return <Journal />;
 }
 
+// Route tracking component
+function RouteTracker() {
+  const location = useLocation();
+
+  useEffect(() => {
+    setRoute(location.pathname);
+  }, [location.pathname]);
+
+  return null;
+}
+
 const App = () => {
   useEffect(() => {
     startJournalQueueSync();
   }, []);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <DiscoverOverlay />
-        <BrowserRouter>
-          <Routes>
-            <Route element={<AppShell />}>
+    <ErrorBoundary scope="Global">
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <RouteTracker />
+            <ErrorBoundary scope="Discover">
+              <DiscoverOverlay />
+            </ErrorBoundary>
+            <Routes>
+              <Route element={<AppShell />}>
               {/* Redirects (Root) */}
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
@@ -210,6 +227,7 @@ const App = () => {
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
+    </ErrorBoundary>
   );
 };
 

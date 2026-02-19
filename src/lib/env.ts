@@ -38,7 +38,7 @@ export function getSolanaRpcEndpoint(): string {
 let didLog = false;
 
 export function isDev(): boolean {
-  return (import.meta as any).env?.DEV === true;
+  return getImportMetaEnv().DEV === true;
 }
 
 export function logSolanaEnvOnce(): void {
@@ -62,7 +62,16 @@ export function logSolanaEnvOnce(): void {
   });
 }
 
-export function isDev(): boolean {
-  return getImportMetaEnv().DEV === true;
+/**
+ * Feature flag: Enable embedded terminal in Research tab
+ * 
+ * When false: Research tab remains unchanged, no terminal integration
+ * When true: Terminal appears as collapsible drawer in Research tab
+ * 
+ * Default: false (disabled by default for safe rollout)
+ */
+export function isResearchEmbedTerminalEnabled(): boolean {
+  const raw = getEnvString('VITE_RESEARCH_EMBED_TERMINAL');
+  return raw === 'true';
 }
 

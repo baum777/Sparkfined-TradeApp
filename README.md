@@ -14,36 +14,44 @@ Dieses Repo implementiert ein Trading/Journal/Signals Frontend (SPA) plus mehrer
 
 **Backend-Ownership**: Siehe `docs/backend/BACKEND_OWNERSHIP.md` (Production-Entscheidung, Routing, Ownership).
 
-## Local Dev Quickstart
+## Local Development Quickstart
 
-### Voraussetzungen
+### Prerequisites
 
-- Node.js (Repo nutzt Node 20 im `backend/Dockerfile`)
-- Empfohlen: **pnpm** (Root `packageManager: pnpm@10.x`)
+- Node.js 20+ (see `backend/Dockerfile`)
+- **pnpm** (root `packageManager: pnpm@10.x`)
 
-### Install
+### Installation
 
 ```bash
 pnpm install
 ```
 
-### Acceptance / Verifikation
+### Verification
 
 ```bash
 npm run verify
 ```
 
-### Backend starten (`backend/`)
+### Start Backend
 
 ```bash
 pnpm -C backend dev
 ```
 
-### Frontend starten
+**Expected:** Server on `http://localhost:3000`, health check at `/api/health`
+
+**Required Env:** `HELIUS_API_KEY` in `backend/.env` (backend validates env vars on start)
+
+### Start Frontend
 
 ```bash
 pnpm dev
 ```
+
+**Expected:** Frontend on `http://localhost:8080`, API proxy `/api/*` → `http://localhost:3000`
+
+**Note:** See [shared/docs/LOCAL_DEV.md](shared/docs/LOCAL_DEV.md) for detailed setup and troubleshooting.
 
 ## Ports & API Base Paths (Ist-Zustand)
 
@@ -59,13 +67,20 @@ pnpm dev
   - **SQLite (local dev)**: `sqlite:./.data/tradeapp.sqlite`
   - **Postgres (production)**: `postgres://user:pass@host:5432/db`
 
-## Environment Variables (Kurzüberblick)
+## Environment Variables
 
-- Vollständige Liste: `shared/docs/ENVIRONMENT.md`
-- Beispiel: `.env.example` (enthält nicht alle Vars; siehe **Status/Risiken**)
+**Complete Reference:** [shared/docs/ENVIRONMENT.md](shared/docs/ENVIRONMENT.md)
 
-Wichtig:
-- **Keine Secrets** als `VITE_*` setzen.
+**Key Variables:**
+- `VITE_RESEARCH_EMBED_TERMINAL` - Enable Trading Terminal in Research tab (default: false)
+- `VITE_SENTRY_DSN` - Sentry DSN for error tracking (optional)
+- `VITE_SOLANA_CLUSTER` - devnet | mainnet-beta
+- `VITE_SOLANA_RPC_URL` - Custom RPC endpoint (optional)
+- `VERCEL_BACKEND_URL` - Backend hostname for `/api/*` rewrite (production)
+
+**Important:**
+- **No secrets** in `VITE_*` variables (they are bundled into frontend)
+- See [Environment](shared/docs/ENVIRONMENT.md) for complete list
 
 ## Implementierte Features (nach Code, nicht nach Roadmap)
 
@@ -80,16 +95,22 @@ Backend-Routen sind u.a. unter `backend/src/app.ts` registriert:
 
 Zusätzlich existiert `api/` als Serverless‑Backend mit eigener Implementierung und Tests.
 
-## Doku-Index (`shared/docs/*`)
+## Documentation
 
-- `shared/docs/ARCHITECTURE.md`
-- `shared/docs/LOCAL_DEV.md`
-- `shared/docs/ENVIRONMENT.md`
-- `shared/docs/API_CONTRACTS.md`
-- `shared/docs/PROVIDERS.md`
-- `shared/docs/DEPLOYMENT.md`
-- `shared/docs/SECURITY.md`
-- `shared/docs/STATUS.md`
+**Core Documentation:** See [docs/README.md](docs/README.md) for complete index.
+
+**Quick Links:**
+- [Architecture](docs/ARCHITECTURE.md) - System architecture
+- [Terminal](docs/TERMINAL.md) - Trading Terminal
+- [Discover](docs/DISCOVER.md) - Discover Overlay
+- [Deployment](docs/DEPLOYMENT.md) - Deployment & feature flags
+- [Security](docs/SECURITY.md) - Security constraints
+- [QA](docs/QA.md) - Testing procedures
+
+**Shared Documentation:**
+- [Environment](shared/docs/ENVIRONMENT.md) - Complete env var reference
+- [API Contracts](shared/docs/API_CONTRACTS.md) - API specifications
+- [Providers](shared/docs/PROVIDERS.md) - Provider documentation
 
 ## Troubleshooting (häufig)
 

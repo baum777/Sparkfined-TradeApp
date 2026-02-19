@@ -153,7 +153,76 @@ Rules:
 - API boundary is JSON + envelopes, not TS imports.
 - Shared contracts are **additive-only** unless version-bumped.
 
-## 8) Deployment Model
+## 8) Routing Architecture
+
+### Canonical Routes
+
+**Primary Routes:**
+- `/research?view=chart&q=<ticker|solanaBase58>`
+  - `view=chart` is required and normalized automatically
+  - `q` carries the market query
+  - `/research/:assetId` preserves path segment during normalization
+  - Optional `replay=true` toggles replay mode
+  - Optional `panel=watchlist` shows watchlist panel
+
+- `/insights`
+  - Consolidated workspace for Oracle area
+  - Optional URL state: `?filter=unread`, `?mode=status`
+  - Detail route: `/insights/:insightId`
+
+- `/journal?view=pending|confirmed|archived`
+  - List filters only; UI mode (`mode=inbox|learn|timeline`) stays on `/journal`
+  - `/journal/:entryId` is the only detail route
+
+- `/terminal`
+  - Standalone Trading Terminal
+  - Also available embedded in Research (feature-flagged)
+
+**Legacy Redirects:**
+- `/chart` → `/research?view=chart`
+- `/replay` → `/research?view=chart&replay=true`
+- `/watchlist` → `/research?view=chart&panel=watchlist`
+- `/oracle` → `/insights`
+- `/asset/:assetId` → `/research/:assetId`
+- `/journal?entry=<id>` → `/journal/<id>`
+
+**Notes:**
+- Query parameter ordering is order-independent
+- Legacy redirects preserve existing query params
+- Canonical defaults are injected (e.g. `view=chart`)
+
+---
+
+## 9) Reasoning Layer
+
+**Purpose:** LLM-powered reasoning for trade review, session review, board scenarios, and insight critic.
+
+**Architecture:**
+- **Code:** `backend/src/routes/reasoning/*`, `api/reasoning/*`
+- **Offline-first:** Last valid insights cached in IndexedDB
+- **Revalidate:** Online insights are revalidated and cache updated
+- **Machine-parseable:** Strict JSON outputs validated against Zod schemas
+- **Safety:** Insight Critic is separate final step (conflicts/missing data/overreach)
+
+**Routes:**
+- `POST /api/reasoning/trade-review`
+- `POST /api/reasoning/session-review`
+- `POST /api/reasoning/board-scenarios`
+- `POST /api/reasoning/insight-critic`
+
+**Data Contract:**
+- `ReasoningResponse<T>` with `status`, `data`, `warnings`, `confidence`
+- `ReasoningMeta` with `latency_ms`, `model`, `version`
+- `ReasoningError` for error cases
+
+**Offline Cache Key:**
+```
+{ type, referenceId, version, hash(context) }
+```
+
+---
+
+## 10) Deployment Model
 
 ### Frontend (Vercel)
 - Build: `npm run build` (Vite), output `dist/`.

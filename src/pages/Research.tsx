@@ -23,7 +23,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ResearchTerminal } from "@/components/Research/ResearchTerminal";
-import { AlertCircle, BarChart3, X, Eye, Play, Terminal as TerminalIcon } from "lucide-react";
+import { ResearchTerminalSync } from "@/components/Research/ResearchTerminalSync";
+import { EmbeddedTerminal } from "@/components/terminal/EmbeddedTerminal";
+import { isResearchEmbedTerminalEnabled } from "@/lib/env";
+import { ErrorBoundary } from "@/components/system/ErrorBoundary";
+import { useDiscoverStore } from "@/lib/state/discoverStore";
+import { AlertCircle, BarChart3, X, Eye, Play, Terminal as TerminalIcon, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { routeHelpers, isValidSolanaBase58 } from "@/routes/routes";
 import { parseResearchChartQuery } from "@/utils/researchQuery";
@@ -138,7 +143,11 @@ function ResearchWorkspace() {
   const [toolsSheetOpen, setToolsSheetOpen] = useState(false);
   const [aiAnalyzerOpen, setAiAnalyzerOpen] = useState(false);
   const [terminalOpen, setTerminalOpen] = useState(false);
+  const [tradingTerminalOpen, setTradingTerminalOpen] = useState(false);
   const [researchQuery, setResearchQuery] = useState<string | undefined>(undefined);
+  
+  // Feature flag: Enable embedded trading terminal
+  const isEmbedTerminalEnabled = isResearchEmbedTerminalEnabled();
   
   // Research tools store (indicators, drawings, Elliott Wave)
   const toolsStore = useResearchToolsStore();
@@ -346,6 +355,11 @@ function ResearchWorkspace() {
     <PageContainer testId="page-research">
       <h1 className="sr-only">Research</h1>
       
+      {/* Research → Terminal Sync (one-way, feature-flagged) */}
+      {isEmbedTerminalEnabled && (
+        <ResearchTerminalSync selectedSymbol={selectedSymbol} />
+      )}
+      
       {/* Trading Wallet Context */}
       <TradingWalletHint className="mb-2" />
 
@@ -502,7 +516,46 @@ function ResearchWorkspace() {
               journalNotes={journalEntries}
             />
 
-            {/* Research Terminal */}
+            {/* Trading Terminal (feature-flagged) */}
+            {isEmbedTerminalEnabled && (
+              <Collapsible open={tradingTerminalOpen} onOpenChange={setTradingTerminalOpen}>
+                <div className="space-y-2">
+                  <CollapsibleTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full justify-between"
+                      onClick={() => {
+                        if (!tradingTerminalOpen) {
+                          setTradingTerminalOpen(true);
+                        }
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <TerminalIcon className="h-4 w-4" />
+                        <span>Trading Terminal</span>
+                      </div>
+                      {tradingTerminalOpen ? (
+                        <ChevronDown className="h-4 w-4" />
+                      ) : (
+                        <ChevronUp className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <ErrorBoundary scope="ResearchTerminal" onReset={() => {
+                      // Close overlays and reset terminal state
+                      closeOverlay();
+                      setTradingTerminalOpen(false);
+                    }}>
+                      <EmbeddedTerminal />
+                    </ErrorBoundary>
+                  </CollapsibleContent>
+                </div>
+              </Collapsible>
+            )}
+
+            {/* Research Terminal (LLM Terminal - unchanged) */}
             <Collapsible open={terminalOpen} onOpenChange={setTerminalOpen}>
               <div className="space-y-2">
                 <CollapsibleTrigger asChild>
@@ -518,7 +571,7 @@ function ResearchWorkspace() {
                   >
                     <div className="flex items-center gap-2">
                       <TerminalIcon className="h-4 w-4" />
-                      <span>Terminal</span>
+                      <span>Research Terminal</span>
                     </div>
                     {terminalOpen ? (
                       <ChevronDown className="h-4 w-4" />
