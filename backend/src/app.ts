@@ -1,5 +1,7 @@
 import { Router } from './http/router.js';
 import {
+  handleQuote,
+  handleSwap,
   handleHealth,
   handleMeta,
   handleAuthRegister,
@@ -53,6 +55,10 @@ export function createApp(): Router {
   // Health & Meta
   router.get('/health', handleHealth);
   router.get('/meta', handleMeta);
+
+  // Trading (Terminal Phase 1 - Jupiter v6)
+  router.get('/quote', handleQuote);
+  router.post('/swap', handleSwap);
   router.get('/usage/summary', handleUsageSummary);
 
   // Auth (cookie-backed)

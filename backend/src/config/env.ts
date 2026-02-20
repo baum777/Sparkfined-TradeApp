@@ -85,6 +85,16 @@ const envSchema = z.object({
   // Onchain gating tuning
   ONCHAIN_TUNING_PROFILE: z.enum(['default', 'conservative', 'aggressive']).default('default'),
 
+  // ─────────────────────────────────────────────────────────────
+  // Phase 1: Terminal / Swap (Jupiter)
+  // ─────────────────────────────────────────────────────────────
+  JUPITER_BASE_URL: z.string().default('https://quote-api.jup.ag/v6'),
+  /**
+   * Token account (ATA) that receives platform fees on Jupiter swaps.
+   * Required when feeBps > 0.
+   */
+  JUPITER_PLATFORM_FEE_ACCOUNT: z.string().optional(),
+
   // Monitoring
   WATCHER_INTERVAL_MS: z.string().transform(Number).default('5000'),
   EVALUATION_BATCH_SIZE: z.string().transform(Number).default('200'),
