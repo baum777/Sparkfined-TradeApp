@@ -240,18 +240,23 @@ See `shared/docs/ENVIRONMENT.md` for complete list.
 
 ## API Endpoints
 
+**Backend / Production:**
+- `/api/quote` and `/api/swap` are served by the **canonical backend** (`backend/src/routes/trading.ts`)
+- Vercel rewrites all `/api/*` to the backend in production
+- Serverless implementations have been removed (previously `api/quote.ts`, `api/swap.ts`)
+
 **Quote:**
 ```
 GET /api/quote
 Query: baseMint, quoteMint, side, amount, amountMode, slippageBps, feeBps, priorityFeeEnabled, priorityFeeMicroLamports
-Response: TerminalQuoteData
+Response: { status: "ok", data: TerminalQuoteData }
 ```
 
 **Swap:**
 ```
 POST /api/swap
 Body: { publicKey, baseMint, quoteMint, side, amount, amountMode, slippageBps, feeBps, priorityFee, providerQuote }
-Response: { swapTransactionBase64, lastValidBlockHeight }
+Response: { status: "ok", data: { swapTransactionBase64, lastValidBlockHeight, prioritizationFeeLamports? } }
 ```
 
 ---
