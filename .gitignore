@@ -36,6 +36,7 @@ dist-ssr
 # Backend data
 .data/
 backend/dist/
+backend/coverage/
 
 # SQLite
 *.sqlite
