@@ -10,8 +10,8 @@
 
 - Frontend built as Vite SPA (`buildCommand: "npm run build"`, output `dist/`)
 - **Rewrite Rule:**
-  - `source: /api/:path*`
-  - `destination: https://{env:VERCEL_BACKEND_URL}/api/:path*`
+  - `source: /api/(.*)`
+  - `destination: https://$VERCEL_BACKEND_URL/api/$1`
 - All other paths rewrite to `/index.html` (SPA routing)
 
 **Consequence:**
@@ -61,7 +61,7 @@
 
 | Topic | Local | Production |
 |-------|-------|------------|
-| API Routing | Vite Proxy `/api` → `http://localhost:3000` | Vercel Rewrite `/api/*` → `https://{VERCEL_BACKEND_URL}/api/*` |
+| API Routing | Vite Proxy `/api` → `http://localhost:3000` | Vercel Rewrite `/api/(.*)` → `https://$VERCEL_BACKEND_URL/api/$1` |
 | Backend Runtime | `backend/` Node Server (listen) | External hosted Node Server (Railway) |
 | Service Worker | Dev: not registered | Production Build: registered optionally (see `VITE_ENABLE_SW_POLLING`) |
 
