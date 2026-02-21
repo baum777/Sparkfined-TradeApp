@@ -8,6 +8,10 @@ import path from "node:path";
  * This script fails if vercel routing introduces any /api/* rewrite that
  * resolves to Vercel serverless handlers (relative /api/* destinations) or
  * any destination other than the configured backend rewrite target.
+ *
+ * Accepts real vercel.json syntax:
+ * - source: /api/(.*) or /api/:path*
+ * - destination: https://$VERCEL_BACKEND_URL/api/$1 or https://{env:VERCEL_BACKEND_URL}/api/...
  */
 
 const repoRoot = process.cwd();
@@ -41,8 +45,25 @@ function isRelativeApiDestination(destination) {
   return typeof destination === "string" && (destination === "/api" || destination.startsWith("/api/"));
 }
 
-// Canonical production routing target (single source of truth).
-const CANONICAL_BACKEND_DESTINATION_PREFIX = "https://{env:VERCEL_BACKEND_URL}/api/";
+/** Check if destination points to canonical backend (Vercel env var syntax). */
+function isCanonicalBackendDestination(destination) {
+  if (typeof destination !== "string") return false;
+  // Accept: https://$VERCEL_BACKEND_URL/api/$1 or https://$VERCEL_BACKEND_URL/api/:path*
+  if (destination.includes("$VERCEL_BACKEND_URL") && destination.includes("/api/")) return true;
+  // Accept: https://{env:VERCEL_BACKEND_URL}/api/...
+  if (destination.includes("{env:VERCEL_BACKEND_URL}") && destination.includes("/api/")) return true;
+  return false;
+}
+
+/** Check if source is a catch-all for /api (single rule, no exceptions). */
+function isApiCatchAllSource(source) {
+  if (typeof source !== "string") return false;
+  // Vercel path syntax
+  if (source === "/api/:path*") return true;
+  // Vercel regex syntax (actual vercel.json)
+  if (source === "/api/(.*)") return true;
+  return false;
+}
 
 const config = readJson(vercelPath);
 
@@ -65,8 +86,7 @@ if (routes.length) {
 const apiRewrites = rewrites.filter((r) => isApiSource(r?.source));
 
 if (!apiRewrites.length) {
-  warn("No /api/* rewrites found. If this is intentional, ensure production still routes /api/* to the Node backend.");
-  process.exit(0);
+  fail("No /api/* rewrites found. Production must route /api/* to the Node backend.");
 }
 
 const violations = [];
@@ -85,31 +105,27 @@ for (const r of apiRewrites) {
     continue;
   }
 
-  if (typeof destination !== "string" || !destination.startsWith(CANONICAL_BACKEND_DESTINATION_PREFIX)) {
+  if (!isCanonicalBackendDestination(destination)) {
     violations.push({
       kind: "non_canonical_destination",
       source,
       destination,
-      message: `Destination must start with ${CANONICAL_BACKEND_DESTINATION_PREFIX}`,
+      message: "Destination must point to canonical backend (https://$VERCEL_BACKEND_URL/api/... or https://{env:VERCEL_BACKEND_URL}/api/...).",
     });
   }
 }
 
-// Enforce: there must be no rewrite exceptions for specific /api subpaths.
-// In practice, that means we only allow the single catch-all rule: /api/:path* -> backend.
-const hasCatchAll = apiRewrites.some(
-  (r) => r?.source === "/api/:path*" && typeof r?.destination === "string" && r.destination.startsWith(CANONICAL_BACKEND_DESTINATION_PREFIX)
-);
-if (!hasCatchAll) {
+// Enforce: exactly one catch-all rewrite for /api (no subpath exceptions).
+const catchAllRewrite = apiRewrites.find((r) => isApiCatchAllSource(r?.source) && isCanonicalBackendDestination(r?.destination));
+if (!catchAllRewrite) {
   violations.push({
     kind: "missing_catch_all",
-    source: "/api/:path*",
-    destination: CANONICAL_BACKEND_DESTINATION_PREFIX + ":path*",
-    message: "Missing canonical catch-all /api/:path* rewrite to the Node backend.",
+    message: "Missing canonical catch-all /api rewrite to the Node backend. Expected source /api/(.*) or /api/:path* with destination to $VERCEL_BACKEND_URL.",
   });
 }
 
-const nonCatchAllApiRewrites = apiRewrites.filter((r) => r?.source !== "/api/:path*");
+// No additional /api rewrites (exceptions would route specific subpaths elsewhere).
+const nonCatchAllApiRewrites = apiRewrites.filter((r) => !isApiCatchAllSource(r?.source));
 if (nonCatchAllApiRewrites.length) {
   violations.push({
     kind: "api_rewrite_exceptions_present",
@@ -132,4 +148,3 @@ if (violations.length) {
 
 // eslint-disable-next-line no-console
 console.log("✅ Vercel /api ownership verified: all /api/* routes go to the Node backend (no exceptions).");
-

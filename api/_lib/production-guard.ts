@@ -14,6 +14,9 @@ const CORE_BLOCKLIST = [
   /^\/api\/profile(\/|$)/,
   /^\/api\/meta(\/|$)/,
   /^\/api\/health(\/|$)/,
+  /^\/api\/quote(\/|$|\?)/,
+  /^\/api\/swap(\/|$)/,
+  /^\/api\/discover\/tokens(\/|$|\?)/,
 ];
 
 const AUX_ALLOWLIST = [

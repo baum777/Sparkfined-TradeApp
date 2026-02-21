@@ -40,6 +40,9 @@ import {
   handleLlmExecute,
   handleSettingsGet,
   handleSettingsPatch,
+  handleQuote,
+  handleSwap,
+  handleDiscoverTokens,
 } from './routes/index.js';
 
 /**
@@ -54,6 +57,11 @@ export function createApp(): Router {
   router.get('/health', handleHealth);
   router.get('/meta', handleMeta);
   router.get('/usage/summary', handleUsageSummary);
+
+  // Trading (Terminal + Discover)
+  router.get('/quote', handleQuote);
+  router.post('/swap', handleSwap);
+  router.get('/discover/tokens', handleDiscoverTokens);
 
   // Auth (cookie-backed)
   router.post('/auth/register', handleAuthRegister);

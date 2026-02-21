@@ -73,6 +73,11 @@ const envSchema = z.object({
   // Note: values align with RouterDecisionProvider.
   LLM_FALLBACK_PROVIDER: z.enum(['deepseek', 'openai', 'grok']).optional(),
 
+  // Terminal / Swap (Jupiter)
+  JUPITER_BASE_URL: z.string().default('https://quote-api.jup.ag/v6'),
+  JUPITER_PLATFORM_FEE_ACCOUNT: z.string().optional(),
+  TERMINAL_SWAP_REQUIRE_AUTH: z.enum(['true', 'false']).default('false').transform(v => v === 'true'),
+
   // Solana Onchain (Helius)
   HELIUS_API_KEY: z.string(),
   HELIUS_RPC_URL: z.string().optional(),
