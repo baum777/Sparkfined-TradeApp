@@ -76,7 +76,7 @@ export function JournalInboxCard({
               e.stopPropagation();
               onConfirm();
             }}
-            className="flex-1"
+            className="flex-1 h-9 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             <Check className="h-4 w-4 mr-1.5" />
             Confirm
@@ -84,12 +84,13 @@ export function JournalInboxCard({
 
           <Button
             data-testid="journal-inbox-add-note"
-            variant="secondary"
+            variant="outline"
             size="sm"
             onClick={(e) => {
               e.stopPropagation();
               onAddNote();
             }}
+            className="h-9 px-3 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             <MessageSquarePlus className="h-4 w-4 mr-1.5" />
             Note

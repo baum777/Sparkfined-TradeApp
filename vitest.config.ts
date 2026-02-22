@@ -11,6 +11,8 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
+    // CI Stability Baseline v1.0
+    // Do not change pool mode without validating fetch stability in CI.
     pool: 'forks',
     setupFiles: ['tests/setup.ts'],
     include: ['tests/**/*.test.{ts,tsx}', 'tests/**/*.spec.{ts,tsx}'],

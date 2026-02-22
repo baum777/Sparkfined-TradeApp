@@ -162,7 +162,7 @@ export function JournalInboxView({
 
   return (
     <>
-      <div className="space-y-6">
+      <div className="space-y-4">
         {/* Bulk confirm button for today */}
         {todayCount > 1 && (
           <div className="flex justify-end">
@@ -170,6 +170,7 @@ export function JournalInboxView({
               data-testid="journal-inbox-bulk-confirm-today"
               variant="outline"
               size="sm"
+              className="h-9 px-3 text-sm focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               onClick={() => {
                 const todayEntries = dayGroups.find((g) => g.label === "Today")?.entries ?? [];
                 todayEntries.forEach((e) => onConfirm(e.id));

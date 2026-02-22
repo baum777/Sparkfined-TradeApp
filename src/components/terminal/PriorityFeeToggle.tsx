@@ -1,3 +1,4 @@
+import React, { useMemo } from 'react';
 import { useTerminalStore } from '@/lib/state/terminalStore';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -5,27 +6,34 @@ import { AlertTriangle } from 'lucide-react';
 
 const PRIORITY_FEE_WARNING_THRESHOLD = 50_000; // microLamports
 
-export function PriorityFeeToggle() {
-  const priorityFee = useTerminalStore((s) => s.priorityFee);
+// Sprint 3: P0-1 - Memoized component with granular selectors
+export const PriorityFeeToggle = React.memo(function PriorityFeeToggle() {
+  // Sprint 3: Granular selectors - only subscribe to needed fields
+  const priorityEnabled = useTerminalStore((s) => s.priorityFee.enabled);
+  const microLamports = useTerminalStore((s) => s.priorityFee.microLamports);
   const setPriorityFeeEnabled = useTerminalStore((s) => s.setPriorityFeeEnabled);
 
-  const microLamports = priorityFee.microLamports || 5000;
-  const showWarning = priorityFee.enabled && microLamports > PRIORITY_FEE_WARNING_THRESHOLD;
+  // Sprint 3: Memoized derived values
+  const effectiveMicroLamports = microLamports || 5000;
+  const showWarning = priorityEnabled && effectiveMicroLamports > PRIORITY_FEE_WARNING_THRESHOLD;
+
+  // Sprint 3: Memoized label text to prevent recalculation
+  const statusLabel = useMemo(() => {
+    return priorityEnabled
+      ? `${(effectiveMicroLamports / 1000).toFixed(2)} SOL`
+      : 'Disabled';
+  }, [priorityEnabled, effectiveMicroLamports]);
 
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <div className="space-y-0.5">
           <Label htmlFor="priority-fee">Priority Fee</Label>
-          <p className="text-xs text-muted-foreground">
-            {priorityFee.enabled
-              ? `${(microLamports / 1000).toFixed(2)} SOL`
-              : 'Disabled'}
-          </p>
+          <p className="text-xs text-muted-foreground">{statusLabel}</p>
         </div>
         <Switch
           id="priority-fee"
-          checked={priorityFee.enabled}
+          checked={priorityEnabled}
           onCheckedChange={setPriorityFeeEnabled}
         />
       </div>
@@ -37,12 +45,12 @@ export function PriorityFeeToggle() {
           <div>
             <p className="font-medium">High priority fee</p>
             <p className="text-xs">
-              Priority fee of {(microLamports / 1000).toFixed(2)} SOL is very high. This will significantly increase transaction costs.
+              Priority fee of {(effectiveMicroLamports / 1000).toFixed(2)} SOL is very high. This will significantly increase transaction costs.
             </p>
           </div>
         </div>
       )}
     </div>
   );
-}
+});
 

@@ -6,4 +6,6 @@ export { DiscoverTokenList } from './DiscoverTokenList';
 export { DiscoverTokenCard } from './DiscoverTokenCard';
 export { DiscoverReasonChips } from './DiscoverReasonChips';
 export { DiscoverScoreBadge } from './DiscoverScoreBadge';
+// Sprint 3: P0-3 - Perceived performance skeleton
+export { DiscoverListSkeleton } from './DiscoverListSkeleton';
 

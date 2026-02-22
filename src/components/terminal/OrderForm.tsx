@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import type { Connection } from '@solana/web3.js';
 import type { WalletContextState } from '@solana/wallet-adapter-react';
 import { useTerminalStore } from '@/lib/state/terminalStore';
@@ -6,9 +6,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
 import { QuickAmountButtons } from './QuickAmountButtons';
-import { SlippageSelector } from './SlippageSelector';
+import { SlippageSelectorCompact } from './SlippageSelectorCompact';
 import { PriorityFeeToggle } from './PriorityFeeToggle';
+import { FeePreviewInline } from './FeePreviewInline';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,7 +26,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ArrowUpDown, Loader2 } from 'lucide-react';
+import { ArrowUpDown, Loader2, Settings2 } from 'lucide-react';
 import { BalanceDisplay } from './BalanceDisplay';
 
 interface OrderFormProps {
@@ -27,45 +34,138 @@ interface OrderFormProps {
   connection: Connection;
 }
 
+// Sprint 3: P0-1 - Granular selectors to minimize re-renders
+// Each selector extracts only the needed primitive value
 export function OrderForm({ wallet, connection }: OrderFormProps) {
+  // Granular store selections - only re-render when these specific fields change
   const side = useTerminalStore((s) => s.side);
-  const amount = useTerminalStore((s) => s.amount);
-  const quote = useTerminalStore((s) => s.quote);
-  const tx = useTerminalStore((s) => s.tx);
+  const amountValue = useTerminalStore((s) => s.amount.value);
+  const quoteStatus = useTerminalStore((s) => s.quote.status);
+  const quoteData = useTerminalStore((s) => s.quote.data);
+  const quoteError = useTerminalStore((s) => s.quote.error);
+  const txStatus = useTerminalStore((s) => s.tx.status);
+  const txError = useTerminalStore((s) => s.tx.error);
+  const pair = useTerminalStore((s) => s.pair);
+  const baseBalance = useTerminalStore((s) => s.balances.base);
+  const quoteBalance = useTerminalStore((s) => s.balances.quote);
+  const balancesLoading = useTerminalStore((s) => s.balances.loading);
+
+  // Stable action selectors (functions don't change identity)
   const setSide = useTerminalStore((s) => s.setSide);
   const setAmountValue = useTerminalStore((s) => s.setAmountValue);
   const executeSwap = useTerminalStore((s) => s.executeSwap);
   const fetchBalances = useTerminalStore((s) => s.fetchBalances);
   const setMaxAmount = useTerminalStore((s) => s.setMaxAmount);
-  const pair = useTerminalStore((s) => s.pair);
-  const balances = useTerminalStore((s) => s.balances);
 
   const [isExecuting, setIsExecuting] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const amountInputRef = useRef<HTMLInputElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
 
-  const isWalletConnected = wallet.publicKey !== null;
-  const isAmountValid = amount.value.trim() !== '' && Number(amount.value) > 0;
-  const isQuoteReady = quote.status === 'success' && quote.data !== undefined;
-  const isQuoteLoading = quote.status === 'loading';
-  const isTxInProgress = tx.status === 'signing' || tx.status === 'sending';
+  // Sprint 3.1 PATCH 2: Robust editable target detection
+  const isEditableTarget = useCallback((target: EventTarget | null): boolean => {
+    if (!(target instanceof HTMLElement)) return false;
+    const tagName = target.tagName.toUpperCase();
+    // Check direct tag names
+    if (tagName === 'INPUT' || tagName === 'TEXTAREA' || tagName === 'SELECT') return true;
+    // Check contenteditable
+    if (target.isContentEditable) return true;
+    // Check if inside editable container
+    if (target.closest('input, textarea, select, [contenteditable="true"]') !== null) return true;
+    return false;
+  }, []);
 
-  const canExecute =
-    isWalletConnected &&
-    isAmountValid &&
-    isQuoteReady &&
-    !isTxInProgress &&
-    !isExecuting;
+  // Sprint 3.1 PATCH 1: Container-scoped keyboard handler (replaces global window listener)
+  const handleContainerKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      // Guard: only handle if focus is inside this container
+      const root = rootRef.current;
+      if (!root || !root.contains(document.activeElement)) return;
 
-  useEffect(() => {
-    void fetchBalances({ wallet: { publicKey: wallet.publicKey }, connection });
-  }, [wallet.publicKey, connection, pair, fetchBalances]);
+      // Guard: never trigger when focus is on editable elements
+      if (isEditableTarget(e.target)) {
+        // Allow Enter to work normally in inputs (submit forms, etc.)
+        return;
+      }
 
-  const handleSwap = () => {
+      // Enter to trigger trade (when enabled and dialog not open)
+      if (e.key === 'Enter' && !isConfirmOpen) {
+        if (canExecute) {
+          e.preventDefault();
+          setIsConfirmOpen(true);
+        }
+        return;
+      }
+
+      // Enter in dialog to confirm
+      if (e.key === 'Enter' && isConfirmOpen && canExecute) {
+        e.preventDefault();
+        void handleConfirmSwap();
+        return;
+      }
+
+      // Esc to close dialog
+      if (e.key === 'Escape' && isConfirmOpen) {
+        e.preventDefault();
+        setIsConfirmOpen(false);
+      }
+    },
+    [canExecute, isConfirmOpen, handleConfirmSwap, isEditableTarget]
+  );
+
+  // Memoized derived state to prevent recalculation
+  const isWalletConnected = useMemo(() => wallet.publicKey !== null, [wallet.publicKey]);
+
+  const isAmountValid = useMemo(
+    () => amountValue.trim() !== '' && Number(amountValue) > 0,
+    [amountValue]
+  );
+
+  const isQuoteReady = useMemo(
+    () => quoteStatus === 'success' && quoteData !== undefined,
+    [quoteStatus, quoteData]
+  );
+
+  const isQuoteLoading = quoteStatus === 'loading';
+  const isTxInProgress = txStatus === 'signing' || txStatus === 'sending';
+
+  // Memoized canExecute to prevent child re-renders
+  const canExecute = useMemo(
+    () => isWalletConnected && isAmountValid && isQuoteReady && !isTxInProgress && !isExecuting,
+    [isWalletConnected, isAmountValid, isQuoteReady, isTxInProgress, isExecuting]
+  );
+
+  // Sprint 3: P1-2 - Disabled reason microcopy
+  const disabledReason = useMemo(() => {
+    if (!isWalletConnected) return 'Connect wallet to trade';
+    if (!isAmountValid) return 'Enter amount to get quote';
+    if (!isQuoteReady) return 'Waiting for quote...';
+    return null;
+  }, [isWalletConnected, isAmountValid, isQuoteReady]);
+
+  // Stable callbacks to prevent child re-renders
+  const handleSetSide = useCallback(
+    (value: string) => {
+      if (value === 'buy' || value === 'sell') {
+        setSide(value);
+      }
+    },
+    [setSide]
+  );
+
+  const handleSetAmount = useCallback(
+    (value: string) => {
+      setAmountValue(value);
+    },
+    [setAmountValue]
+  );
+
+  const handleSwap = useCallback(() => {
     if (!canExecute) return;
     setIsConfirmOpen(true);
-  };
+  }, [canExecute]);
 
-  const handleConfirmSwap = async () => {
+  const handleConfirmSwap = useCallback(async () => {
     if (!canExecute || !wallet.publicKey || !wallet.signTransaction) {
       return;
     }
@@ -85,27 +185,42 @@ export function OrderForm({ wallet, connection }: OrderFormProps) {
     } finally {
       setIsExecuting(false);
     }
-  };
+  }, [canExecute, wallet.publicKey, wallet.signTransaction, executeSwap, connection]);
+
+  // Fetch balances only when necessary deps change
+  useEffect(() => {
+    void fetchBalances({ wallet: { publicKey: wallet.publicKey }, connection });
+  }, [wallet.publicKey, connection, pair?.baseMint, pair?.quoteMint, fetchBalances]);
 
   return (
-    <div className="space-y-4">
+    <div
+      ref={rootRef}
+      onKeyDown={handleContainerKeyDown}
+      className="space-y-3"
+      tabIndex={-1}
+      aria-label="Trading order form"
+    >
       {/* Side Toggle */}
       <div>
         <Label>Side</Label>
         <ToggleGroup
           type="single"
           value={side}
-          onValueChange={(value) => {
-            if (value === 'buy' || value === 'sell') {
-              setSide(value);
-            }
-          }}
+          onValueChange={handleSetSide}
           className="mt-2"
         >
-          <ToggleGroupItem value="buy" aria-label="Buy">
+          <ToggleGroupItem
+            value="buy"
+            aria-label="Buy"
+            className="focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          >
             Buy
           </ToggleGroupItem>
-          <ToggleGroupItem value="sell" aria-label="Sell">
+          <ToggleGroupItem
+            value="sell"
+            aria-label="Sell"
+            className="focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          >
             Sell
           </ToggleGroupItem>
         </ToggleGroup>
@@ -118,46 +233,47 @@ export function OrderForm({ wallet, connection }: OrderFormProps) {
         </Label>
         <div className="mt-2 space-y-2">
           <Input
+            ref={amountInputRef}
             id="amount"
             type="text"
             inputMode="decimal"
             placeholder="0.00"
-            value={amount.value}
-            onChange={(e) => setAmountValue(e.target.value)}
+            value={amountValue}
+            onChange={(e) => handleSetAmount(e.target.value)}
             disabled={isTxInProgress}
+            className="focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            aria-label="Trade amount"
           />
           {isWalletConnected && (
             <BalanceDisplay
               label="Balance"
-              balance={side === 'buy' ? balances.quote : balances.base}
+              balance={side === 'buy' ? quoteBalance : baseBalance}
               symbol={side === 'buy' ? (pair?.quoteSymbol ?? 'USDC') : (pair?.baseSymbol ?? 'SOL')}
               onMax={setMaxAmount}
-              loading={balances.loading}
+              loading={balancesLoading}
             />
           )}
           <QuickAmountButtons />
         </div>
       </div>
 
-      {/* Slippage */}
-      <SlippageSelector />
+      {/* Fee Preview - Inline at decision moment */}
+      <FeePreviewInline />
 
-      {/* Priority Fee */}
-      <PriorityFeeToggle />
-
-      {/* Swap Button */}
+      {/* Swap Button - Elevated primary action */}
       <Button
         onClick={handleSwap}
         disabled={!canExecute}
-        className="w-full"
+        className="h-12 w-full mt-4 shadow-lg shadow-brand/20 hover:shadow-xl hover:shadow-brand/30 active:scale-[0.98] transition-all duration-150 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         size="lg"
+        aria-label={side === 'buy' ? 'Buy token' : 'Sell token'}
       >
         {isExecuting || isTxInProgress ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            {tx.status === 'signing' && 'Signing...'}
-            {tx.status === 'sending' && 'Sending...'}
-            {!tx.status || (tx.status === 'idle' && isExecuting) && 'Processing...'}
+            {txStatus === 'signing' && 'Signing...'}
+            {txStatus === 'sending' && 'Sending...'}
+            {!txStatus || (txStatus === 'idle' && isExecuting) && 'Processing...'}
           </>
         ) : (
           <>
@@ -171,31 +287,53 @@ export function OrderForm({ wallet, connection }: OrderFormProps) {
         )}
       </Button>
 
-      {!isWalletConnected && (
-        <p className="text-xs text-muted-foreground">
-          Wallet connection is required before swap execution.
+      {/* Sprint 3: P1-2 - Disabled reason microcopy */}
+      {disabledReason && (
+        <p className="text-xs text-muted-foreground text-center">
+          {disabledReason}
         </p>
       )}
 
-      {/* Error Messages */}
-      {quote.status === 'error' && quote.error && (
+      {/* Advanced Settings - Collapsed by default with visible summary chips */}
+      <AdvancedSettingsAccordion />
+
+      {/* Error Messages - Sprint 3: Use granular error selectors */}
+      {quoteStatus === 'error' && quoteError && (
         <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-          {quote.error}
+          {quoteError}
         </div>
       )}
 
-      {tx.status === 'failed' && tx.error && (
+      {txStatus === 'failed' && txError && (
         <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-          Transaction failed: {tx.error}
+          Transaction failed: {txError}
         </div>
       )}
+
+      {/* Sprint 3.1 PATCH 1: Updated hint - only works when Terminal is focused */}
+      <p className="hidden md:block text-[10px] text-muted-foreground/60 text-center">
+        Focus Terminal, then press <kbd className="px-1 py-0.5 rounded bg-muted">Enter</kbd> to trade
+      </p>
 
       <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
-        <AlertDialogContent data-testid="swap-confirm-dialog">
+        {/* Sprint 3.1 PATCH 1: Dialog-level Enter handler for confirmation */}
+        <AlertDialogContent
+          data-testid="swap-confirm-dialog"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && canExecute && !isExecuting && !isTxInProgress) {
+              e.preventDefault();
+              void handleConfirmSwap();
+            }
+            if (e.key === 'Escape') {
+              e.preventDefault();
+              setIsConfirmOpen(false);
+            }
+          }}
+        >
           <AlertDialogHeader>
             <AlertDialogTitle>Confirm swap</AlertDialogTitle>
             <AlertDialogDescription>
-              {side === 'buy' ? 'Buy' : 'Sell'} {amount.value || '0'}{' '}
+              {side === 'buy' ? 'Buy' : 'Sell'} {amountValue || '0'}{' '}
               {side === 'buy' ? pair?.quoteSymbol || 'USDC' : pair?.baseSymbol || 'TOKEN'} for{' '}
               {side === 'buy' ? pair?.baseSymbol || 'TOKEN' : pair?.quoteSymbol || 'USDC'}.
             </AlertDialogDescription>
@@ -217,4 +355,57 @@ export function OrderForm({ wallet, connection }: OrderFormProps) {
     </div>
   );
 }
+
+// Sprint 3: P0-1 - Memoized subcomponent to prevent parent re-render cascades
+const AdvancedSettingsAccordion = React.memo(function AdvancedSettingsAccordion() {
+  // Sprint 3: Granular selectors - only re-render when these specific values change
+  const slippageBps = useTerminalStore((s) => s.slippageBps);
+  const priorityEnabled = useTerminalStore((s) => s.priorityFee.enabled);
+  const priorityMicroLamports = useTerminalStore((s) => s.priorityFee.microLamports);
+
+  // Sprint 3: Memoized label computation
+  const slippageLabel = useMemo(() => `${(slippageBps / 100).toFixed(1)}%`, [slippageBps]);
+
+  // Sprint 3: Memoized priority tier label
+  const { priorityLabel, priorityDetail } = useMemo(() => {
+    if (!priorityEnabled) return { priorityLabel: 'Off', priorityDetail: undefined };
+    const µL = priorityMicroLamports ?? 5_000;
+    let label: string;
+    if (µL === 0) label = 'Auto';
+    else if (µL <= 1_000) label = 'Low';
+    else if (µL <= 10_000) label = 'Medium';
+    else label = 'High';
+    return { priorityLabel: label, priorityDetail: `${µL} µL/CU` };
+  }, [priorityEnabled, priorityMicroLamports]);
+
+  return (
+    <Accordion type="single" collapsible className="w-full">
+      <AccordionItem value="advanced" className="border-0">
+        <AccordionTrigger
+          className="text-sm text-muted-foreground hover:no-underline py-2 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded"
+          aria-label="Advanced settings (slippage and priority fee)"
+        >
+          <div className="flex items-center gap-2 flex-wrap">
+            <Settings2 className="h-3 w-3 shrink-0" />
+            <span>Advanced</span>
+            {/* Summary chips - visible without expanding */}
+            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] bg-muted border text-muted-foreground">
+              Slippage {slippageLabel}
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] bg-muted border text-muted-foreground">
+              Priority {priorityLabel}
+              {priorityDetail && (
+                <span className="text-[9px] opacity-70">({priorityDetail})</span>
+              )}
+            </span>
+          </div>
+        </AccordionTrigger>
+        <AccordionContent className="space-y-3 pt-2">
+          <SlippageSelectorCompact />
+          <PriorityFeeToggle />
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
+  );
+});
 

@@ -33,6 +33,8 @@ export async function gotoAndWait(
   
   const timeout = options?.timeout ?? 15_000;
 
+  // CI Stability Baseline v1.0
+  // Timeout explicitly forwarded to page.goto to prevent Firefox navigation failures.
   // 1) Navigate without waiting for full load/network idle.
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout });
 
