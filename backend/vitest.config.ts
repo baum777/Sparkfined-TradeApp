@@ -17,6 +17,8 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
     },
+    // CI Stability Baseline v1.0
+    // Absolute path required to ensure setup executes reliably in monorepo context.
     setupFiles: [resolve(__dirname, 'tests/setup.ts')],
   },
 });
