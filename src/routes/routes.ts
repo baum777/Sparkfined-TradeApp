@@ -4,6 +4,7 @@ export type PrimaryTabKey =
   | "journal"
   | "insights"
   | "alerts"
+  | "terminal"
   | "settings";
 
 export interface PrimaryTab {
@@ -93,6 +94,14 @@ export const primaryTabs: PrimaryTab[] = [
     route: "/alerts",
     tabTestId: "tab-alerts",
     pageTestId: "page-alerts",
+    showInMobileNav: true,
+  },
+  {
+    key: "terminal",
+    label: "Terminal",
+    route: "/terminal",
+    tabTestId: "tab-terminal",
+    pageTestId: "trading-terminal",
     showInMobileNav: true,
   },
   {

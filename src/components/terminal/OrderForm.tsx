@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Connection } from '@solana/web3.js';
 import type { WalletContextState } from '@solana/wallet-adapter-react';
 import { useTerminalStore } from '@/lib/state/terminalStore';
@@ -9,7 +9,18 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { QuickAmountButtons } from './QuickAmountButtons';
 import { SlippageSelector } from './SlippageSelector';
 import { PriorityFeeToggle } from './PriorityFeeToggle';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { ArrowUpDown, Loader2 } from 'lucide-react';
+import { BalanceDisplay } from './BalanceDisplay';
 
 interface OrderFormProps {
   wallet: WalletContextState;
@@ -24,8 +35,13 @@ export function OrderForm({ wallet, connection }: OrderFormProps) {
   const setSide = useTerminalStore((s) => s.setSide);
   const setAmountValue = useTerminalStore((s) => s.setAmountValue);
   const executeSwap = useTerminalStore((s) => s.executeSwap);
+  const fetchBalances = useTerminalStore((s) => s.fetchBalances);
+  const setMaxAmount = useTerminalStore((s) => s.setMaxAmount);
+  const pair = useTerminalStore((s) => s.pair);
+  const balances = useTerminalStore((s) => s.balances);
 
   const [isExecuting, setIsExecuting] = useState(false);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   const isWalletConnected = wallet.publicKey !== null;
   const isAmountValid = amount.value.trim() !== '' && Number(amount.value) > 0;
@@ -40,11 +56,21 @@ export function OrderForm({ wallet, connection }: OrderFormProps) {
     !isTxInProgress &&
     !isExecuting;
 
-  const handleSwap = async () => {
+  useEffect(() => {
+    void fetchBalances({ wallet: { publicKey: wallet.publicKey }, connection });
+  }, [wallet.publicKey, connection, pair, fetchBalances]);
+
+  const handleSwap = () => {
+    if (!canExecute) return;
+    setIsConfirmOpen(true);
+  };
+
+  const handleConfirmSwap = async () => {
     if (!canExecute || !wallet.publicKey || !wallet.signTransaction) {
       return;
     }
 
+    setIsConfirmOpen(false);
     setIsExecuting(true);
     try {
       await executeSwap({
@@ -88,7 +114,7 @@ export function OrderForm({ wallet, connection }: OrderFormProps) {
       {/* Amount Input */}
       <div>
         <Label htmlFor="amount">
-          Amount ({side === 'buy' ? 'USDC' : 'SOL'})
+          Amount ({side === 'buy' ? pair?.quoteSymbol ?? 'USDC' : pair?.baseSymbol ?? 'SOL'})
         </Label>
         <div className="mt-2 space-y-2">
           <Input
@@ -100,6 +126,15 @@ export function OrderForm({ wallet, connection }: OrderFormProps) {
             onChange={(e) => setAmountValue(e.target.value)}
             disabled={isTxInProgress}
           />
+          {isWalletConnected && (
+            <BalanceDisplay
+              label="Balance"
+              balance={side === 'buy' ? balances.quote : balances.base}
+              symbol={side === 'buy' ? (pair?.quoteSymbol ?? 'USDC') : (pair?.baseSymbol ?? 'SOL')}
+              onMax={setMaxAmount}
+              loading={balances.loading}
+            />
+          )}
           <QuickAmountButtons />
         </div>
       </div>
@@ -127,10 +162,20 @@ export function OrderForm({ wallet, connection }: OrderFormProps) {
         ) : (
           <>
             <ArrowUpDown className="mr-2 h-4 w-4" />
-            {side === 'buy' ? 'Buy' : 'Sell'}
+            {!isWalletConnected
+              ? 'Connect wallet to swap'
+              : side === 'buy'
+                ? 'Buy'
+                : 'Sell'}
           </>
         )}
       </Button>
+
+      {!isWalletConnected && (
+        <p className="text-xs text-muted-foreground">
+          Wallet connection is required before swap execution.
+        </p>
+      )}
 
       {/* Error Messages */}
       {quote.status === 'error' && quote.error && (
@@ -144,6 +189,31 @@ export function OrderForm({ wallet, connection }: OrderFormProps) {
           Transaction failed: {tx.error}
         </div>
       )}
+
+      <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
+        <AlertDialogContent data-testid="swap-confirm-dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm swap</AlertDialogTitle>
+            <AlertDialogDescription>
+              {side === 'buy' ? 'Buy' : 'Sell'} {amount.value || '0'}{' '}
+              {side === 'buy' ? pair?.quoteSymbol || 'USDC' : pair?.baseSymbol || 'TOKEN'} for{' '}
+              {side === 'buy' ? pair?.baseSymbol || 'TOKEN' : pair?.quoteSymbol || 'USDC'}.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault();
+                void handleConfirmSwap();
+              }}
+              disabled={isExecuting || isTxInProgress}
+            >
+              Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

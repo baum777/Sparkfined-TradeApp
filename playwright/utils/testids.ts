@@ -16,6 +16,7 @@ export const PAGE_TESTIDS = {
   insights: 'page-insights',
   insightsDetail: 'page-insights-detail',
   alerts: 'page-alerts',
+  terminal: 'trading-terminal',
   settings: 'page-settings',
   notFound: 'page-notfound',
 } as const;
@@ -30,6 +31,7 @@ export const NAV_TESTIDS = {
   research: 'tab-research',
   insights: 'tab-insights',
   alerts: 'tab-alerts',
+  terminal: 'tab-terminal',
   settings: 'tab-settings',
 } as const;
 

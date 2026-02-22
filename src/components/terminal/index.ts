@@ -1,6 +1,7 @@
 export { TerminalShell } from './TerminalShell';
 export { ChartPanel } from './ChartPanel';
 export { ExecutionPanel } from './ExecutionPanel';
+export { BalanceDisplay } from './BalanceDisplay';
 export { OrderForm } from './OrderForm';
 export { PairSelector } from './PairSelector';
 export { QuickAmountButtons } from './QuickAmountButtons';

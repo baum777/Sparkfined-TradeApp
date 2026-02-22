@@ -1,8 +1,8 @@
 import { beforeAll, afterAll, beforeEach } from 'vitest';
-import { initDatabase, closeDatabase, getDatabase, resetDatabase } from '../src/db/index';
-import { runMigrations } from '../src/db/migrate';
-import { resetEnvCache } from '../src/config/env';
-import { resetConfigCache } from '../src/config/config';
+import { initDatabase, closeDatabase, getDatabase, resetDatabase } from '../src/db/index.js';
+import { runMigrations } from '../src/db/migrate.js';
+import { resetEnvCache } from '../src/config/env.js';
+import { resetConfigCache } from '../src/config/config.js';
 import { join } from 'path';
 import { unlinkSync, existsSync, mkdirSync } from 'fs';
 
