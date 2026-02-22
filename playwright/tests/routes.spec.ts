@@ -11,39 +11,39 @@ import { gotoAndWait, getUrlParts } from "../utils/nav";
 test.use({ video: "off" });
 
 test.describe("Secondary Routes", () => {
-  test("sollte alle Secondary Routes direkt öffnen können", async ({ page }) => {
-    await stubApi(page);
-    // Set longer timeout for route navigation test
-    test.setTimeout(60000);
-    const routes = [
-      { url: "/journal?mode=inbox&view=pending", pageTestId: "journal" as const, expectedUrl: /\/journal/ },
-      { url: "/journal?mode=learn&view=pending", pageTestId: "journal" as const, expectedUrl: /\/journal/ },
-      { url: "/journal/entry-1", pageTestId: "journalEntry" as const, expectedUrl: /\/journal\/entry-1/ },
+  const routes = [
+    { url: "/journal?mode=inbox&view=pending", pageTestId: "journal" as const, expectedUrl: /\/journal/ },
+    { url: "/journal?mode=learn&view=pending", pageTestId: "journal" as const, expectedUrl: /\/journal/ },
+    { url: "/journal/entry-1", pageTestId: "journalEntry" as const, expectedUrl: /\/journal\/entry-1/ },
 
-      // Legacy oracle routes redirect into Insights
-      { url: "/oracle/inbox", pageTestId: "insights" as const, expectedUrl: /\/insights/ },
-      { url: "/oracle/oracle-1", pageTestId: "insightsDetail" as const, expectedUrl: /\/insights\/oracle-1/ },
-      { url: "/oracle/status", pageTestId: "insights" as const, expectedUrl: /\/insights/ },
+    // Legacy oracle routes redirect into Insights
+    { url: "/oracle/inbox", pageTestId: "insights" as const, expectedUrl: /\/insights/ },
+    { url: "/oracle/oracle-1", pageTestId: "insightsDetail" as const, expectedUrl: /\/insights\/oracle-1/ },
+    { url: "/oracle/status", pageTestId: "insights" as const, expectedUrl: /\/insights/ },
 
-      // Legacy settings routes redirect into Settings (section param)
-      { url: "/settings/providers", pageTestId: "settings" as const, expectedUrl: /\/settings/ },
-      { url: "/settings/data", pageTestId: "settings" as const, expectedUrl: /\/settings/ },
-      { url: "/settings/experiments", pageTestId: "settings" as const, expectedUrl: /\/settings/ },
-      { url: "/settings/privacy", pageTestId: "settings" as const, expectedUrl: /\/settings/ },
+    // Legacy settings routes redirect into Settings (section param)
+    { url: "/settings/providers", pageTestId: "settings" as const, expectedUrl: /\/settings/ },
+    { url: "/settings/data", pageTestId: "settings" as const, expectedUrl: /\/settings/ },
+    { url: "/settings/experiments", pageTestId: "settings" as const, expectedUrl: /\/settings/ },
+    { url: "/settings/privacy", pageTestId: "settings" as const, expectedUrl: /\/settings/ },
 
-      // Valid Solana base58 mint (wSOL)
-      { url: "/asset/So11111111111111111111111111111111111111112", pageTestId: "research" as const, expectedUrl: /\/research/ },
-    ] as const;
+    // Valid Solana base58 mint (wSOL)
+    { url: "/asset/So11111111111111111111111111111111111111112", pageTestId: "research" as const, expectedUrl: /\/research/ },
+  ] as const;
 
-    for (const r of routes) {
+  for (const r of routes) {
+    test(`öffnet Secondary Route: ${r.url}`, async ({ page }) => {
+      await stubApi(page);
+      test.setTimeout(30000);
       await gotoAndWait(page, r.url, r.expectedUrl, r.pageTestId, { timeout: 30000 });
-    }
-  });
+    });
+  }
 });
 
 test("legacy /chart redirectet zur canonical research route", async ({ page }) => {
   await stubApi(page);
   await gotoAndWait(page, "/chart?q=SOL", /\/research/, "research", { timeout: 30000 });
+  await expect(page).toHaveURL(/\/research/);
   const { pathname, searchParams } = getUrlParts(page.url());
   expect(pathname).toBe("/research");
   expect(searchParams.get("view")).toBe("chart");
@@ -53,6 +53,7 @@ test("legacy /chart redirectet zur canonical research route", async ({ page }) =
 test("legacy /replay redirectet zur canonical research route mit replay flag", async ({ page }) => {
   await stubApi(page);
   await gotoAndWait(page, "/replay", /\/research/, "research");
+  await expect(page).toHaveURL(/\/research/);
   const { pathname, searchParams } = getUrlParts(page.url());
   expect(pathname).toBe("/research");
   expect(searchParams.get("view")).toBe("chart");
@@ -62,6 +63,7 @@ test("legacy /replay redirectet zur canonical research route mit replay flag", a
 test("legacy /journal?entry=123 redirectet zu /journal/123", async ({ page }) => {
   await stubApi(page);
   await gotoAndWait(page, "/journal?entry=123", /\/journal\/123/, "journalEntry");
+  await expect(page).toHaveURL(/\/journal\/123/);
   const { pathname } = getUrlParts(page.url());
   expect(pathname).toBe("/journal/123");
 });

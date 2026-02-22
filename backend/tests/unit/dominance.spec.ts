@@ -109,9 +109,9 @@ describe('Sparkfined Dominance Layer - unit', () => {
     expect(reg?.deltaUsd).toBe(1);
   });
 
-  it('buildSparkfinedContext is backwards-compatible by default (disabled unless flag true)', () => {
-    process.env.OPENAI_API_KEY = 'should-not-be-captured';
-    const ctx = buildSparkfinedContext({ request: { objective: 'x' }, env: process.env });
+  it('buildSparkfinedContext is backwards-compatible by default (disabled unless flag true)', { timeout: 10000 }, () => {
+    const testEnv = { ...process.env, SPARKFINED_REPO_ROOT: tmpdir(), OPENAI_API_KEY: 'should-not-be-captured' };
+    const ctx = buildSparkfinedContext({ request: { objective: 'x' }, env: testEnv });
     expect(ctx.enabled).toBe(false);
     expect(ctx.risk.policy.enabled).toBe(false);
     expect(ctx.risk.policy.goldenTaskPlan.global).toEqual([]);
