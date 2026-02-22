@@ -4,6 +4,7 @@ import {
   PenLine,
   Lightbulb,
   Bell,
+  CandlestickChart,
   Settings,
   type LucideIcon,
 } from "lucide-react";
@@ -32,6 +33,7 @@ const iconByTab: Record<PrimaryTabKey, LucideIcon> = {
   journal: PenLine,
   insights: Lightbulb,
   alerts: Bell,
+  terminal: CandlestickChart,
   settings: Settings,
 };
 
@@ -50,6 +52,8 @@ export const primaryNavItems: NavItem[] = primaryTabs.map((tab) => ({
           ? ["/insights", "/oracle"]
           : tab.key === "journal"
             ? ["/journal", "/learn", "/handbook"]
+            : tab.key === "terminal"
+              ? ["/terminal"]
             : [tab.route],
 }));
 
@@ -70,6 +74,8 @@ export const mobileNavItems: NavItem[] = primaryTabs
             ? ["/insights", "/oracle"]
             : tab.key === "journal"
               ? ["/journal", "/learn", "/handbook"]
+              : tab.key === "terminal"
+                ? ["/terminal"]
               : [tab.route],
   }));
 

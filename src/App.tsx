@@ -17,7 +17,7 @@ import JournalEntry from "@/pages/JournalEntry";
 import Insights from "@/pages/Insights";
 import Alerts from "@/pages/Alerts";
 import SettingsPage from "@/pages/SettingsPage";
-import Terminal from "@/pages/Terminal";
+import TradingShell from "@/pages/TradingShell";
 import NotFound from "@/pages/NotFound";
 
 // Journal queue sync runner
@@ -193,7 +193,7 @@ const App = () => {
               <Route path="/insights/:insightId" element={<Insights />} />
               <Route path="/alerts" element={<Alerts />} />
               <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/terminal" element={<Terminal />} />
+              <Route path="/terminal" element={<TradingShell />} />
 
               {/* LEGACY ROUTE REDIRECTS */}
               <Route path="/chart" element={<ChartRedirect />} />

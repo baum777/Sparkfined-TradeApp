@@ -13,9 +13,14 @@ function toHex(bytes: ArrayBuffer): string {
  * - Falls back to a small deterministic non-crypto hash when not
  */
 export async function hashSha256Hex(input: string): Promise<string> {
-  if (typeof crypto !== 'undefined' && crypto.subtle?.digest) {
+  const subtle =
+    typeof globalThis !== 'undefined' &&
+    'crypto' in globalThis &&
+    (globalThis as any).crypto?.subtle;
+
+  if (subtle?.digest) {
     const data = new TextEncoder().encode(input);
-    const digest = await crypto.subtle.digest('SHA-256', data);
+    const digest = await subtle.digest('SHA-256', data);
     return toHex(digest);
   }
 

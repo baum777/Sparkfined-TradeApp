@@ -6,6 +6,7 @@ import { FEE_TIERS } from '../../../shared/trading/fee/feeTiers';
 import { quoteService } from '@/lib/trading/quote/quoteService';
 import { swapService } from '@/lib/trading/swap/swapService';
 import { confirmSignature, extractTxError, sendSignedTransaction, simulateSignedTransaction } from '@/lib/solana/tx';
+import { fetchTokenBalance } from '@/lib/solana/balance';
 import { isDev } from '@/lib/env';
 
 type SignableTransaction = Transaction | VersionedTransaction;
@@ -46,6 +47,7 @@ export interface TerminalStoreState {
   // Outputs
   quote: TerminalQuoteState;
   tx: TerminalTxState;
+  balances: { base: string | null; quote: string | null; loading: boolean };
 
   // Actions
   setPair: (pair: TerminalPair | null) => void;
@@ -62,6 +64,9 @@ export interface TerminalStoreState {
   fetchQuote: (opts?: { force?: boolean }) => Promise<TerminalQuoteData | null>;
   scheduleQuoteFetch: () => void;
   executeSwap: (opts: { wallet: WalletLike; connection: Connection }) => Promise<string>;
+
+  fetchBalances: (opts: { wallet: { publicKey: PublicKey | null }; connection: Connection }) => Promise<void>;
+  setMaxAmount: () => void;
 }
 
 let quoteDebounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -174,6 +179,7 @@ export const useTerminalStore = create<TerminalStoreState>((set, get) => ({
 
   quote: { status: 'idle' },
   tx: { status: 'idle' },
+  balances: { base: null, quote: null, loading: false },
 
   setPair: (pair) => {
     set({ pair });
@@ -377,6 +383,35 @@ export const useTerminalStore = create<TerminalStoreState>((set, get) => ({
       set({ tx: { status: 'failed', error: msg } });
       throw new Error(msg);
     }
+  },
+
+  fetchBalances: async ({ wallet, connection }) => {
+    const state = get();
+    if (!wallet.publicKey || !state.pair) {
+      set({ balances: { base: null, quote: null, loading: false } });
+      return;
+    }
+
+    set((s) => ({ balances: { ...s.balances, loading: true } }));
+
+    try {
+      const [base, quote] = await Promise.all([
+        fetchTokenBalance(connection, wallet.publicKey, state.pair.baseMint),
+        fetchTokenBalance(connection, wallet.publicKey, state.pair.quoteMint),
+      ]);
+      set({ balances: { base, quote, loading: false } });
+    } catch {
+      set({ balances: { base: null, quote: null, loading: false } });
+    }
+  },
+
+  setMaxAmount: () => {
+    const state = get();
+    if (!state.pair) return;
+    const spendableBalance = state.side === 'buy' ? state.balances.quote : state.balances.base;
+    if (spendableBalance == null || spendableBalance === '') return;
+    set((s) => ({ amount: { ...s.amount, value: spendableBalance } }));
+    get().scheduleQuoteFetch();
   },
 }));
 
