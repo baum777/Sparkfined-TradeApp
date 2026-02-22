@@ -20,7 +20,7 @@ export function SettingsSectionCard({
         variant === "danger" && "border-destructive/50 bg-destructive/5"
       )}
     >
-      <CardHeader className="pb-3">
+      <CardHeader className="pb-4">
         <CardTitle
           className={cn(
             "text-base",
