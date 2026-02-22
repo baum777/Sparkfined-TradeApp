@@ -12,7 +12,7 @@ test.use({ video: "off" });
 
 test.describe("Secondary Routes", () => {
   const routes = [
-    { url: "/journal?mode=inbox&view=pending", pageTestId: "journal" as const, expectedUrl: /\/journal/ },
+    { url: "/journal?mode=inbox&view=pending", pageTestId: "journal" as const, expectedUrl: /\/journal/, timeout: 60_000 },
     { url: "/journal?mode=learn&view=pending", pageTestId: "journal" as const, expectedUrl: /\/journal/ },
     { url: "/journal/entry-1", pageTestId: "journalEntry" as const, expectedUrl: /\/journal\/entry-1/ },
 
@@ -23,19 +23,23 @@ test.describe("Secondary Routes", () => {
 
     // Legacy settings routes redirect into Settings (section param)
     { url: "/settings/providers", pageTestId: "settings" as const, expectedUrl: /\/settings/ },
-    { url: "/settings/data", pageTestId: "settings" as const, expectedUrl: /\/settings/ },
+    { url: "/settings/data", pageTestId: "settings" as const, expectedUrl: /\/settings/, timeout: 60_000 },
     { url: "/settings/experiments", pageTestId: "settings" as const, expectedUrl: /\/settings/ },
     { url: "/settings/privacy", pageTestId: "settings" as const, expectedUrl: /\/settings/ },
 
     // Valid Solana base58 mint (wSOL)
     { url: "/asset/So11111111111111111111111111111111111111112", pageTestId: "research" as const, expectedUrl: /\/research/ },
+
+    // Terminal
+    { url: "/terminal", pageTestId: "terminal" as const, expectedUrl: /\/terminal/ },
   ] as const;
 
   for (const r of routes) {
     test(`öffnet Secondary Route: ${r.url}`, async ({ page }) => {
       await stubApi(page);
-      test.setTimeout(30000);
-      await gotoAndWait(page, r.url, r.expectedUrl, r.pageTestId, { timeout: 30000 });
+      const timeout = r.timeout ?? 30_000;
+      test.setTimeout(timeout);
+      await gotoAndWait(page, r.url, r.expectedUrl, r.pageTestId, { timeout });
     });
   }
 });

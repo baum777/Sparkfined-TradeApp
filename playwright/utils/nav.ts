@@ -34,7 +34,7 @@ export async function gotoAndWait(
   const timeout = options?.timeout ?? 15_000;
 
   // 1) Navigate without waiting for full load/network idle.
-  await page.goto(url, { waitUntil: 'domcontentloaded' });
+  await page.goto(url, { waitUntil: 'domcontentloaded', timeout });
 
   // 2) Wait for final URL (handles redirects + client-side routing).
   await expect(page).toHaveURL(urlRegex, { timeout });
