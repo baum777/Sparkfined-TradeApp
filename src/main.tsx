@@ -44,3 +44,9 @@ createRoot(document.getElementById("root")!).render(
     <App />
   </WalletProviders>
 );
+
+// Playwright readiness marker: set after initial render.
+// Used by routing smoke tests to avoid brittle "load"/networkidle waits.
+requestAnimationFrame(() => {
+  document.documentElement.dataset.appReady = "1";
+});

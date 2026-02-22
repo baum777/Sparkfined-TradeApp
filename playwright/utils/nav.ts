@@ -1,6 +1,6 @@
 import type { Page, Locator } from '@playwright/test';
 import { expect } from '@playwright/test';
-import { pageTestId, type PageTestId } from './testids';
+import { pageTestId } from './testids';
 
 /**
  * Standardized Navigation Patterns
@@ -25,25 +25,26 @@ export async function gotoAndWait(
   expectedPageTestId: keyof typeof import('./testids').PAGE_TESTIDS,
   options?: {
     timeout?: number;
-    waitUntil?: 'load' | 'domcontentloaded' | 'networkidle';
   }
 ): Promise<void> {
   const urlRegex = typeof expectedUrlRegex === 'string' 
     ? new RegExp(expectedUrlRegex) 
     : expectedUrlRegex;
   
-  const timeout = options?.timeout ?? 30000;
-  const waitUntil = options?.waitUntil ?? 'domcontentloaded';
+  const timeout = options?.timeout ?? 15_000;
 
-  // Navigate and wait for URL in parallel
-  await Promise.all([
-    page.goto(url, { waitUntil, timeout }),
-    page.waitForURL(urlRegex, { timeout }),
-  ]);
+  // 1) Navigate without waiting for full load/network idle.
+  await page.goto(url, { waitUntil: 'domcontentloaded' });
 
-  // Then wait for page anchor
+  // 2) Wait for final URL (handles redirects + client-side routing).
+  await expect(page).toHaveURL(urlRegex, { timeout });
+
+  // 3) Wait for SPA bootstrap readiness marker.
+  await page.waitForSelector('html[data-app-ready="1"]', { timeout });
+
+  // 4) Then wait for page anchor.
   const selector = pageTestId(expectedPageTestId);
-  await expect(page.locator(selector)).toBeVisible({ timeout: 15000 });
+  await expect(page.locator(selector)).toBeVisible({ timeout });
 }
 
 /**
@@ -68,20 +69,17 @@ export async function clickNavAndWait(
     ? new RegExp(expectedUrlRegex) 
     : expectedUrlRegex;
   
-  const timeout = options?.timeout ?? 30000;
+  const timeout = options?.timeout ?? 15_000;
   const navLocator = typeof navSelector === 'string' 
     ? page.locator(navSelector) 
     : navSelector;
 
-  // Click and wait for URL in parallel
-  await Promise.all([
-    navLocator.click(),
-    page.waitForURL(urlRegex, { timeout }),
-  ]);
+  await navLocator.click();
+  await expect(page).toHaveURL(urlRegex, { timeout });
+  await page.waitForSelector('html[data-app-ready="1"]', { timeout });
 
-  // Then wait for page anchor
   const selector = pageTestId(expectedPageTestId);
-  await expect(page.locator(selector)).toBeVisible({ timeout: 15000 });
+  await expect(page.locator(selector)).toBeVisible({ timeout });
 }
 
 /**
@@ -104,14 +102,13 @@ export async function waitForAppReady(
     ? new RegExp(expectedUrlRegex) 
     : expectedUrlRegex;
   
-  const timeout = options?.timeout ?? 30000;
+  const timeout = options?.timeout ?? 15_000;
 
-  // Wait for URL first
-  await page.waitForURL(urlRegex, { timeout });
+  await expect(page).toHaveURL(urlRegex, { timeout });
+  await page.waitForSelector('html[data-app-ready="1"]', { timeout });
 
-  // Then wait for page anchor
   const selector = pageTestId(expectedPageTestId);
-  await expect(page.locator(selector)).toBeVisible({ timeout: 15000 });
+  await expect(page.locator(selector)).toBeVisible({ timeout });
 }
 
 /**

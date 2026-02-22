@@ -36,7 +36,6 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY backend/package.json ./backend/
 COPY api/package.json ./api/
 COPY apps/backend-alerts/package.json ./apps/backend-alerts/
-COPY apps/web/package.json ./apps/web/
 
 # Install production dependencies only for the backend
 RUN pnpm install --frozen-lockfile --prod --filter tradeapp-backend...
