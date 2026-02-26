@@ -8,6 +8,8 @@ import {
 } from '@/features/discover/ui/discoverSelectors';
 import { DiscoverTokenCard } from './DiscoverTokenCard';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
+import { AlertTriangle, Loader2, RotateCcw } from 'lucide-react';
 
 interface DiscoverTokenListProps {
   tab: Tab;
@@ -38,6 +40,9 @@ export function DiscoverTokenList({ tab }: DiscoverTokenListProps) {
   const filters = useDiscoverStore((s) => s.filters);
   const selectedPreset = useDiscoverStore((s) => s.selectedPreset[tab]);
   const isLoading = useDiscoverStore((s) => s.isLoading);
+  const error = useDiscoverStore((s) => s.error);
+  const retryFetch = useDiscoverStore((s) => s.retryFetch);
+  const resetFilters = useDiscoverStore((s) => s.resetFilters);
   const listContainerRef = useRef<HTMLDivElement | null>(null);
   const [listHeight, setListHeight] = useState<number>(0);
   const selectDiscoverTokens = useMemo(() => createDiscoverTokenSelector(), []);
@@ -81,11 +86,30 @@ export function DiscoverTokenList({ tab }: DiscoverTokenListProps) {
     return () => observer.disconnect();
   }, []);
 
+  if (error) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-4 p-6 text-muted-foreground">
+        <AlertTriangle className="h-12 w-12 text-destructive" aria-hidden />
+        <div className="text-center">
+          <p className="text-lg font-medium">Failed to load tokens</p>
+          <p className="mt-1 text-sm">{error}</p>
+        </div>
+        <Button variant="outline" onClick={() => void retryFetch()}>
+          Retry
+        </Button>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="h-full overflow-hidden">
+        <div className="flex flex-col items-center justify-center gap-3 py-8">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden />
+          <p className="text-sm text-muted-foreground">Loading tokens...</p>
+        </div>
         <div className="space-y-2 p-2">
-          {Array.from({ length: 10 }).map((_, i) => (
+          {Array.from({ length: 8 }).map((_, i) => (
             <Skeleton key={i} className="h-24 w-full" />
           ))}
         </div>
@@ -94,12 +118,27 @@ export function DiscoverTokenList({ tab }: DiscoverTokenListProps) {
   }
 
   if (filteredTokens.length === 0) {
+    const hasActiveFilters =
+      (filters.searchQuery?.trim().length ?? 0) > 0 ||
+      (filters.launchpads?.length ?? 0) > 0 ||
+      filters.minLiquiditySol != null;
+
     return (
-      <div className="flex h-full items-center justify-center text-muted-foreground">
+      <div className="flex h-full flex-col items-center justify-center gap-4 p-6 text-muted-foreground">
         <div className="text-center">
           <p className="text-lg font-medium">No tokens found</p>
-          <p className="text-sm">Try adjusting your filters</p>
+          <p className="mt-1 text-sm">
+            {hasActiveFilters
+              ? 'All tokens excluded by current filters'
+              : 'Try adjusting your filters'}
+          </p>
         </div>
+        {hasActiveFilters && (
+          <Button variant="outline" size="sm" onClick={resetFilters}>
+            <RotateCcw className="mr-2 h-4 w-4" />
+            Reset filters
+          </Button>
+        )}
       </div>
     );
   }
