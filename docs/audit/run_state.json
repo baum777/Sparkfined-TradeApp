@@ -1,0 +1,61 @@
+{
+  "status": "CUT_OVERLOAD",
+  "reason": "OVERLOAD_THRESHOLD",
+  "plan": "discover",
+  "startedAt": "2026-02-26T21:18:13.630Z",
+  "endedAt": "2026-02-26T21:19:15.762Z",
+  "results": {
+    "UI-001": {
+      "status": "CAPTURED",
+      "screenshotPath": "terminal_ui_screenshots/UI-001-terminal-main.png"
+    },
+    "UI-006": {
+      "status": "CAPTURED",
+      "screenshotPath": "terminal_ui_screenshots/UI-006-wallet-modal.png"
+    },
+    "UI-007": {
+      "status": "CAPTURED",
+      "screenshotPath": "terminal_ui_screenshots/UI-007-pair-dropdown.png"
+    },
+    "UI-008": {
+      "status": "CAPTURED",
+      "screenshotPath": "terminal_ui_screenshots/UI-008-advanced-collapsed.png"
+    },
+    "UI-009": {
+      "status": "CAPTURED",
+      "screenshotPath": "terminal_ui_screenshots/UI-009-advanced-expanded.png"
+    },
+    "UI-010": {
+      "status": "CAPTURED",
+      "screenshotPath": "terminal_ui_screenshots/UI-010-priority-fee-on.png"
+    },
+    "UI-011": {
+      "status": "CAPTURED",
+      "screenshotPath": "terminal_ui_screenshots/UI-011-quote-loading.png"
+    },
+    "UI-012": {
+      "status": "CAPTURED",
+      "screenshotPath": "terminal_ui_screenshots/UI-012-quote-success.png"
+    },
+    "UI-013": {
+      "status": "CAPTURED",
+      "screenshotPath": "terminal_ui_screenshots/UI-013-quote-error.png"
+    },
+    "UI-002": {
+      "status": "NOT_CAPTURED",
+      "reason": "TIMEOUT"
+    },
+    "UI-003": {
+      "status": "NOT_CAPTURED",
+      "reason": "TIMEOUT"
+    }
+  },
+  "stats": {
+    "captured": 9,
+    "notCaptured": 2,
+    "timeouts": 4,
+    "consecutiveFailures": 2,
+    "totalFailures": 2,
+    "errorBoundaryScreens": 2
+  }
+}
