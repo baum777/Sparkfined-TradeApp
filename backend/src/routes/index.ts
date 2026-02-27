@@ -16,3 +16,11 @@ export * from './reasoningRoute.js';
 export * from './llm.js';
 export * from './settings.js';
 export * from './trading.js';
+
+// Re-export health handlers explicitly for clarity
+export {
+  handleHealth,
+  handleHealthReady,
+  handleHealthUpstreams,
+  handleMeta,
+} from './health.js';

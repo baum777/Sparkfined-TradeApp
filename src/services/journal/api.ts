@@ -1,11 +1,11 @@
 /**
  * Journal API Client
- * 
+ *
  * Handles all journal API calls with proper error handling.
- * Auth headers are injected via the existing apiClient mechanism.
+ * Uses journalApiClient for Railway-compatible routing.
  */
 
-import { apiClient, ApiHttpError } from '@/services/api/client';
+import { journalApiClient, ApiHttpError } from '@/services/api/client';
 import type {
   JournalEntryV1,
   JournalCreateRequest,
@@ -45,7 +45,7 @@ export function isOffline(): boolean {
  * P1.1: Do NOT use query params - fetch all and filter client-side
  */
 export async function listJournalEntries(): Promise<JournalEntryV1[]> {
-  const payload = await apiClient.get<JournalListResponse>(BASE_PATH);
+  const payload = await journalApiClient.get<JournalListResponse>(BASE_PATH);
   return payload.items;
 }
 
@@ -53,7 +53,7 @@ export async function listJournalEntries(): Promise<JournalEntryV1[]> {
  * Get a single journal entry by ID
  */
 export async function getJournalEntry(id: string): Promise<JournalEntryV1> {
-  return apiClient.get<JournalEntryV1>(`${BASE_PATH}/${id}`);
+  return journalApiClient.get<JournalEntryV1>(`${BASE_PATH}/${id}`);
 }
 
 /**
@@ -64,7 +64,7 @@ export async function createJournalEntry(
   data: JournalCreateRequest,
   idempotencyKey: string
 ): Promise<JournalEntryV1> {
-  return apiClient.post<JournalEntryV1>(BASE_PATH, data, {
+  return journalApiClient.post<JournalEntryV1>(BASE_PATH, data, {
     headers: {
       'Idempotency-Key': idempotencyKey,
     },
@@ -76,7 +76,7 @@ export async function createJournalEntry(
  * P0.1: NO request body per CONTRACTS.md
  */
 export async function confirmJournalEntry(id: string): Promise<JournalEntryV1> {
-  return apiClient.post<JournalEntryV1>(
+  return journalApiClient.post<JournalEntryV1>(
     `${BASE_PATH}/${id}/confirm`
   );
 }
@@ -86,7 +86,7 @@ export async function confirmJournalEntry(id: string): Promise<JournalEntryV1> {
  * P0.1: NO request body per CONTRACTS.md
  */
 export async function archiveJournalEntry(id: string): Promise<JournalEntryV1> {
-  return apiClient.post<JournalEntryV1>(
+  return journalApiClient.post<JournalEntryV1>(
     `${BASE_PATH}/${id}/archive`
   );
 }
@@ -95,7 +95,7 @@ export async function archiveJournalEntry(id: string): Promise<JournalEntryV1> {
  * Restore an archived entry to pending
  */
 export async function restoreJournalEntry(id: string): Promise<JournalEntryV1> {
-  return apiClient.post<JournalEntryV1>(
+  return journalApiClient.post<JournalEntryV1>(
     `${BASE_PATH}/${id}/restore`
   );
 }
@@ -104,5 +104,5 @@ export async function restoreJournalEntry(id: string): Promise<JournalEntryV1> {
  * Delete a journal entry
  */
 export async function deleteJournalEntry(id: string): Promise<void> {
-  await apiClient.delete<void>(`${BASE_PATH}/${id}`);
+  await journalApiClient.delete<void>(`${BASE_PATH}/${id}`);
 }

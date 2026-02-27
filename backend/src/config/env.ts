@@ -14,6 +14,7 @@ export function loadEnv() {
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.string().transform(Number).default('3000'),
+  SERVICE_MODE: z.enum(['full', 'terminal', 'journal']).default('full'),
   DATABASE_PATH: z.string().default('./.data/tradeapp.sqlite'),
   API_BASE_PATH: z.string().default('/api'),
 
@@ -58,9 +59,10 @@ const envSchema = z.object({
   // Optional, best-effort ticker resolution map: "SOL=So111...,USDC=EPjF..."
   PULSE_TICKER_MAP: z.string().optional(),
   
-  // Vercel KV
+  // Vercel KV (legacy) + Redis (Railway)
   KV_REST_API_URL: z.string().optional(),
   KV_REST_API_TOKEN: z.string().optional(),
+  REDIS_URL: z.string().optional(),
 
   // LLM Router / timeouts / retries
   LLM_ROUTER_ENABLED: z.enum(['true', 'false']).default('true').transform(v => v === 'true'),

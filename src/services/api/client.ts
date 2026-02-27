@@ -1,7 +1,8 @@
 /**
  * API Client Konfiguration
- * 
+ *
  * Zentraler HTTP-Client für alle API-Aufrufe.
+ * Railway-compatible: Supports separate Terminal and Journal API URLs.
  */
 
 export interface ApiClientConfig {
@@ -104,7 +105,7 @@ class ApiClient {
 
   constructor(config?: Partial<ApiClientConfig>) {
     this.config = {
-      baseURL: config?.baseURL || import.meta.env.VITE_API_URL || '/api',
+      baseURL: config?.baseURL || getDefaultApiUrl(),
       timeout: config?.timeout || 10000,
       headers: {
         'Content-Type': 'application/json',
@@ -195,7 +196,7 @@ class ApiClient {
       return json as T;
     } catch (error) {
       clearTimeout(timeoutId);
-      
+
       if (error instanceof Error && error.name === 'AbortError') {
         throw new ApiHttpError('Request timeout', 408, { code: 'TIMEOUT' });
       }
@@ -270,8 +271,52 @@ class ApiClient {
   }
 }
 
-// Singleton-Instanz
+/**
+ * Get default API URL based on environment
+ * - Development: Uses Vite proxy (/api)
+ * - Railway: No proxy, direct API calls
+ */
+function getDefaultApiUrl(): string {
+  // In development with Vite proxy
+  if (import.meta.env.DEV) {
+    return '/api';
+  }
+  // Production - must use full URL (no proxy)
+  return import.meta.env.VITE_API_URL || '';
+}
+
+// Singleton-Instanz (legacy compatibility - uses single URL)
 export const apiClient = new ApiClient();
+
+// Railway-compatible: Separate clients for Terminal and Journal APIs
+export const terminalApiClient = new ApiClient({
+  baseURL: import.meta.env.VITE_TERMINAL_API_URL || getDefaultApiUrl(),
+});
+
+export const journalApiClient = new ApiClient({
+  baseURL: import.meta.env.VITE_JOURNAL_API_URL || getDefaultApiUrl(),
+});
 
 // Export für Testing oder Custom-Konfigurationen
 export { ApiClient };
+
+// Helper to determine which API to use for a given endpoint
+export function getApiClientForEndpoint(endpoint: string): ApiClient {
+  // Terminal endpoints
+  if (endpoint.startsWith('/quote') ||
+      endpoint.startsWith('/swap') ||
+      endpoint.startsWith('/discover')) {
+    return terminalApiClient;
+  }
+
+  // Journal/LLM endpoints
+  if (endpoint.startsWith('/journal') ||
+      endpoint.startsWith('/reasoning') ||
+      endpoint.startsWith('/llm') ||
+      endpoint.startsWith('/chart/analyze')) {
+    return journalApiClient;
+  }
+
+  // Shared endpoints - use default (backward compatible)
+  return apiClient;
+}

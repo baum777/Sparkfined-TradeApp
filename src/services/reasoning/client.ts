@@ -61,7 +61,8 @@ export class ReasoningClient {
   private readonly timeoutMs: number;
 
   constructor(config?: { baseUrl?: string; timeoutMs?: number }) {
-    this.baseUrl = config?.baseUrl ?? (import.meta.env.VITE_API_URL || '/api');
+    // Reasoning endpoints are on Journal API in Railway deployment
+    this.baseUrl = config?.baseUrl ?? (import.meta.env.VITE_JOURNAL_API_URL || import.meta.env.VITE_API_URL || '/api');
     this.timeoutMs = config?.timeoutMs ?? 12000;
   }
 
