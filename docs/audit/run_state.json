@@ -1,61 +1,49 @@
 {
-  "status": "CUT_OVERLOAD",
-  "reason": "OVERLOAD_THRESHOLD",
+  "status": "COMPLETED",
+  "reason": "NORMAL_END",
   "plan": "discover",
-  "startedAt": "2026-02-26T21:18:13.630Z",
-  "endedAt": "2026-02-26T21:19:15.762Z",
+  "startedAt": "2026-02-27T08:02:10.194Z",
+  "endedAt": "2026-02-27T08:02:32.217Z",
   "results": {
-    "UI-001": {
-      "status": "CAPTURED",
-      "screenshotPath": "terminal_ui_screenshots/UI-001-terminal-main.png"
-    },
-    "UI-006": {
-      "status": "CAPTURED",
-      "screenshotPath": "terminal_ui_screenshots/UI-006-wallet-modal.png"
-    },
-    "UI-007": {
-      "status": "CAPTURED",
-      "screenshotPath": "terminal_ui_screenshots/UI-007-pair-dropdown.png"
-    },
-    "UI-008": {
-      "status": "CAPTURED",
-      "screenshotPath": "terminal_ui_screenshots/UI-008-advanced-collapsed.png"
-    },
-    "UI-009": {
-      "status": "CAPTURED",
-      "screenshotPath": "terminal_ui_screenshots/UI-009-advanced-expanded.png"
-    },
-    "UI-010": {
-      "status": "CAPTURED",
-      "screenshotPath": "terminal_ui_screenshots/UI-010-priority-fee-on.png"
-    },
-    "UI-011": {
-      "status": "CAPTURED",
-      "screenshotPath": "terminal_ui_screenshots/UI-011-quote-loading.png"
-    },
-    "UI-012": {
-      "status": "CAPTURED",
-      "screenshotPath": "terminal_ui_screenshots/UI-012-quote-success.png"
-    },
-    "UI-013": {
-      "status": "CAPTURED",
-      "screenshotPath": "terminal_ui_screenshots/UI-013-quote-error.png"
-    },
     "UI-002": {
-      "status": "NOT_CAPTURED",
-      "reason": "TIMEOUT"
+      "status": "CAPTURED",
+      "screenshotPath": "terminal_ui_screenshots/UI-002-discover-overlay.png"
     },
     "UI-003": {
-      "status": "NOT_CAPTURED",
-      "reason": "TIMEOUT"
+      "status": "CAPTURED",
+      "screenshotPath": "terminal_ui_screenshots/UI-003-discover-not-bonded.png"
+    },
+    "UI-004": {
+      "status": "CAPTURED",
+      "screenshotPath": "terminal_ui_screenshots/UI-004-discover-bonded.png"
+    },
+    "UI-005": {
+      "status": "CAPTURED",
+      "screenshotPath": "terminal_ui_screenshots/UI-005-discover-ranked.png"
+    },
+    "UI-014": {
+      "status": "CAPTURED",
+      "screenshotPath": "terminal_ui_screenshots/UI-014-search-empty.png"
+    },
+    "UI-015": {
+      "status": "CAPTURED",
+      "screenshotPath": "terminal_ui_screenshots/UI-015-loading.png"
+    },
+    "UI-016": {
+      "status": "CAPTURED",
+      "screenshotPath": "terminal_ui_screenshots/UI-016-empty-no-tokens.png"
+    },
+    "UI-017": {
+      "status": "CAPTURED",
+      "screenshotPath": "terminal_ui_screenshots/UI-017-error-boundary.png"
     }
   },
   "stats": {
-    "captured": 9,
-    "notCaptured": 2,
-    "timeouts": 4,
-    "consecutiveFailures": 2,
-    "totalFailures": 2,
-    "errorBoundaryScreens": 2
+    "captured": 8,
+    "notCaptured": 0,
+    "timeouts": 0,
+    "consecutiveFailures": 0,
+    "totalFailures": 0,
+    "errorBoundaryScreens": 0
   }
 }

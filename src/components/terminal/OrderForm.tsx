@@ -83,44 +83,6 @@ export function OrderForm({ wallet, connection }: OrderFormProps) {
     return false;
   }, []);
 
-  // Sprint 3.1 PATCH 1: Container-scoped keyboard handler (replaces global window listener)
-  const handleContainerKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLDivElement>) => {
-      // Guard: only handle if focus is inside this container
-      const root = rootRef.current;
-      if (!root || !root.contains(document.activeElement)) return;
-
-      // Guard: never trigger when focus is on editable elements
-      if (isEditableTarget(e.target)) {
-        // Allow Enter to work normally in inputs (submit forms, etc.)
-        return;
-      }
-
-      // Enter to trigger trade (when enabled and dialog not open)
-      if (e.key === 'Enter' && !isConfirmOpen) {
-        if (canExecute) {
-          e.preventDefault();
-          setIsConfirmOpen(true);
-        }
-        return;
-      }
-
-      // Enter in dialog to confirm
-      if (e.key === 'Enter' && isConfirmOpen && canExecute) {
-        e.preventDefault();
-        void handleConfirmSwap();
-        return;
-      }
-
-      // Esc to close dialog
-      if (e.key === 'Escape' && isConfirmOpen) {
-        e.preventDefault();
-        setIsConfirmOpen(false);
-      }
-    },
-    [canExecute, isConfirmOpen, handleConfirmSwap, isEditableTarget]
-  );
-
   // Memoized derived state to prevent recalculation
   const isWalletConnected = useMemo(() => wallet.publicKey !== null, [wallet.publicKey]);
 
@@ -194,6 +156,36 @@ export function OrderForm({ wallet, connection }: OrderFormProps) {
       setIsExecuting(false);
     }
   }, [canExecute, wallet.publicKey, wallet.signTransaction, executeSwap, connection]);
+
+  // Sprint 3.1 PATCH 1: Container-scoped keyboard handler (replaces global window listener)
+  const handleContainerKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      const root = rootRef.current;
+      if (!root || !root.contains(document.activeElement)) return;
+
+      if (isEditableTarget(e.target)) return;
+
+      if (e.key === 'Enter' && !isConfirmOpen) {
+        if (canExecute) {
+          e.preventDefault();
+          setIsConfirmOpen(true);
+        }
+        return;
+      }
+
+      if (e.key === 'Enter' && isConfirmOpen && canExecute) {
+        e.preventDefault();
+        void handleConfirmSwap();
+        return;
+      }
+
+      if (e.key === 'Escape' && isConfirmOpen) {
+        e.preventDefault();
+        setIsConfirmOpen(false);
+      }
+    },
+    [canExecute, isConfirmOpen, handleConfirmSwap, isEditableTarget]
+  );
 
   // Fetch balances only when necessary deps change
   useEffect(() => {

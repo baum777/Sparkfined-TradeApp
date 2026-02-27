@@ -2,14 +2,11 @@
 
 | UI-ID | Status | Screenshot |
 |-------|-------|------------|
-| UI-001 | CAPTURED | [UI-001](terminal_ui_screenshots/UI-001-terminal-main.png) |
-| UI-002 | NOT_CAPTURED | - |
-| UI-003 | NOT_CAPTURED | - |
-| UI-006 | CAPTURED | [UI-006](terminal_ui_screenshots/UI-006-wallet-modal.png) |
-| UI-007 | CAPTURED | [UI-007](terminal_ui_screenshots/UI-007-pair-dropdown.png) |
-| UI-008 | CAPTURED | [UI-008](terminal_ui_screenshots/UI-008-advanced-collapsed.png) |
-| UI-009 | CAPTURED | [UI-009](terminal_ui_screenshots/UI-009-advanced-expanded.png) |
-| UI-010 | CAPTURED | [UI-010](terminal_ui_screenshots/UI-010-priority-fee-on.png) |
-| UI-011 | CAPTURED | [UI-011](terminal_ui_screenshots/UI-011-quote-loading.png) |
-| UI-012 | CAPTURED | [UI-012](terminal_ui_screenshots/UI-012-quote-success.png) |
-| UI-013 | CAPTURED | [UI-013](terminal_ui_screenshots/UI-013-quote-error.png) |
+| UI-002 | CAPTURED | [UI-002](terminal_ui_screenshots/UI-002-discover-overlay.png) |
+| UI-003 | CAPTURED | [UI-003](terminal_ui_screenshots/UI-003-discover-not-bonded.png) |
+| UI-004 | CAPTURED | [UI-004](terminal_ui_screenshots/UI-004-discover-bonded.png) |
+| UI-005 | CAPTURED | [UI-005](terminal_ui_screenshots/UI-005-discover-ranked.png) |
+| UI-014 | CAPTURED | [UI-014](terminal_ui_screenshots/UI-014-search-empty.png) |
+| UI-015 | CAPTURED | [UI-015](terminal_ui_screenshots/UI-015-loading.png) |
+| UI-016 | CAPTURED | [UI-016](terminal_ui_screenshots/UI-016-empty-no-tokens.png) |
+| UI-017 | CAPTURED | [UI-017](terminal_ui_screenshots/UI-017-error-boundary.png) |

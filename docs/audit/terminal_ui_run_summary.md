@@ -1,27 +1,24 @@
 # Terminal UI Run Summary
 
-**Status:** CUT_OVERLOAD
-**Reason:** OVERLOAD_THRESHOLD
+**Status:** COMPLETED
+**Reason:** NORMAL_END
 **Plan:** discover
-**Started:** 2026-02-26T21:18:13.630Z
-**Ended:** 2026-02-26T21:19:15.762Z
+**Started:** 2026-02-27T08:02:10.194Z
+**Ended:** 2026-02-27T08:02:32.217Z
 
 ## Stats
-- Captured: 9
-- Not Captured: 2
-- Timeouts: 4
-- Total Failures: 2
+- Captured: 8
+- Not Captured: 0
+- Timeouts: 0
+- Total Failures: 0
 
 ## Results
 
-- **UI-001**: CAPTURED
-- **UI-002**: NOT_CAPTURED (TIMEOUT)
-- **UI-003**: NOT_CAPTURED (TIMEOUT)
-- **UI-006**: CAPTURED
-- **UI-007**: CAPTURED
-- **UI-008**: CAPTURED
-- **UI-009**: CAPTURED
-- **UI-010**: CAPTURED
-- **UI-011**: CAPTURED
-- **UI-012**: CAPTURED
-- **UI-013**: CAPTURED
+- **UI-002**: CAPTURED
+- **UI-003**: CAPTURED
+- **UI-004**: CAPTURED
+- **UI-005**: CAPTURED
+- **UI-014**: CAPTURED
+- **UI-015**: CAPTURED
+- **UI-016**: CAPTURED
+- **UI-017**: CAPTURED
