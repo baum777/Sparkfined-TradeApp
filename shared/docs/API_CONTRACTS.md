@@ -1,3 +1,11 @@
+---
+Owner: Architecture Team
+Status: active
+Version: 1.0
+LastUpdated: 2026-02-27
+Canonical: true
+---
+
 # API Contracts (Ist-Zustand)
 
 ## Single Source of Truth (Shapes)
@@ -77,7 +85,38 @@ Zusätzlich existieren weitere Endpoints in `api/` (Vercel Functions), u.a. Cron
 
 ## Response Envelope & Error Model (kanonisch)
 
-Kanonische Regel (Production `/api/*` via `backend/`):
+### Canonical Envelope Schema
+
+**Source of Truth:** `backend/src/http/response.ts` and `backend/src/http/error.ts`
+
+**Rule:** All `/api/*` responses must conform to this envelope. Legacy/non-canonical surfaces must document deviations explicitly.
+
+#### Success Envelope
+```typescript
+interface ApiSuccess<T> {
+  status: "ok";
+  data: T;
+}
+```
+
+#### Error Envelope
+```typescript
+interface ApiError {
+  error: {
+    code: string;           // machine-readable error code
+    message: string;        // human-readable description
+    details?: {
+      requestId: string;    // tracing id (also in header)
+      [key: string]: any;   // additional context
+    };
+  };
+}
+```
+
+#### Required Headers
+| Header | Value | Purpose |
+|--------|-------|---------|
+| `x-request-id` | UUID or trace string | Request tracing across services |
 
 ### A) `backend/` Envelope (Node Server)
 

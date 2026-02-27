@@ -1,6 +1,14 @@
+---
+Owner: Trading Terminal Team
+Status: active
+Version: 1.0
+LastUpdated: 2026-02-27
+Canonical: true
+---
+
 # Trading Terminal
 
-**Status:** ✅ Phase 1 Complete + Research Integration (Feature-Flagged)  
+**Implementation Status:** ✅ Phase 1 Complete + Research Integration (Feature-Flagged)  
 **Last Updated:** 2024-12-19
 
 ---

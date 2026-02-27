@@ -1,3 +1,11 @@
+---
+Owner: DevOps Team
+Status: active
+Version: 1.0
+LastUpdated: 2026-02-27
+Canonical: true
+---
+
 # Environment / Konfiguration (Ist-Zustand)
 
 Ziel: Vollständige Liste aller im Repo **referenzierten** Environment Variables – getrennt nach Frontend (build-time), Vercel Routing (runtime) und Backend(s) (runtime). Unklares ist als **TODO** markiert.

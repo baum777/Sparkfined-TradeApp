@@ -1,3 +1,11 @@
+---
+Owner: Architecture Team
+Status: active
+Version: 1.0
+LastUpdated: 2026-02-27
+Canonical: true
+---
+
 # API Specification (Canonical Backend)
 
 **Source of Truth:** `backend/src/routes/*` — Production `/api/*` is served by the Node backend (Railway). Vercel rewrites all `/api/*` to the backend.

@@ -1,3 +1,11 @@
+---
+Owner: Architecture Team
+Status: active
+Version: 1.0
+LastUpdated: 2026-02-27
+Canonical: true
+---
+
 # Sparkfined — System Architecture
 
 Zweck: **Code schneller verstehen**, **Fehler schneller debuggen**, **Dominance-Layer korrekt anwenden**.  
