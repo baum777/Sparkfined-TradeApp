@@ -38,7 +38,7 @@ const INDEX_PATH = join(AUDIT_DIR, 'terminal_ui_screenshot_index.md');
 
 // --- Helpers ---
 async function ensureDiscoverOpen(page) {
-  const dialog = page.locator('[role="dialog"]');
+  const dialog = page.locator('[data-testid="discover-dialog"]');
   const visible = await dialog.isVisible().catch(() => false);
   if (visible) return;
   await page.goto(`http://127.0.0.1:${AUDIT_PORT}/terminal`, {
@@ -46,9 +46,12 @@ async function ensureDiscoverOpen(page) {
     timeout: STEP_TIMEOUT_MS,
   });
   await page.waitForTimeout(1500);
-  const btn = page.locator('button:has-text("Discover")').first();
+  const btn = page.locator('[data-testid="discover-open"]').first();
   await btn.click({ timeout: STEP_TIMEOUT_MS });
-  await page.waitForSelector('[role="dialog"]', { state: 'visible', timeout: STEP_TIMEOUT_MS });
+  await page.waitForSelector('[data-testid="discover-dialog"]', {
+    state: 'visible',
+    timeout: STEP_TIMEOUT_MS,
+  });
   await page.waitForTimeout(1000);
 }
 
@@ -87,9 +90,12 @@ const UI_STEPS = {
         });
         await page.waitForTimeout(1500);
       }
-      const btn = page.locator('button:has-text("Discover")').first();
+      const btn = page.locator('[data-testid="discover-open"]').first();
       await btn.click({ timeout: STEP_TIMEOUT_MS });
-      await page.waitForSelector('[role="dialog"]', { state: 'visible', timeout: STEP_TIMEOUT_MS });
+      await page.waitForSelector('[data-testid="discover-dialog"]', {
+        state: 'visible',
+        timeout: STEP_TIMEOUT_MS,
+      });
       await page.waitForTimeout(1500);
       const path = join(screenshotsDir, 'UI-002-discover-overlay.png');
       await page.screenshot({ path, fullPage: true });
@@ -229,8 +235,14 @@ const UI_STEPS = {
   'UI-013': {
     desc: 'Quote error',
     action: async (page, screenshotsDir) => {
-      await page.goto(`http://127.0.0.1:${AUDIT_PORT}/terminal`, { waitUntil: 'domcontentloaded', timeout: STEP_TIMEOUT_MS });
+      await page.goto(`http://127.0.0.1:${AUDIT_PORT}/terminal?auditQuote=error`, {
+        waitUntil: 'domcontentloaded',
+        timeout: STEP_TIMEOUT_MS,
+      });
       await page.waitForTimeout(1500);
+      await page.waitForSelector('text=Audit: forced quote error state', {
+        timeout: STEP_TIMEOUT_MS,
+      });
       const path = join(screenshotsDir, 'UI-013-quote-error.png');
       await page.screenshot({ path, fullPage: true });
       return 'terminal_ui_screenshots/UI-013-quote-error.png';

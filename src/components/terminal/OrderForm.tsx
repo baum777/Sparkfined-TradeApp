@@ -61,6 +61,14 @@ export function OrderForm({ wallet, connection }: OrderFormProps) {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const amountInputRef = useRef<HTMLInputElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  const forceAuditQuoteError = useMemo(() => {
+    if (!import.meta.env.DEV || typeof window === 'undefined') return false;
+    return new URLSearchParams(window.location.search).get('auditQuote') === 'error';
+  }, []);
+  const effectiveQuoteStatus = forceAuditQuoteError ? 'error' : quoteStatus;
+  const effectiveQuoteError = forceAuditQuoteError
+    ? 'Audit: forced quote error state'
+    : quoteError;
 
   // Sprint 3.1 PATCH 2: Robust editable target detection
   const isEditableTarget = useCallback((target: EventTarget | null): boolean => {
@@ -122,11 +130,11 @@ export function OrderForm({ wallet, connection }: OrderFormProps) {
   );
 
   const isQuoteReady = useMemo(
-    () => quoteStatus === 'success' && quoteData !== undefined,
-    [quoteStatus, quoteData]
+    () => effectiveQuoteStatus === 'success' && quoteData !== undefined,
+    [effectiveQuoteStatus, quoteData]
   );
 
-  const isQuoteLoading = quoteStatus === 'loading';
+  const isQuoteLoading = effectiveQuoteStatus === 'loading';
   const isTxInProgress = txStatus === 'signing' || txStatus === 'sending';
 
   // Memoized canExecute to prevent child re-renders
@@ -298,9 +306,9 @@ export function OrderForm({ wallet, connection }: OrderFormProps) {
       <AdvancedSettingsAccordion />
 
       {/* Error Messages - Sprint 3: Use granular error selectors */}
-      {quoteStatus === 'error' && quoteError && (
+      {effectiveQuoteStatus === 'error' && effectiveQuoteError && (
         <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-          {quoteError}
+          {effectiveQuoteError}
         </div>
       )}
 

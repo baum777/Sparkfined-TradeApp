@@ -22,7 +22,12 @@ export function TerminalShell() {
         <div className="flex flex-wrap items-center gap-2 sm:gap-4">
           <h1 className="text-xl font-semibold">Terminal</h1>
           <PairSelector />
-          <Button variant="outline" size="sm" onClick={openDiscover}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={openDiscover}
+            data-testid="discover-open"
+          >
             <Sparkles className="mr-2 h-4 w-4" />
             Discover
           </Button>
