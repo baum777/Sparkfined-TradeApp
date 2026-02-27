@@ -1,3 +1,11 @@
+---
+Owner: QA Team
+Status: active
+Version: 1.0
+LastUpdated: 2026-02-27
+Canonical: true
+---
+
 # Quality Assurance & Testing
 
 **Last Updated:** 2024-12-19

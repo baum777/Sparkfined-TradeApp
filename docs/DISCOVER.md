@@ -1,6 +1,14 @@
+---
+Owner: Discover Team
+Status: active
+Version: 1.0
+LastUpdated: 2026-02-27
+Canonical: true
+---
+
 # Discover Overlay
 
-**Status:** ✅ Phase 2 Complete  
+**Implementation Status:** ✅ Phase 2 Complete  
 **Last Updated:** 2024-12-19
 
 ---

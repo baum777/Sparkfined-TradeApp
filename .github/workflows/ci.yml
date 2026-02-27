@@ -17,6 +17,22 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Doc Metadata Guard - Validates documentation headers (fast, early fail)
+  doc-metadata-guard:
+    name: Doc Metadata Guard
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Check Documentation Metadata
+        run: node scripts/verify-doc-metadata.mjs
   # Lint Job - Prüft Code-Qualität
   lint:
     name: Lint & Type Check
@@ -519,7 +535,7 @@ jobs:
   ci-success:
     name: CI Pipeline Success
     runs-on: ubuntu-latest
-    needs: [lint, verify, build, e2e-chromium, e2e-firefox, e2e-webkit, security-audit]
+    needs: [doc-metadata-guard, lint, verify, build, e2e-chromium, e2e-firefox, e2e-webkit, security-audit]
     if: success()
     
     steps:

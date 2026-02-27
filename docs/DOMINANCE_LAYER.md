@@ -1,3 +1,11 @@
+---
+Owner: Dominance Team
+Status: active
+Version: 1.0
+LastUpdated: 2026-02-27
+Canonical: true
+---
+
 # Sparkfined — Dominance Layer (dominance_v1)
 
 Zweck: **Governance + Safety + Kostenkontrolle** für autonome Änderungen/Operationen.  

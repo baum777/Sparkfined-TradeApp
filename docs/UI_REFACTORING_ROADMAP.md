@@ -1,3 +1,11 @@
+---
+Owner: Frontend Team
+Status: draft
+Version: 0.1
+LastUpdated: 2026-02-27
+Canonical: true
+---
+
 # UI Refactoring Roadmap — Research + Embedded Terminal
 
 **Status:** ✅ **Implementiert** (2024-12-XX)  

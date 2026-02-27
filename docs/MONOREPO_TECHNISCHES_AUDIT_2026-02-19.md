@@ -1,3 +1,11 @@
+---
+Owner: Architecture Team
+Status: draft
+Version: 1.0
+LastUpdated: 2026-02-27
+Canonical: false
+---
+
 # Monorepo — Technisches Audit (Ist-Zustand) — 2026-02-19
 
 **Scope (verifiziert im Code):** SPA (`src/`), canonical Backend (`backend/`), Vercel Functions (`api/`), Alerts-Service (`apps/backend-alerts/`), Shared (`shared/`), Docs (`docs/`, `shared/docs/`), Playwright (`playwright/`).

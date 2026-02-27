@@ -1,3 +1,11 @@
+---
+Owner: Core Team
+Status: active
+Version: 1.0
+LastUpdated: 2026-02-27
+Canonical: true
+---
+
 # Contributing
 
 Ziel: Änderungen so liefern, dass **Contracts stabil bleiben**, **Tests deterministisch sind** und **Deploy-Topologie nicht „driftet“**.
