@@ -1,3 +1,11 @@
+---
+Owner: Architecture Team
+Status: active
+Version: 1.0
+LastUpdated: 2026-02-27
+Canonical: true
+---
+
 # Sparkfined — Functional Specification
 
 Zweck: **stabile Modul-Grenzen**, **API Surface**, **Fehlermodi**, **NFRs**.  

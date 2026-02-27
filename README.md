@@ -1,132 +1,135 @@
-# TradeApp — Repo-Dokumentation (Ist-Zustand)
+# Sparkfined — Trading Intelligence Platform
 
-## Mission (faktisch)
+---
+Owner: Core Team
+Status: active
+Version: 2.0
+LastUpdated: 2026-02-27
+Canonical: true
+---
 
-Dieses Repo implementiert ein Trading/Journal/Signals Frontend (SPA) plus mehrere Backend‑Implementierungen für `/api/*`. Ziel der Dokumentation ist, den **aktuellen Ist‑Zustand** ohne Spekulation zu beschreiben.
+## 1. Purpose
 
-## Repo-Struktur (Frontend / Backend / Shared)
+Non-custodial trading terminal with integrated journal, signals, and AI-powered research tools. Built for deterministic execution and governed by the Dominance Layer for quality control.
 
-- **Frontend = Repo-Root**: `/` (Vite/React SPA) mit `src/` + `src/sw/` (Service Worker) und `vite.config.ts`
-- **Kanonisches Node Backend (Always-on)**: `backend/` (HTTP Server, SQLite default, Jobs/Intervals)
-- **Alternative Vercel Serverless Backend**: `api/` (Vercel Functions + `_lib`)
-- **Separater Alerts-Service**: `apps/backend-alerts/` (Express + Postgres + Push/SSE)
-- **Contracts (Single Source of Truth für Shapes)**: `shared/contracts/`
+## 2. Quickstart
 
-**Backend-Ownership**: Siehe `docs/backend/BACKEND_OWNERSHIP.md` (Production-Entscheidung, Routing, Ownership).
-
-## Local Development Quickstart
-
-### Prerequisites
-
-- Node.js 20+ (see `backend/Dockerfile`)
-- **pnpm** (root `packageManager: pnpm@10.x`)
-
-### Installation
+**Prerequisites:** Node.js 20+, pnpm 10.x
 
 ```bash
 pnpm install
+pnpm dev            # Frontend: http://localhost:8080
+pnpm -C backend dev # Backend:  http://localhost:3000
 ```
 
-### Verification
+**Required:** `HELIUS_API_KEY` in `backend/.env`
 
-```bash
-npm run verify
-```
+## 3. Architectural Layers
 
-### Start Backend
+|    Layer | Code                   | Responsibility                                 |     Canonical     |
+| -------: | ---------------------- | ---------------------------------------------- | :---------------: |
+| Frontend | `src/`                 | Vite/React SPA (Terminal, Discover, Research)  |         ✅         |
+|  Backend | `backend/`             | Canonical Node server (always-on), persistence |         ✅         |
+|      API | `api/`                 | Vercel Functions alternative / edge routing    | ❌ (non-canonical) |
+|   Alerts | `apps/backend-alerts/` | Push/SSE notifications service                 |         ✅         |
+|   Shared | `shared/contracts/`    | Additive-only TS contracts & docs              |         ✅         |
 
-```bash
-pnpm -C backend dev
-```
+### Canonical Source-of-Truth Rules
 
-**Expected:** Server on `http://localhost:3000`, health check at `/api/health`
+* **Backend is canonical** for server behavior and API semantics.
+* **HTTP boundary is JSON**, not TypeScript imports.
+* **Contracts in `shared/contracts/` are additive-only** (backward compatible).
+* Any duplicate implementations must either:
+  1. be removed, or
+  2. be explicitly documented as compatibility shims.
 
-**Required Env:** `HELIUS_API_KEY` in `backend/.env` (backend validates env vars on start)
+## 4. Agent Model (Dominance Layer)
 
-### Start Frontend
+Location: `backend/src/lib/dominance/*`
 
-```bash
-pnpm dev
-```
+* Autonomy Tiers 1–4 (Tier 2 default)
+* Golden Tasks: lint, tsc, build, test:backend, test:e2e
+* Auto-Correct Loop with max iterations
+* Risk Policy: approval gates for core_engine, adapters, ci_deploy, large_diff
 
-**Expected:** Frontend on `http://localhost:8080`, API proxy `/api/*` → `http://localhost:3000`
+## 5. Prompt Governance (Reasoning Layer)
 
-**Note:** See [shared/docs/LOCAL_DEV.md](shared/docs/LOCAL_DEV.md) for detailed setup and troubleshooting.
+Location: `shared/contracts/reasoning-prompts.ts` (single source of truth)
 
-## Ports & API Base Paths (Ist-Zustand)
+* Trade Review, Session Review, Board Scenarios, Insight Critic
+* RCTC-compliant prompts: Task, Rules, Context, Constraints
+* Machine-parseable JSON outputs only
 
-- **Frontend Devserver**: `http://localhost:8080` (siehe `vite.config.ts`)
-- **Backend (`backend/`)**: `http://localhost:3000`
-- **API Base Path**: `/api`
-  - Lokal: Vite proxyt `/api/*` → `http://localhost:3000` (siehe `vite.config.ts`)
-  - Production: Vercel rewritet `/api/*` → Railway-Backend (siehe `vercel.json` und `docs/backend/BACKEND_OWNERSHIP.md`)
+**Rule:** prompts must not exist in multiple sources without an explicit single canonical origin.
 
-## Database (Backend)
+## 6. Runtime Logic
 
-- `backend/` nutzt `DATABASE_URL` für die DB-Auswahl:
-  - **SQLite (local dev)**: `sqlite:./.data/tradeapp.sqlite`
-  - **Postgres (production)**: `postgres://user:pass@host:5432/db`
+* Frontend Dev: `http://localhost:8080`
+* Backend Dev: `http://localhost:3000`
+* API Base: `/api`
+  * dev: Vite proxy → backend
+  * prod: Vercel rewrite → Railway backend (or documented target)
 
-## Environment Variables
+## 7. Model Strategy
 
-**Complete Reference:** [shared/docs/ENVIRONMENT.md](shared/docs/ENVIRONMENT.md)
+* Providers: DeepSeek (default reasoning), OpenAI, Grok (x.ai)
+* Tiers: free | standard | pro | high (budget/capability governance)
+* Router: fallback with budget awareness and deterministic output contracts
 
-**Key Variables:**
-- `VITE_RESEARCH_EMBED_TERMINAL` - Enable Trading Terminal in Research tab (default: false)
-- `VITE_SENTRY_DSN` - Sentry DSN for error tracking (optional)
-- `VITE_SOLANA_CLUSTER` - devnet | mainnet-beta
-- `VITE_SOLANA_RPC_URL` - Custom RPC endpoint (optional)
-- `VERCEL_BACKEND_URL` - Backend hostname for `/api/*` rewrite (production)
+## 8. Documentation Map
 
-**Important:**
-- **No secrets** in `VITE_*` variables (they are bundled into frontend)
-- See [Environment](shared/docs/ENVIRONMENT.md) for complete list
+| Document                       | Purpose                                      |
+| ------------------------------ | -------------------------------------------- |
+| `docs/ARCHITECTURE.md`         | System architecture, boundaries, data flow   |
+| `docs/TERMINAL.md`             | Trading Terminal UX + execution model        |
+| `docs/DISCOVER.md`             | Token discovery, ranking, filters            |
+| `docs/DEPLOYMENT.md`           | Railway/Vercel deploy, env, release flow     |
+| `docs/SECURITY.md`             | Auth model, rate limits, threat model        |
+| `docs/QA.md`                   | Test strategy, CI expectations, golden tasks |
+| `docs/CONTRIBUTING.md`         | Dev workflow, PR rules, review gates         |
+| `docs/FUNCTIONAL_SPEC.md`      | API surface, module contracts, NFRs          |
+| `docs/DOMINANCE_LAYER.md`      | Governance, risk policy, autonomy tiers      |
+| `shared/docs/API_CONTRACTS.md` | API envelopes, request/response shapes       |
+| `shared/docs/ENVIRONMENT.md`   | env vars, local/prod parity                  |
+| `shared/docs/PROVIDERS.md`     | External provider configs, secrets handling  |
+| `shared/docs/LOCAL_DEV.md`     | Detailed local setup, troubleshooting        |
 
-## Implementierte Features (nach Code, nicht nach Roadmap)
+## 9. Contribution Workflow
 
-Backend-Routen sind u.a. unter `backend/src/app.ts` registriert:
+* Small PRs, single concern per PR
+* Update docs when behavior changes
+* Run golden tasks before PR:
+  * `pnpm lint`
+  * `pnpm -s tsc --noEmit`
+  * `pnpm -r build`
+  * tests per folder (backend + e2e when relevant)
 
-- Journal: CRUD + Insights
-- Alerts: CRUD + Events Stream Endpoint (HTTP)
-- Oracle: Daily + Read-State
-- Chart/TA: TA + `chart/analyze`
-- Reasoning/LLM: `/reasoning/*` + `/llm/execute`
-- Feed/Signals: `/feed/oracle`, `/feed/pulse`, `/signals/unified`
+## 10. Versioning Policy
 
-Zusätzlich existiert `api/` als Serverless‑Backend mit eigener Implementierung und Tests.
+* **Contracts:** additive-only, versioned (`*_v1`, `*_v2`)
+* **Docs:** must include `Owner`, `Status`, `Version`, `LastUpdated`
+* **Breaking changes** require:
+  * migration notes
+  * explicit deprecation window
+  * compatibility plan
 
-## Documentation
+## 11. Security & Deployment Quick Reference
 
-**Core Documentation:** See [docs/README.md](docs/README.md) for complete index.
+* **Auth:** Disabled by default (`VITE_ENABLE_AUTH=false`). See `docs/SECURITY.md` for Auth Behavior Matrix.
+* **Secrets:** Never in `VITE_*` env vars. See `shared/docs/ENVIRONMENT.md`.
+* **Deployment:** Railway (backend) + Vercel (frontend). See `docs/DEPLOYMENT.md`.
+* **Feature Flags:** `VITE_RESEARCH_EMBED_TERMINAL`, `ENABLE_SPARKFINED_DOMINANCE`. See `docs/DEPLOYMENT.md`.
 
-**Quick Links:**
-- [Architecture](docs/ARCHITECTURE.md) - System architecture
-- [Terminal](docs/TERMINAL.md) - Trading Terminal
-- [Discover](docs/DISCOVER.md) - Discover Overlay
-- [Deployment](docs/DEPLOYMENT.md) - Deployment & feature flags
-- [Security](docs/SECURITY.md) - Security constraints
-- [QA](docs/QA.md) - Testing procedures
+## 12. Troubleshooting
 
-**Shared Documentation:**
-- [Environment](shared/docs/ENVIRONMENT.md) - Complete env var reference
-- [API Contracts](shared/docs/API_CONTRACTS.md) - API specifications
-- [Providers](shared/docs/PROVIDERS.md) - Provider documentation
+### `/api` Routing issues
+- Local: Vite proxy → `http://localhost:3000`
+- Production: Vercel rewrite → `$VERCEL_BACKEND_URL`
 
-## Troubleshooting (häufig)
+### Backend won't start
+- Check `HELIUS_API_KEY` in `backend/.env`
+- Validate with `pnpm -C backend verify:env`
 
-### 1) `/api` Routing stimmt nicht
-
-- Lokal: Proxy ist nur für `/api` konfiguriert.
-- Production: `/api/*` wird auf das externe Backend via Vercel-`vercel.json` Rewrite geroutet (Railway-Domain einsetzen).
-
-### 2) Contract Drift: Response Envelope
-
-Kanonisch (Production + Local Dev via `backend/`):
-- Success: `{ status:"ok", data }`
-- Error: `{ error: { code, message, details? } }`
-
-Wenn API Calls fehlschlagen: siehe `shared/docs/API_CONTRACTS.md`.
-
-### 3) Backend startet nicht (Env Validation)
-
-`backend/` verlangt `HELIUS_API_KEY` im Env Schema (Zod). Ohne diese Variable startet der Prozess nicht.
+### Contract Drift
+- See `shared/docs/API_CONTRACTS.md` for envelope definitions
+- Backend envelope: `{ status: "ok", data }` / `{ error: {...} }`

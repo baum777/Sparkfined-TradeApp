@@ -1,3 +1,11 @@
+---
+Owner: DevOps Team
+Status: active
+Version: 1.0
+LastUpdated: 2026-02-27
+Canonical: true
+---
+
 # Externe Provider (Ist-Zustand)
 
 Regel: Provider/Secrets sind **backend-only**. Frontend nutzt keine Provider-Keys.

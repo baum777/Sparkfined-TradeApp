@@ -1,3 +1,11 @@
+---
+Owner: Security Team
+Status: active
+Version: 1.0
+LastUpdated: 2026-02-27
+Canonical: true
+---
+
 # Security (Ist-Zustand)
 
 ## Authentifizierung
@@ -24,6 +32,16 @@
 - Simple API-Key Auth:
   - Request Header: `Authorization: Bearer <token>`
   - Token muss exakt `API_KEY` entsprechen (`apps/backend-alerts/src/auth/authMiddleware.ts`)
+
+## Auth Behavior Matrix (Backend vs API)
+
+| Surface | Default Auth | JWT Required | Config Location | Notes |
+|---------|--------------|--------------|-----------------|-------|
+| `backend/` (canonical) | anon-default | per-route optional | `backend/src/http/router.ts` | Extracts JWT if present, else `userId = "anon"` |
+| `api/` (Vercel) | required | default required | `api/_lib/handler.ts` | RouteConfig can set `auth: "none"` to disable |
+| `apps/backend-alerts/` | API-Key | always required | `apps/backend-alerts/src/auth/authMiddleware.ts` | Simple Bearer token match against `API_KEY` |
+
+**Rule:** Differences must be intentional and explicitly documented. Clients must handle 401/403 appropriately based on target surface.
 
 ## Secret Handling
 
