@@ -47,7 +47,6 @@ import {
   handleDiscoverTokens,
 } from './routes/index.js';
 import { getEnv } from './config/env.js';
-import { sendJson } from './http/response.js';
 
 /**
  * Application Router Setup

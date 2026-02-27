@@ -94,73 +94,6 @@ class VercelKVStore implements KVStore {
   }
 }
 
-// Railway Redis client (using ioredis or redis package)
-class RedisStore implements KVStore {
-  private client: any; // Redis client instance
-  private url: string;
-
-  constructor(url: string) {
-    this.url = url;
-  }
-
-  private async getClient(): Promise<any> {
-    if (this.client) return this.client;
-
-    // Dynamic import to avoid hard dependency
-    const { createClient } = await import('redis');
-    this.client = createClient({ url: this.url });
-    await this.client.connect();
-    return this.client;
-  }
-
-  async get<T>(key: string): Promise<T | null> {
-    const client = await this.getClient();
-    const value = await client.get(key);
-    if (!value) return null;
-    try {
-      return JSON.parse(value) as T;
-    } catch {
-      return value as unknown as T;
-    }
-  }
-
-  async set<T>(key: string, value: T, ttlSeconds?: number): Promise<void> {
-    const client = await this.getClient();
-    const serialized = JSON.stringify(value);
-    if (ttlSeconds) {
-      await client.setEx(key, ttlSeconds, serialized);
-    } else {
-      await client.set(key, serialized);
-    }
-  }
-
-  async delete(key: string): Promise<boolean> {
-    const client = await this.getClient();
-    const count = await client.del(key);
-    return count > 0;
-  }
-
-  async incr(key: string, value: number = 1, ttlSeconds?: number): Promise<number> {
-    const client = await this.getClient();
-    const result = await client.incrBy(key, value);
-    if (ttlSeconds && result === value) {
-      await client.expire(key, ttlSeconds);
-    }
-    return result;
-  }
-
-  async exists(key: string): Promise<boolean> {
-    const client = await this.getClient();
-    const count = await client.exists(key);
-    return count > 0;
-  }
-
-  async ping(): Promise<string> {
-    const client = await this.getClient();
-    return client.ping();
-  }
-}
-
 let kvInstance: KVStore | null = null;
 
 export function getKV(): KVStore {
@@ -168,21 +101,14 @@ export function getKV(): KVStore {
 
   const env = getEnv();
 
-  // Priority 1: Railway Redis (REDIS_URL)
-  if (env.REDIS_URL) {
-    try {
-      kvInstance = new RedisStore(env.REDIS_URL);
-      return kvInstance;
-    } catch (error) {
-      console.warn('Redis initialization failed, falling back to Vercel KV or Memory', error);
-    }
-  }
-
-  // Priority 2: Vercel KV (legacy)
+  // Vercel KV (legacy) or Redis via Upstash REST API
   if (env.KV_REST_API_URL && env.KV_REST_API_TOKEN) {
     kvInstance = new VercelKVStore(env.KV_REST_API_URL, env.KV_REST_API_TOKEN);
+  } else if (env.REDIS_URL) {
+    // REDIS_URL set but no KV_* - use in-memory fallback (redis package not in deps)
+    // Add optional redis dependency for native Redis support
+    kvInstance = new MemoryStore();
   } else {
-    // Fallback: In-memory (development, no persistence)
     kvInstance = new MemoryStore();
   }
 

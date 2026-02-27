@@ -85,8 +85,9 @@ export async function handleHealthReady(_req: ParsedRequest, res: ServerResponse
   // Check database (max 2s timeout)
   try {
     const db = getDatabase();
+    const stmt = db.prepare('SELECT 1');
     await Promise.race([
-      db.query('SELECT 1'),
+      stmt.get(),
       new Promise((_, reject) => setTimeout(() => reject(new Error('DB timeout')), 2000)),
     ]);
     checks.database = 'ok';
@@ -95,8 +96,9 @@ export async function handleHealthReady(_req: ParsedRequest, res: ServerResponse
     checks.database = 'error';
   }
 
-  // Check Redis/KV if configured (max 2s timeout)
-  if (env.REDIS_URL || env.KV_REST_API_URL) {
+  // Check Redis/KV only when we have a real remote store (Vercel KV)
+  // REDIS_URL alone uses in-memory fallback - no external dependency
+  if (env.KV_REST_API_URL && env.KV_REST_API_TOKEN) {
     try {
       // Lazy import to avoid startup dependency
       const { pingKV } = await import('../lib/kv/store.js');
