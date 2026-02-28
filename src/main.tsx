@@ -47,6 +47,12 @@ createRoot(document.getElementById("root")!).render(
 
 // Playwright readiness marker: set after initial render.
 // Used by routing smoke tests to avoid brittle "load"/networkidle waits.
-requestAnimationFrame(() => {
+// Double mechanism: rAF for paint-complete, setTimeout 0 for event-loop flush.
+function markAppReady() {
   document.documentElement.dataset.appReady = "1";
+}
+requestAnimationFrame(() => {
+  markAppReady();
+  // Backup: ensure marker is set even if rAF is delayed
+  setTimeout(markAppReady, 0);
 });
