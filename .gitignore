@@ -42,3 +42,9 @@ backend/dist/
 *.sqlite-wal
 *.sqlite-shm
 .vercel
+
+# Temporary Vite files
+vite.config.ts.timestamp-*.mjs
+
+# Environment vars backup
+.env.vars
