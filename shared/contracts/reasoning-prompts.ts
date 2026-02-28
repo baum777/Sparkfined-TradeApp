@@ -1,13 +1,10 @@
----
-Owner: Reasoning Team
-Status: active
-Version: 1.0
-LastUpdated: 2026-02-27
-Canonical: true
----
-
 /**
  * Reasoning Prompts — Single Source of Truth
+ * Owner: Reasoning Team
+ * Status: active
+ * Version: 1.0
+ * LastUpdated: 2026-02-27
+ * Canonical: true
  *
  * RCTC-Compliant Prompts for the Reasoning Layer
  * - Task: GENERATE_* or INSIGHT_CRITIC
