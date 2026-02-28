@@ -341,6 +341,7 @@ export function OrderForm({ wallet, connection }: OrderFormProps) {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
+              data-testid="swap-confirm-submit"
               onClick={(event) => {
                 event.preventDefault();
                 void handleConfirmSwap();

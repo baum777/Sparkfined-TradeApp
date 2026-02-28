@@ -218,4 +218,123 @@ test.describe('@gatekeeper Trading Terminal Gatekeeper', () => {
     // Verify confirm button exists
     await expect(page.locator('role=button[name="Confirm"]')).toBeVisible();
   });
+
+  test('@gatekeeper Double-click guard prevents duplicate swap requests', async ({ page }) => {
+    // Track swap request count
+    let swapCount = 0;
+
+    // Override /api/swap handler to count requests
+    await page.route('/api/swap', async (route) => {
+      swapCount++;
+      const mockSwap = {
+        status: 'ok' as const,
+        data: {
+          swapTransaction: 'base64encodedtx123456789',
+          lastValidBlockHeight: 123456789,
+        },
+      };
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(mockSwap),
+      });
+    });
+
+    await gotoAndWait(page, '/terminal', /\/terminal/, 'terminal');
+
+    // Fill amount to enable swap
+    await page.locator('[aria-label="Trade amount"]').fill('0.1');
+
+    // Open confirm dialog
+    const swapButton = page.locator('[aria-label="Buy token"]');
+    await swapButton.click();
+
+    // Wait for dialog
+    const dialog = page.locator('[data-testid="swap-confirm-dialog"]');
+    await expect(dialog).toBeVisible();
+
+    // Get confirm button
+    const confirmButton = page.locator('[data-testid="swap-confirm-submit"]');
+    await expect(confirmButton).toBeVisible();
+
+    // Double-click rapidly on confirm button
+    await confirmButton.click();
+    await confirmButton.click();
+
+    // Wait for dialog to close (success)
+    await expect(dialog).toBeHidden({ timeout: 5000 });
+
+    // Assert: exactly 1 POST request to /api/swap
+    expect(swapCount).toBe(1);
+  });
+
+  test('@gatekeeper Pending-state disables confirm button', async ({ page }) => {
+    // Deferred promise to control swap response timing
+    let resolveSwap: (() => void) | null = null;
+    let swapCount = 0;
+
+    // Override /api/swap with delayed response
+    await page.route('/api/swap', async (route) => {
+      swapCount++;
+      // Wait for deferred resolution
+      await new Promise<void>((resolve) => {
+        resolveSwap = resolve;
+      });
+
+      const mockSwap = {
+        status: 'ok' as const,
+        data: {
+          swapTransaction: 'base64encodedtx123456789',
+          lastValidBlockHeight: 123456789,
+        },
+      };
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(mockSwap),
+      });
+    });
+
+    await gotoAndWait(page, '/terminal', /\/terminal/, 'terminal');
+
+    // Fill amount to enable swap
+    await page.locator('[aria-label="Trade amount"]').fill('0.1');
+
+    // Open confirm dialog
+    const swapButton = page.locator('[aria-label="Buy token"]');
+    await swapButton.click();
+
+    // Wait for dialog
+    const dialog = page.locator('[data-testid="swap-confirm-dialog"]');
+    await expect(dialog).toBeVisible();
+
+    // Get confirm button
+    const confirmButton = page.locator('[data-testid="swap-confirm-submit"]');
+    await expect(confirmButton).toBeVisible();
+
+    // Click confirm once
+    await confirmButton.click();
+
+    // Immediately assert confirm button is disabled while pending
+    await expect(confirmButton).toBeDisabled();
+
+    // Attempt another click while pending
+    await confirmButton.click({ timeout: 500 }).catch(() => {
+      // Expected to fail or be ignored while disabled
+    });
+
+    // Assert: still exactly 1 request
+    expect(swapCount).toBe(1);
+
+    // Resolve the deferred swap response
+    if (resolveSwap) {
+      resolveSwap();
+    }
+
+    // Wait for dialog to close
+    await expect(dialog).toBeHidden({ timeout: 5000 });
+
+    // Final assertion: still exactly 1 request (no duplicates)
+    expect(swapCount).toBe(1);
+  });
 });
