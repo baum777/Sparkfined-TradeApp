@@ -322,6 +322,41 @@ Canonical: true
 
 ---
 
+## E2E Gatekeeper Tests
+
+### Trading Terminal Gatekeeper
+
+**Location:** `playwright/tests/terminal.spec.ts`
+
+**Tests (5 core scenarios):**
+1. Terminal renders core anchors (`terminal-shell`, `page-terminal`, `balance-display`)
+2. Navigation to terminal via Tab works
+3. Buy/Sell toggle works (Radix ToggleGroup `data-state` assertions)
+4. Amount input accepts input
+5. Swap Confirm Dialog opens (requires E2E wallet mock)
+
+**Environment:**
+- Runs with `VITE_E2E_WALLET_MOCK=1` for deterministic wallet state
+- All trading APIs stubbed (Jupiter quote/swap never hits live network)
+
+**Run Gatekeeper:**
+```bash
+# CI mode (with wallet mock)
+VITE_E2E_WALLET_MOCK=1 pnpm exec playwright test --grep @gatekeeper
+
+# Specific test
+pnpm exec playwright test playwright/tests/terminal.spec.ts --project=chromium
+```
+
+### Gatekeeper Requirements
+
+- Never rely on live wallet extensions
+- Never rely on live Jupiter/Jupiter APIs
+- Use only stable selectors (`data-testid`, `aria-label`)
+- Pass in all 5 browsers (chromium, firefox, webkit, mobile)
+
+---
+
 ## Related Documentation
 
 - [Terminal](./TERMINAL.md) - Terminal documentation

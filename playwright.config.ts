@@ -42,15 +42,20 @@ export default defineConfig({
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
     baseURL: 'http://127.0.0.1:5173',
-    
+
     /* Collect trace when retrying the failed test. */
     trace: 'on-first-retry',
-    
+
     /* Screenshot on failure */
     screenshot: 'only-on-failure',
-    
+
     /* Video on failure */
     video: 'retain-on-failure',
+
+    /* E2E Wallet Mock: Enable deterministic wallet state for terminal tests */
+    env: {
+      VITE_E2E_WALLET_MOCK: process.env.VITE_E2E_WALLET_MOCK ?? (process.env.CI ? '1' : '0'),
+    },
   },
 
   /* Configure projects for major browsers */
@@ -97,5 +102,8 @@ export default defineConfig({
     url: 'http://127.0.0.1:5173',
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
+    env: {
+      VITE_E2E_WALLET_MOCK: process.env.VITE_E2E_WALLET_MOCK ?? (process.env.CI ? '1' : '0'),
+    },
   },
 });

@@ -23,6 +23,7 @@
     "lint:api": "pnpm -C api run typecheck",
     "lint:backend": "pnpm -C backend run typecheck",
     "typecheck": "pnpm exec tsc --noEmit -p tsconfig.app.json && pnpm exec tsc --noEmit -p tsconfig.node.json",
+    "contract:typecheck": "pnpm exec tsc --noEmit -p tsconfig.app.json",
     "preview": "pnpm exec vite preview",
     "test": "pnpm exec vitest run",
     "test:watch": "pnpm exec vitest",
