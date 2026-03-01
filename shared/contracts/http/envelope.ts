@@ -36,7 +36,7 @@ export type ApiResult<T> = ApiOk<T> | ApiError;
  * Type guard for success responses
  */
 export function isApiOk<T>(result: ApiResult<T>): result is ApiOk<T> {
-  return result.status === 'ok';
+  return 'status' in result && result.status === 'ok';
 }
 
 /**

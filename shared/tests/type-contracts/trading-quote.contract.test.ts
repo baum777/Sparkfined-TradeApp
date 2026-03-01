@@ -97,12 +97,9 @@ const _quoteWithMeta = {
 // NEGATIVE CASES (Must Error - validated via @ts-expect-error)
 // =============================================================================
 
-/**
- * Test: Missing required field 'provider' should error
- * @ts-expect-error - provider is required
- */
 const _missingProvider = {
   status: 'ok',
+  // @ts-expect-error - provider is required
   data: {
     expectedOut: {
       mint: 'So11111111111111111111111111111111111111112',
@@ -126,10 +123,6 @@ const _missingProvider = {
   },
 } satisfies ApiOk<TerminalQuoteData>;
 
-/**
- * Test: Missing provider.feeMechanism should error
- * @ts-expect-error - provider.feeMechanism is required
- */
 const _missingFeeMechanism = {
   status: 'ok',
   data: {
@@ -152,6 +145,7 @@ const _missingFeeMechanism = {
       amountBaseUnits: '65000',
       amountUi: '0.065',
     },
+    // @ts-expect-error - feeMechanism is required
     provider: {
       name: 'jupiter' as const,
       quoteResponse: {},
@@ -159,10 +153,6 @@ const _missingFeeMechanism = {
   },
 } satisfies ApiOk<TerminalQuoteData>;
 
-/**
- * Test: Wrong provider.name should error (not 'jupiter')
- * @ts-expect-error - provider.name must be 'jupiter'
- */
 const _wrongProviderName = {
   status: 'ok',
   data: {
@@ -186,6 +176,7 @@ const _wrongProviderName = {
       amountUi: '0.065',
     },
     provider: {
+      // @ts-expect-error - name must be 'jupiter'
       name: 'uniswap' as const,
       quoteResponse: {},
       feeMechanism: 'jupiter-platform-fee' as const,
@@ -193,10 +184,6 @@ const _wrongProviderName = {
   },
 } satisfies ApiOk<TerminalQuoteData>;
 
-/**
- * Test: Wrong feeBps type (string instead of number) should error
- * @ts-expect-error - feeBps must be number
- */
 const _wrongFeeBpsType = {
   status: 'ok',
   data: {
@@ -212,6 +199,7 @@ const _wrongFeeBpsType = {
       amountBaseUnits: '995000000',
       amountUi: '0.995',
     },
+    // @ts-expect-error - feeBps must be number
     feeBps: '65',
     feeAmountEstimate: {
       mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
@@ -227,10 +215,7 @@ const _wrongFeeBpsType = {
   },
 } satisfies ApiOk<TerminalQuoteData>;
 
-/**
- * Test: Missing required envelope status should error
- * @ts-expect-error - status: 'ok' is required
- */
+// Negative test: missing status: 'ok' should fail assignment to ApiOk
 const _missingEnvelopeStatus = {
   data: {
     expectedOut: {
@@ -258,7 +243,10 @@ const _missingEnvelopeStatus = {
       feeMechanism: 'jupiter-platform-fee' as const,
     },
   },
-} satisfies ApiOk<TerminalQuoteData>;
+};
+// @ts-expect-error - status: 'ok' is required
+const _missingEnvelopeStatusCheck: ApiOk<TerminalQuoteData> = _missingEnvelopeStatus;
+void _missingEnvelopeStatusCheck;
 
 // =============================================================================
 // API ERROR CONTRACT TESTS
@@ -288,15 +276,15 @@ const _minimalErrorResponse = {
   },
 } satisfies ApiError;
 
-/**
- * Test: Missing error.code should error
- * @ts-expect-error - error.code is required
- */
+// Negative test: missing error.code should fail assignment to ApiError
 const _missingErrorCode = {
   error: {
     message: 'Something went wrong',
   },
-} satisfies ApiError;
+};
+// @ts-expect-error - error.code is required
+const _missingErrorCodeCheck: ApiError = _missingErrorCode;
+void _missingErrorCodeCheck;
 
 // =============================================================================
 // TYPE GUARD TESTS (Runtime)
