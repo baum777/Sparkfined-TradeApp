@@ -1,0 +1,16 @@
+{
+  "status": "CRASHED",
+  "captured": [],
+  "failures": [
+    {
+      "uiId": "CRASH",
+      "reason": "browserType.launch: Executable doesn't exist at /home/ubuntu/.cache/ms-playwright/chromium_headless_shell-1200/chrome-headless-shell-linux64/chrome-headless-shell\n╔═════════════════════════════════════════════════════════════════════════╗\n║ Looks like Playwright Test or Playwright was just installed or updated. ║\n║ Please run the following command to download new browsers:              ║\n║                                                                         ║\n║     npx playwright install                                              ║\n║                                                                         ║\n║ <3 Playwright Team                                                      ║\n╚═════════════════════════════════════════════════════════════════════════╝"
+    }
+  ],
+  "consecutiveFailures": 0,
+  "totalFailures": 0,
+  "timeouts": 0,
+  "errorBoundaryScreens": 0,
+  "startedAt": "2026-03-01T17:07:33.790Z",
+  "finishedAt": "2026-03-01T17:07:33.795Z"
+}

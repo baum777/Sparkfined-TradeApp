@@ -1,0 +1,19 @@
+{
+  "status": "OK",
+  "startedAt": "2026-02-26T15:00:00Z",
+  "finishedAt": "2026-02-26T15:12:10Z",
+  "captured": [
+    "S-001_terminal_baseline",
+    "S-002_discover_open"
+  ],
+  "failures": [
+    {
+      "uiId": "S-007_quote_success",
+      "reason": "TIMEOUT:S-007_quote_success"
+    }
+  ],
+  "consecutiveFailures": 0,
+  "totalFailures": 1,
+  "timeouts": 1,
+  "errorBoundaryScreens": 0
+}
