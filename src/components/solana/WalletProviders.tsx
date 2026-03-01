@@ -18,10 +18,10 @@ const TEST_PUBLIC_KEY = new PublicKey('So111111111111111111111111111111111111111
 
 /**
  * E2E Mock Wallet Adapter
- * Implements the WalletAdapter interface for deterministic E2E testing.
+ * Mock for deterministic E2E testing. Runtime-compatible with WalletProvider.
  * Never signs real transactions - returns mock data for UI testing.
  */
-class E2EMockWalletAdapter implements WalletAdapter {
+class E2EMockWalletAdapter {
   name = 'E2E Mock Wallet';
   url = 'https://mock.wallet';
   icon = 'data:image/svg+xml;base64,PHN2Zy8+';
@@ -32,9 +32,9 @@ class E2EMockWalletAdapter implements WalletAdapter {
   disconnecting = false;
 
   // Event emitter stubs (required by interface)
-  private listeners: Map<string, Set<Function>> = new Map();
+  private listeners: Map<string, Set<(...args: unknown[]) => void>> = new Map();
 
-  on(event: string, listener: Function, _context?: unknown) {
+  on(event: string, listener: (...args: unknown[]) => void, _context?: unknown) {
     if (!this.listeners.has(event)) {
       this.listeners.set(event, new Set());
     }
@@ -42,11 +42,11 @@ class E2EMockWalletAdapter implements WalletAdapter {
     return () => this.off(event, listener);
   }
 
-  off(event: string, listener: Function) {
+  off(event: string, listener: (...args: unknown[]) => void) {
     this.listeners.get(event)?.delete(listener);
   }
 
-  once(event: string, listener: Function, _context?: unknown) {
+  once(event: string, listener: (...args: unknown[]) => void, _context?: unknown) {
     const wrapped = (...args: unknown[]) => {
       listener(...args);
       this.off(event, wrapped);
@@ -130,8 +130,8 @@ export function WalletProviders({ children }: { children: ReactNode }) {
 
   const wallets = useMemo<WalletAdapter[]>(() => {
     if (E2E_WALLET_MOCK) {
-      // In E2E mode, only provide the mock wallet
-      return [new E2EMockWalletAdapter()];
+      // In E2E mode, only provide the mock wallet (cast: mock implements signTransaction, runtime-compatible for E2E)
+      return [new E2EMockWalletAdapter() as unknown as WalletAdapter];
     }
     return [
       new PhantomWalletAdapter(),
