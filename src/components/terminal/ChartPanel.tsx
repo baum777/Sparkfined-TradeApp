@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { createChart, CandlestickSeries } from 'lightweight-charts';
+import { createChart, CandlestickSeries, ColorType } from 'lightweight-charts';
 import type { CandlestickData, UTCTimestamp } from 'lightweight-charts';
 import { Card, CardContent } from '@/components/ui/card';
 
@@ -53,7 +53,7 @@ function generateMockCandles(baseMint: string, quoteMint: string, count: number)
 
 const DARK_THEME = {
   layout: {
-    background: { type: 'solid' as const, color: 'transparent' },
+    background: { type: ColorType.Solid, color: 'transparent' },
     textColor: '#94a3b8',
   },
   grid: {

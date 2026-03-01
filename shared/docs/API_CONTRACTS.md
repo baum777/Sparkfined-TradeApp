@@ -87,7 +87,9 @@ Zusätzlich existieren weitere Endpoints in `api/` (Vercel Functions), u.a. Cron
 
 ### Canonical Envelope Schema
 
-**Source of Truth:** `backend/src/http/response.ts` and `backend/src/http/error.ts`
+**Code Source of Truth:** `shared/contracts/http/envelope.ts`
+
+**Implementation Source of Truth:** `backend/src/http/response.ts` and `backend/src/http/error.ts`
 
 **Rule:** All `/api/*` responses must conform to this envelope. Legacy/non-canonical surfaces must document deviations explicitly.
 
@@ -140,6 +142,16 @@ Quelle: `src/services/api/client.ts`.
 
 - Standard-Mode (`apiClient.get/post/...`) erwartet das **kanonische** `backend/` Envelope (`{ status:"ok", data }`).
 - Raw-Mode (`apiClient.raw.*`) akzeptiert beliebige JSON Shapes (für Migration/Legacy).
+
+### Type-Level Contract Tests
+
+**Location:** `shared/tests/type-contracts/`
+
+Compile-time type validation using `satisfies` and `@ts-expect-error`:
+- `trading-quote.contract.test.ts` - Validates quote response shapes against `ApiOk<TerminalQuoteData>`
+- Run: `pnpm contract:typecheck`
+
+These tests fail at build time if API response shapes drift from TypeScript contracts.
 
 ## Contract Drift Risiken (explizit)
 

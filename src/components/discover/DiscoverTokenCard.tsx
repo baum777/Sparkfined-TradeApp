@@ -78,7 +78,7 @@ export const DiscoverTokenCard = React.memo(function DiscoverTokenCard({
   // Sprint 3: P0-2 - Memoized metrics to prevent recalculation on every render
   const { liqFormatted, volFormatted, holdersFormatted } = useMemo(() => {
     const liqSol = token.liquidity.liq_sol ?? 0;
-    const volume24h = token.trading.volume_usd_24h ?? 0;
+    const volume24h = token.trading.volume_usd_60m ?? 0;
     const holderCount = token.holders.holder_count ?? 0;
 
     return {
@@ -88,7 +88,7 @@ export const DiscoverTokenCard = React.memo(function DiscoverTokenCard({
     };
   }, [
     token.liquidity.liq_sol,
-    token.trading.volume_usd_24h,
+    token.trading.volume_usd_60m,
     token.holders.holder_count,
   ]);
 

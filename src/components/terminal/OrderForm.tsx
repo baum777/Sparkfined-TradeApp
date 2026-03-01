@@ -61,14 +61,6 @@ export function OrderForm({ wallet, connection }: OrderFormProps) {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const amountInputRef = useRef<HTMLInputElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
-  const forceAuditQuoteError = useMemo(() => {
-    if (!import.meta.env.DEV || typeof window === 'undefined') return false;
-    return new URLSearchParams(window.location.search).get('auditQuote') === 'error';
-  }, []);
-  const effectiveQuoteStatus = forceAuditQuoteError ? 'error' : quoteStatus;
-  const effectiveQuoteError = forceAuditQuoteError
-    ? 'Audit: forced quote error state'
-    : quoteError;
 
   // Sprint 3.1 PATCH 2: Robust editable target detection
   const isEditableTarget = useCallback((target: EventTarget | null): boolean => {
@@ -83,7 +75,7 @@ export function OrderForm({ wallet, connection }: OrderFormProps) {
     return false;
   }, []);
 
-  // Memoized derived state to prevent recalculation
+  // Memoized derived state to prevent recalculation (must be before handlers that use them)
   const isWalletConnected = useMemo(() => wallet.publicKey !== null, [wallet.publicKey]);
 
   const isAmountValid = useMemo(
@@ -92,11 +84,11 @@ export function OrderForm({ wallet, connection }: OrderFormProps) {
   );
 
   const isQuoteReady = useMemo(
-    () => effectiveQuoteStatus === 'success' && quoteData !== undefined,
-    [effectiveQuoteStatus, quoteData]
+    () => quoteStatus === 'success' && quoteData !== undefined,
+    [quoteStatus, quoteData]
   );
 
-  const isQuoteLoading = effectiveQuoteStatus === 'loading';
+  const isQuoteLoading = quoteStatus === 'loading';
   const isTxInProgress = txStatus === 'signing' || txStatus === 'sending';
 
   // Memoized canExecute to prevent child re-renders
@@ -104,14 +96,6 @@ export function OrderForm({ wallet, connection }: OrderFormProps) {
     () => isWalletConnected && isAmountValid && isQuoteReady && !isTxInProgress && !isExecuting,
     [isWalletConnected, isAmountValid, isQuoteReady, isTxInProgress, isExecuting]
   );
-
-  // Sprint 3: P1-2 - Disabled reason microcopy
-  const disabledReason = useMemo(() => {
-    if (!isWalletConnected) return 'Connect wallet to trade';
-    if (!isAmountValid) return 'Enter amount to get quote';
-    if (!isQuoteReady) return 'Waiting for quote...';
-    return null;
-  }, [isWalletConnected, isAmountValid, isQuoteReady]);
 
   // Stable callbacks to prevent child re-renders
   const handleSetSide = useCallback(
@@ -157,14 +141,28 @@ export function OrderForm({ wallet, connection }: OrderFormProps) {
     }
   }, [canExecute, wallet.publicKey, wallet.signTransaction, executeSwap, connection]);
 
+  // Sprint 3: P1-2 - Disabled reason microcopy
+  const disabledReason = useMemo(() => {
+    if (!isWalletConnected) return 'Connect wallet to trade';
+    if (!isAmountValid) return 'Enter amount to get quote';
+    if (!isQuoteReady) return 'Waiting for quote...';
+    return null;
+  }, [isWalletConnected, isAmountValid, isQuoteReady]);
+
   // Sprint 3.1 PATCH 1: Container-scoped keyboard handler (replaces global window listener)
   const handleContainerKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
+      // Guard: only handle if focus is inside this container
       const root = rootRef.current;
       if (!root || !root.contains(document.activeElement)) return;
 
-      if (isEditableTarget(e.target)) return;
+      // Guard: never trigger when focus is on editable elements
+      if (isEditableTarget(e.target)) {
+        // Allow Enter to work normally in inputs (submit forms, etc.)
+        return;
+      }
 
+      // Enter to trigger trade (when enabled and dialog not open)
       if (e.key === 'Enter' && !isConfirmOpen) {
         if (canExecute) {
           e.preventDefault();
@@ -173,12 +171,14 @@ export function OrderForm({ wallet, connection }: OrderFormProps) {
         return;
       }
 
+      // Enter in dialog to confirm
       if (e.key === 'Enter' && isConfirmOpen && canExecute) {
         e.preventDefault();
         void handleConfirmSwap();
         return;
       }
 
+      // Esc to close dialog
       if (e.key === 'Escape' && isConfirmOpen) {
         e.preventDefault();
         setIsConfirmOpen(false);
@@ -298,9 +298,9 @@ export function OrderForm({ wallet, connection }: OrderFormProps) {
       <AdvancedSettingsAccordion />
 
       {/* Error Messages - Sprint 3: Use granular error selectors */}
-      {effectiveQuoteStatus === 'error' && effectiveQuoteError && (
+      {quoteStatus === 'error' && quoteError && (
         <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-          {effectiveQuoteError}
+          {quoteError}
         </div>
       )}
 
@@ -341,6 +341,7 @@ export function OrderForm({ wallet, connection }: OrderFormProps) {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
+              data-testid="swap-confirm-submit"
               onClick={(event) => {
                 event.preventDefault();
                 void handleConfirmSwap();

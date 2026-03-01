@@ -5,6 +5,8 @@
  * Validates that all markdown files in docs/ and shared/docs/
  * have required metadata headers at the top.
  *
+ * Also guards against YAML frontmatter in TypeScript files (not valid TS syntax).
+ *
  * Exit codes:
  *   0 = all files valid
  *   1 = validation errors found
@@ -148,6 +150,63 @@ function validateMetadata(filePath, frontmatter) {
 }
 
 /**
+ * Guard: Check TypeScript files for invalid YAML frontmatter
+ * YAML frontmatter (---...---) at start of .ts/.tsx files is not valid TypeScript syntax
+ */
+async function guardTypeScriptFrontmatter() {
+  const tsExtensions = ['.ts', '.tsx'];
+  const tsErrors = [];
+
+  async function findTsFiles(dir, baseDir = dir) {
+    const files = [];
+    try {
+      const entries = await fs.readdir(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        const fullPath = join(dir, entry.name);
+        if (shouldExclude(fullPath)) continue;
+
+        if (entry.isDirectory()) {
+          const subFiles = await findTsFiles(fullPath, baseDir);
+          files.push(...subFiles);
+        } else if (entry.isFile() && tsExtensions.some(ext => entry.name.endsWith(ext))) {
+          files.push(fullPath);
+        }
+      }
+    } catch (err) {
+      // Ignore directory read errors
+    }
+    return files;
+  }
+
+  const targetDirs = ['src', 'shared', 'api', 'backend/src'];
+  const allTsFiles = [];
+
+  for (const dir of targetDirs) {
+    const files = await findTsFiles(dir, process.cwd());
+    allTsFiles.push(...files);
+  }
+
+  for (const file of allTsFiles) {
+    try {
+      const content = await fs.readFile(file, 'utf-8');
+      const firstLine = content.split(/\r?\n/)[0];
+
+      // Check if file starts with --- (YAML frontmatter marker)
+      if (firstLine && firstLine.trim() === '---') {
+        tsErrors.push({
+          file: relative(process.cwd(), file),
+          error: 'TypeScript file starts with YAML frontmatter (---). Use JSDoc comments for metadata instead.'
+        });
+      }
+    } catch (err) {
+      // Ignore file read errors
+    }
+  }
+
+  return tsErrors;
+}
+
+/**
  * Main validation function
  */
 async function main() {
@@ -205,7 +264,23 @@ async function main() {
     process.exit(1);
   }
 
-  console.log('✅ All markdown files have valid metadata headers\n');
+  console.log('✅ All markdown files have valid metadata headers');
+
+  // Guard: Check TypeScript files for invalid frontmatter
+  console.log('\n🔍 Checking TypeScript files for invalid YAML frontmatter...');
+  const tsErrors = await guardTypeScriptFrontmatter();
+
+  if (tsErrors.length > 0) {
+    console.log(`\n❌ Found ${tsErrors.length} TypeScript file(s) with YAML frontmatter:\n`);
+    for (const { file, error } of tsErrors) {
+      console.log(`📄 ${file}`);
+      console.log(`   ❌ ${error}`);
+    }
+    console.log('\n💡 Fix: Move metadata from YAML frontmatter to JSDoc comments\n');
+    process.exit(1);
+  }
+
+  console.log('✅ All TypeScript files valid (no YAML frontmatter detected)\n');
   process.exit(0);
 }
 
