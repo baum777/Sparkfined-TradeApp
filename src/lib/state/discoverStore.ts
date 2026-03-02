@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { Token, Tab, PresetId } from '@/features/discover/filter/types';
 import { filterSpec } from '@/features/discover/filter/spec';
+import { discoverService } from '@/lib/discover/discoverService';
 
 export interface DiscoverFilters {
   launchpads: string[];
@@ -8,6 +9,13 @@ export interface DiscoverFilters {
   minLiquiditySol: number | null;
   searchQuery: string;
 }
+
+const DEFAULT_FILTERS: DiscoverFilters = {
+  launchpads: [],
+  timeWindow: 'all',
+  minLiquiditySol: null,
+  searchQuery: '',
+};
 
 export interface DiscoverStoreState {
   // Overlay state
@@ -32,6 +40,8 @@ export interface DiscoverStoreState {
   setTokens: (tokens: Token[]) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
+  retryFetch: () => Promise<void>;
+  resetFilters: () => void;
 }
 
 export const useDiscoverStore = create<DiscoverStoreState>((set, get) => ({
@@ -79,5 +89,28 @@ export const useDiscoverStore = create<DiscoverStoreState>((set, get) => ({
   setTokens: (tokens) => set({ tokens }),
   setLoading: (isLoading) => set({ isLoading }),
   setError: (error) => set({ error }),
+
+  retryFetch: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const tokens = await discoverService.getTokens();
+      set({ tokens, isLoading: false });
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to load tokens',
+        isLoading: false,
+      });
+    }
+  },
+
+  resetFilters: () =>
+    set({
+      filters: { ...DEFAULT_FILTERS },
+      selectedPreset: {
+        not_bonded: filterSpec.ui.overlay_tabs.not_bonded.default_preset,
+        bonded: filterSpec.ui.overlay_tabs.bonded.default_preset,
+        ranked: filterSpec.ui.overlay_tabs.ranked.default_preset,
+      },
+    }),
 }));
 

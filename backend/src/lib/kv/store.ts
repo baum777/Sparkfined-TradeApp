@@ -7,6 +7,7 @@ export interface KVStore {
   delete(key: string): Promise<boolean>;
   incr(key: string, value?: number, ttlSeconds?: number): Promise<number>;
   exists(key: string): Promise<boolean>;
+  ping?(): Promise<string>; // Optional health check
 }
 
 class MemoryStore implements KVStore {
@@ -42,6 +43,10 @@ class MemoryStore implements KVStore {
     const val = await this.get(key);
     return val !== null;
   }
+
+  async ping(): Promise<string> {
+    return 'PONG';
+  }
 }
 
 class VercelKVStore implements KVStore {
@@ -72,7 +77,6 @@ class VercelKVStore implements KVStore {
   }
 
   async incr(key: string, value: number = 1, ttlSeconds?: number): Promise<number> {
-    // Vercel KV (Redis) supports INCRBY for integers
     const result = await this.client.incrby(key, value);
     if (ttlSeconds && result === value) {
       await this.client.expire(key, ttlSeconds);
@@ -80,10 +84,13 @@ class VercelKVStore implements KVStore {
     return result;
   }
 
-
   async exists(key: string): Promise<boolean> {
     const count = await this.client.exists(key);
     return count > 0;
+  }
+
+  async ping(): Promise<string> {
+    return this.client.ping();
   }
 }
 
@@ -93,12 +100,30 @@ export function getKV(): KVStore {
   if (kvInstance) return kvInstance;
 
   const env = getEnv();
+
+  // Vercel KV (legacy) or Redis via Upstash REST API
   if (env.KV_REST_API_URL && env.KV_REST_API_TOKEN) {
     kvInstance = new VercelKVStore(env.KV_REST_API_URL, env.KV_REST_API_TOKEN);
+  } else if (env.REDIS_URL) {
+    // REDIS_URL set but no KV_* - use in-memory fallback (redis package not in deps)
+    // Add optional redis dependency for native Redis support
+    kvInstance = new MemoryStore();
   } else {
     kvInstance = new MemoryStore();
   }
-  
+
   return kvInstance;
 }
 
+// Export for health checks
+export async function pingKV(): Promise<boolean> {
+  try {
+    const kv = getKV();
+    if (kv.ping) {
+      await kv.ping();
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}

@@ -1,6 +1,6 @@
 import { createServer, type Server as HTTPServer } from 'http';
 import { join } from 'path';
-import { loadEnv } from './config/env.js';
+import { loadEnv, getEnv } from './config/env.js';
 import { getConfig } from './config/config.js';
 import { initDatabase, closeDatabase } from './db/index.js';
 import { runMigrations } from './db/migrate.js';
@@ -18,6 +18,9 @@ import { startScheduledJobs } from './jobs/scheduler.js';
 
 // Load environment first
 loadEnv();
+
+// Strict validation at server startup only (throws if required vars missing)
+getEnv({ strict: true });
 
 const config = getConfig();
 
@@ -107,10 +110,16 @@ process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
 
 // Start server
-server.listen(config.server.port, () => {
+// Railway requires binding to 0.0.0.0 (all interfaces)
+const host = '0.0.0.0';
+const port = config.server.port;
+
+server.listen(port, host, () => {
   logger.info(`Server started`, {
-    port: config.server.port,
+    host,
+    port,
     env: config.env.NODE_ENV,
+    mode: config.env.SERVICE_MODE,
     apiBasePath: config.server.apiBasePath,
   });
 });

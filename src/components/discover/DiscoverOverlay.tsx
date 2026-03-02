@@ -40,7 +40,12 @@ export function DiscoverOverlay() {
 
   return (
     <Drawer open={isOpen} onOpenChange={(open) => !open && closeOverlay()}>
-      <DrawerContent className="h-[90vh] max-h-[90vh]">
+      <DrawerContent
+        role="dialog"
+        aria-label="Discover Tokens"
+        data-testid="discover-dialog"
+        className="h-[90vh] max-h-[90vh]"
+      >
         <DrawerHeader className="border-b">
           <div className="flex items-center justify-between">
             <DrawerTitle>Discover Tokens</DrawerTitle>

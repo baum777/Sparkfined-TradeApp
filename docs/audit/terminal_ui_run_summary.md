@@ -1,20 +1,24 @@
-# Terminal UI Audit Run Summary
+# Terminal UI Run Summary
 
-Status: CRASHED
-Duration: 0.0s
-Captured: 0
-Failures: 1
+**Status:** COMPLETED
+**Reason:** NORMAL_END
+**Plan:** discover
+**Started:** 2026-02-27T08:02:10.194Z
+**Ended:** 2026-02-27T08:02:32.217Z
 
-Top Failure Reasons:
-- CRASH: browserType.launch: Executable doesn't exist at /home/ubuntu/.cache/ms-playwright/chromium_headless_shell-1200/chrome-headless-shell-linux64/chrome-headless-shell
-╔═════════════════════════════════════════════════════════════════════════╗
-║ Looks like Playwright Test or Playwright was just installed or updated. ║
-║ Please run the following command to download new browsers:              ║
-║                                                                         ║
-║     npx playwright install                                              ║
-║                                                                         ║
-║ <3 Playwright Team                                                      ║
-╚═════════════════════════════════════════════════════════════════════════╝
+## Stats
+- Captured: 8
+- Not Captured: 0
+- Timeouts: 0
+- Total Failures: 0
 
-Recommended Action:
-None
+## Results
+
+- **UI-002**: CAPTURED
+- **UI-003**: CAPTURED
+- **UI-004**: CAPTURED
+- **UI-005**: CAPTURED
+- **UI-014**: CAPTURED
+- **UI-015**: CAPTURED
+- **UI-016**: CAPTURED
+- **UI-017**: CAPTURED

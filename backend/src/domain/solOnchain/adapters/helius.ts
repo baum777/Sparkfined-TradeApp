@@ -165,7 +165,11 @@ function resolveHeliusConfig(): { rpcUrl: string; dasRpcUrl: string; timeoutMs: 
 }
 
 function resolveHeliusApiKey(): string {
-  return getEnv().HELIUS_API_KEY;
+  const key = getEnv().HELIUS_API_KEY;
+  if (!key?.trim()) {
+    throw new Error('HELIUS_API_KEY is required for Helius adapter');
+  }
+  return key;
 }
 
 async function computeTop10ConcentrationPct(input: {

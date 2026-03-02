@@ -1,0 +1,49 @@
+{
+  "status": "COMPLETED",
+  "reason": "NORMAL_END",
+  "plan": "discover",
+  "startedAt": "2026-02-27T08:02:10.194Z",
+  "endedAt": "2026-02-27T08:02:32.217Z",
+  "results": {
+    "UI-002": {
+      "status": "CAPTURED",
+      "screenshotPath": "terminal_ui_screenshots/UI-002-discover-overlay.png"
+    },
+    "UI-003": {
+      "status": "CAPTURED",
+      "screenshotPath": "terminal_ui_screenshots/UI-003-discover-not-bonded.png"
+    },
+    "UI-004": {
+      "status": "CAPTURED",
+      "screenshotPath": "terminal_ui_screenshots/UI-004-discover-bonded.png"
+    },
+    "UI-005": {
+      "status": "CAPTURED",
+      "screenshotPath": "terminal_ui_screenshots/UI-005-discover-ranked.png"
+    },
+    "UI-014": {
+      "status": "CAPTURED",
+      "screenshotPath": "terminal_ui_screenshots/UI-014-search-empty.png"
+    },
+    "UI-015": {
+      "status": "CAPTURED",
+      "screenshotPath": "terminal_ui_screenshots/UI-015-loading.png"
+    },
+    "UI-016": {
+      "status": "CAPTURED",
+      "screenshotPath": "terminal_ui_screenshots/UI-016-empty-no-tokens.png"
+    },
+    "UI-017": {
+      "status": "CAPTURED",
+      "screenshotPath": "terminal_ui_screenshots/UI-017-error-boundary.png"
+    }
+  },
+  "stats": {
+    "captured": 8,
+    "notCaptured": 0,
+    "timeouts": 0,
+    "consecutiveFailures": 0,
+    "totalFailures": 0,
+    "errorBoundaryScreens": 0
+  }
+}

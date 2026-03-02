@@ -11,7 +11,7 @@ interface ExecutionPanelProps {
 
 export function ExecutionPanel({ wallet, connection }: ExecutionPanelProps) {
   return (
-    <div className="flex h-full flex-col gap-4">
+    <div className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto">
       <Card>
         <CardHeader>
           <CardTitle>Order</CardTitle>
