@@ -199,16 +199,22 @@ interface ApiError {
 Quelle: `backend/src/http/response.ts` und `backend/src/http/error.ts`.
 
 - **Success**: `{ "status": "ok", "data": <T> }`
-- **Error**: `{ "error": { "code": string, "message": string, "details"?: any } }`
+- **Error**: `{ "error": { "code": string, "message": string, "details": { "requestId": string, ... } } }`
 - Response Header: `x-request-id`
+- `sendError()` echo't `requestId` immer zusätzlich in `error.details.requestId`.
+- `sendNoContent()` nutzt weiterhin den kanonischen Envelope mit `data: null`.
 
-### B) `api/` Envelope (Vercel Functions) — Legacy / non‑canonical
+### B) `api/` Envelope (Vercel Functions) — compatibility / non‑canonical surface
 
 Quelle: `api/_lib/response.ts`.
 
-- **Success**: `{ "data": <T>, "status": <number>, "message"?: string }`
+- **Success**: `{ "status": "ok", "data": <T> }`
 - **Error**: `{ "error": { "code": string, "message": string, "details"?: Record<string,string[]> } }`
 - Response Header: `x-request-id`
+- Abweichung zur Backend-Fehler-Implementierung: `api/_lib/response.ts` setzt `x-request-id`
+  als Header, injiziert ihn aber aktuell nicht automatisch in `error.details.requestId`.
+- `api/` bleibt eine compatibility/non-canonical Surface, solange Production `/api/*` per Vercel
+  Rewrite auf das externe Backend zeigt.
 
 ### Frontend Erwartung (ApiClient)
 
@@ -244,6 +250,8 @@ These tests fail at build time if API response shapes drift from TypeScript cont
 - **R3: Error-Shape drift**
   - `backend/` Errors haben `{error:{...}}`
   - `api/` Errors haben `{error:{...}}`
+  - Bekannte Abweichung: `backend/` injiziert `details.requestId`; `api/` setzt aktuell nur
+    den `x-request-id` Header automatisch.
   - Frontend Error Parsing ist konsistent auf `{ error: {...} }`.
 
 ## Idempotency / Header Contracts
