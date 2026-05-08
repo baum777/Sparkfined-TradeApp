@@ -18,12 +18,32 @@ export const FeePreviewInline = React.memo(function FeePreviewInline() {
   // Sprint 3: Granular selectors - extract only primitive values needed
   const quoteStatus = useTerminalStore((s) => s.quote.status);
   const quoteData = useTerminalStore((s) => s.quote.data);
-  const quoteError = useTerminalStore((s) => s.quote.error);
   const side = useTerminalStore((s) => s.side);
   const slippageBps = useTerminalStore((s) => s.slippageBps);
 
   // Sprint 3: Memoized slippage label to prevent recalculation
   const slippageLabel = useMemo(() => `${(slippageBps / 100).toFixed(1)}%`, [slippageBps]);
+
+  // Sprint 3: Memoized formatting to prevent repeated BigInt conversions
+  const formattedQuote = useMemo(() => {
+    if (!quoteData) {
+      return null;
+    }
+
+    const { expectedOut, minOut, feeBps, feeAmountEstimate, meta } = quoteData;
+    const min = formatBaseUnitsToUi(BigInt(minOut.amountBaseUnits), minOut.decimals, 6);
+    const exp = formatBaseUnitsToUi(BigInt(expectedOut.amountBaseUnits), expectedOut.decimals, 6);
+    const fee = formatBaseUnitsToUi(BigInt(feeAmountEstimate.amountBaseUnits), feeAmountEstimate.decimals, 6);
+
+    return {
+      minOutFormatted: min,
+      expectedOutFormatted: exp,
+      feeFormatted: fee,
+      feePercent: `${(feeBps / 100).toFixed(2)}%`,
+      priceImpact: meta?.priceImpactPct ?? 0,
+      hasMeaningfulMinimum: min !== exp,
+    };
+  }, [quoteData]);
 
   if (quoteStatus === 'loading') {
     return (
@@ -40,7 +60,7 @@ export const FeePreviewInline = React.memo(function FeePreviewInline() {
     );
   }
 
-  if (quoteStatus === 'error' || !quoteData) {
+  if (quoteStatus === 'error' || !quoteData || !formattedQuote) {
     return (
       <div className="flex items-center justify-between py-2 px-3 bg-muted/50 rounded-md text-xs text-muted-foreground">
         <span>{LABELS.quotePlaceholder}</span>
@@ -50,29 +70,15 @@ export const FeePreviewInline = React.memo(function FeePreviewInline() {
   }
 
   // Sprint 3: Destructure only once quoteData is confirmed present
-  const { expectedOut, minOut, feeBps, feeAmountEstimate, meta } = quoteData;
-  const priceImpact = meta?.priceImpactPct ?? 0;
-
-  // Sprint 3: Memoized formatting to prevent repeated BigInt conversions
   const {
     minOutFormatted,
     expectedOutFormatted,
     feeFormatted,
+    feePercent,
+    priceImpact,
     hasMeaningfulMinimum,
-  } = useMemo(() => {
-    const min = formatBaseUnitsToUi(BigInt(minOut.amountBaseUnits), minOut.decimals, 6);
-    const exp = formatBaseUnitsToUi(BigInt(expectedOut.amountBaseUnits), expectedOut.decimals, 6);
-    const fee = formatBaseUnitsToUi(BigInt(feeAmountEstimate.amountBaseUnits), feeAmountEstimate.decimals, 6);
-    return {
-      minOutFormatted: min,
-      expectedOutFormatted: exp,
-      feeFormatted: fee,
-      hasMeaningfulMinimum: min !== exp,
-    };
-  }, [minOut, expectedOut, feeAmountEstimate]);
-
-  // Memoized fee percentage to prevent toFixed recalculation
-  const feePercent = useMemo(() => `${(feeBps / 100).toFixed(2)}%`, [feeBps]);
+  } = formattedQuote;
+  const { expectedOut, minOut, feeAmountEstimate } = quoteData;
 
   return (
     <div className="space-y-1.5 py-2 px-3 bg-muted/50 rounded-md" aria-live="polite">
