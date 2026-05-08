@@ -2,7 +2,7 @@
 Owner: Architecture Team
 Status: active
 Version: 1.0
-LastUpdated: 2026-02-27
+LastUpdated: 2026-05-08
 Canonical: true
 ---
 
@@ -20,12 +20,61 @@ Wichtige Contracts:
 - `shared/contracts/reasoning-router.ts`: Reasoning Router + `/llm/execute` Request/Response
 - `shared/contracts/grokPulse.ts`: Grok Pulse Snapshot/History
 - `shared/contracts/journal.settings.ts`: `/settings` + Journal Insights Request Types
+- `shared/contracts/trading-assistant/trade-review.ts`: Trading Assistant `trade_review_v1`
+  Output Contract
 
 ## Frontend-Verbrauch (Contract-First)
 
 Frontend soll Shapes **aus `shared/contracts/*` importieren** und nicht Backend-Verhalten erraten.
 
 Beispiel: `src/services/api/grokPulse.ts` importiert `shared/contracts/grokPulse.ts`.
+
+## Trading Assistant Contract: `trade_review_v1`
+
+**Contract Name / Version:** `trade_review_v1`
+
+**Source of Truth:**
+- Kanonisch: `shared/contracts/trading-assistant/trade-review.ts`
+- Backend-Mirror: `backend/src/routes/reasoning/tradeReviewContract.ts`
+
+Der Backend-Mirror bleibt absichtlich bestehen, weil `docs/ARCHITECTURE.md` beschreibt, dass
+`backend/` wegen `tsconfig.rootDir` bei Bedarf Contracts spiegelt. Keine Import-Umstellung ist
+Teil dieses Contract-Status.
+
+**Stabilitätsentscheidung:**
+- Die aktuelle Shape ist bewusst stabil gehalten.
+- `assistantDecision.decision` erlaubt aktuell nur:
+  - `no_trade`
+  - `paper_trade_candidate`
+  - `blocked_by_risk`
+- `watchlist`, `manual_review_required` und `sourceQuality` sind aktuell **keine** Felder oder
+  Entscheidungswerte von `trade_review_v1` und dürfen nicht als Contract-Anforderung behandelt
+  werden.
+
+**Vorhandene Qualitäts-/Quellenfelder:**
+- `marketDataQuality.dataFreshness`: `fresh | delayed | fallback | stale`
+- `marketDataQuality.sources`: nicht-leere Stringliste der genutzten Quellen
+- `marketDataQuality.warnings`: Warnhinweise zur Datenlage
+- `riskDecision.warnings`: Pflicht-Warnungen für `blocked_by_risk`
+
+**Bestehende Contract-Regeln:**
+- `no_trade` erzwingt `direction: "none"`.
+- `paper_trade_candidate` darf nicht mit `fallback` oder `stale` Market Data validieren.
+- `paper_trade_candidate` braucht `riskDecision.stopLoss`.
+- `blocked_by_risk` braucht mindestens eine `riskDecision.warning`.
+- `schemaVersion` bleibt fix `trade_review_v1`.
+
+**Drift-Schutz:**
+- `tests/unit/trade-review-contract.test.ts` validiert die Shape-Regeln und vergleicht den
+  Backend-Mirror byte-for-byte mit dem kanonischen Shared Contract.
+- Änderungen an `shared/contracts/trading-assistant/trade-review.ts` müssen den Mirror und den
+  Drift-Test konsistent halten.
+
+**Discover-Kontext:**
+- `GET /api/discover/tokens` ist eine Terminal/Discover-Route (`SERVICE_MODE=terminal|full`),
+  keine Reasoning- oder Journal-Route.
+- Cache-, Fallback- und Multi-instance-Betriebsdetails bleiben in `docs/DISCOVER.md` und
+  `DEPLOYMENT.md`.
 
 ## API Base Path
 
@@ -35,12 +84,35 @@ Beispiel: `src/services/api/grokPulse.ts` importiert `shared/contracts/grokPulse
 
 ## Implementierte Endpoints (nach `backend/src/app.ts`)
 
-Diese Endpoints sind im `backend/` Router registriert:
+`backend/src/app.ts` registriert Routen nach `SERVICE_MODE`. `SERVICE_MODE` ist laut
+`backend/src/config/env.ts` `full` per Default.
 
-- **Health/Meta**
+### Always registered
+
+- **Health / status / misc**
   - `GET /api/health`
+  - `GET /api/health/ready`
+  - `GET /api/health/upstreams`
   - `GET /api/meta`
   - `GET /api/usage/summary`
+
+### `SERVICE_MODE=terminal|full`
+
+- **Discover / terminal data**
+  - `GET /api/discover/tokens`
+- **Quote**
+  - `GET /api/quote`
+- **Swap**
+  - `POST /api/swap`
+
+### `SERVICE_MODE=journal|full`
+
+- **Auth**
+  - `POST /api/auth/register`
+  - `POST /api/auth/login`
+  - `POST /api/auth/refresh`
+  - `POST /api/auth/logout`
+  - `GET /api/auth/me`
 - **Settings**
   - `GET /api/settings`
   - `PATCH /api/settings`
@@ -63,8 +135,10 @@ Diese Endpoints sind im `backend/` Router registriert:
   - `GET /api/alerts/events`
 - **Oracle**
   - `GET /api/oracle/daily`
+  - `GET /api/oracle/read-state`
   - `PUT /api/oracle/read-state`
-  - `POST /api/oracle/read-state/bulk` (Alias: `PUT` ist ebenfalls registriert)
+  - `POST /api/oracle/read-state/bulk`
+  - `PUT /api/oracle/read-state/bulk`
 - **Chart/TA**
   - `POST /api/chart/ta`
   - `POST /api/chart/analyze`
@@ -75,7 +149,7 @@ Diese Endpoints sind im `backend/` Router registriert:
   - `POST /api/reasoning/insight-critic`
   - `POST /api/reasoning/route`
   - `POST /api/llm/execute`
-- **Feed/Signals/Market**
+- **Feed / Signals / Market**
   - `GET /api/feed/oracle`
   - `GET /api/feed/pulse`
   - `GET /api/signals/unified`
@@ -176,4 +250,3 @@ These tests fail at build time if API response shapes drift from TypeScript cont
 
 - **`Idempotency-Key`**: `POST /api/journal` verlangt diesen Header (siehe `backend/src/routes/journal.ts` und CORS Allow-Headers).
 - **`x-request-id`**: Server setzt Response Header. Client kann optional einen Request ID Header senden (**TODO:** ist Request-ID als Request Header bereits genutzt?).
-

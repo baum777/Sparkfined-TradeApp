@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { tradeReviewV1Schema } from '../../../shared/contracts/trading-assistant/trade-review.js';
 
 export const criticIssueSchema = z.object({
   kind: z.enum(['contradiction', 'missing_data', 'overreach']),
@@ -35,6 +36,7 @@ export const tradeReviewInsightSchema = z.object({
     })
   ),
   questions: z.array(z.string()),
+  assistantReview: tradeReviewV1Schema.optional(),
   critic: insightCriticReportSchema,
 });
 
@@ -76,5 +78,4 @@ export type TradeReviewInsight = z.infer<typeof tradeReviewInsightSchema>;
 export type SessionReviewInsight = z.infer<typeof sessionReviewInsightSchema>;
 export type BoardScenariosInsight = z.infer<typeof boardScenariosInsightSchema>;
 export type InsightCriticOnlyResult = z.infer<typeof insightCriticOnlyResultSchema>;
-
 
