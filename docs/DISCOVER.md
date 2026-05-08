@@ -171,23 +171,16 @@ The Discover Overlay provides token discovery with:
 
 **Current Implementation:**
 - `discoverService.getTokens()` calls `/api/discover/tokens`
-- The canonical backend registers `GET /api/discover/tokens` in `backend/src/app.ts`
-  for `SERVICE_MODE=terminal` and `SERVICE_MODE=full`.
-- Frontend still returns an empty array if the endpoint is unavailable (graceful fallback).
+- Returns empty array if endpoint not available (graceful fallback)
+- Ready for backend integration
 
-**Canonical Endpoint:**
+**Required Endpoint:**
 ```
 GET /api/discover/tokens
 Response: Token[] (normalized Token[] matching filter/types.ts schema)
 ```
 
-**Runtime Constraints:**
-- The token catalog cache is in-memory per backend instance.
-- Cache TTL is 45 seconds and responses use `public, max-age=45`.
-- If Jupiter `/tokens` fails, the endpoint serves deterministic mock/fallback token data.
-- Fallback data keeps the endpoint available, but token source quality is degraded until upstream recovers.
-- Multi-instance deployment can return divergent token snapshots during the TTL window; keep `/api/discover/tokens`
-  single-instance until the cache backend is shared.
+**Note:** For MVP testing, mock data can be added in `discoverService.ts`.
 
 ---
 
@@ -240,7 +233,7 @@ Response: Token[] (normalized Token[] matching filter/types.ts schema)
 ## Known Limitations
 
 1. **Virtualization:** Currently using `ScrollArea`. For 500+ tokens, consider true virtualization.
-2. **Discover Cache:** `/api/discover/tokens` uses an in-memory per-instance cache until Redis/KV-backed shared TTL semantics are implemented.
+2. **Data Source:** `/api/discover/tokens` endpoint not yet implemented (returns empty array gracefully).
 3. **Quick Amount Buttons:** In Terminal, still using placeholder logic.
 
 ---
@@ -250,3 +243,4 @@ Response: Token[] (normalized Token[] matching filter/types.ts schema)
 - [Terminal](../docs/TERMINAL.md) - Terminal integration
 - [Architecture](../docs/ARCHITECTURE.md) - System architecture
 - [QA](../docs/QA.md) - Testing procedures
+

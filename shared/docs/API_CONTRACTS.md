@@ -70,12 +70,6 @@ Teil dieses Contract-Status.
 - Änderungen an `shared/contracts/trading-assistant/trade-review.ts` müssen den Mirror und den
   Drift-Test konsistent halten.
 
-**Discover-Kontext:**
-- `GET /api/discover/tokens` ist eine Terminal/Discover-Route (`SERVICE_MODE=terminal|full`),
-  keine Reasoning- oder Journal-Route.
-- Cache-, Fallback- und Multi-instance-Betriebsdetails bleiben in `docs/DISCOVER.md` und
-  `DEPLOYMENT.md`.
-
 ## API Base Path
 
 - Base Path ist im Betrieb **`/api`**.
@@ -84,35 +78,12 @@ Teil dieses Contract-Status.
 
 ## Implementierte Endpoints (nach `backend/src/app.ts`)
 
-`backend/src/app.ts` registriert Routen nach `SERVICE_MODE`. `SERVICE_MODE` ist laut
-`backend/src/config/env.ts` `full` per Default.
+Diese Endpoints sind im `backend/` Router registriert:
 
-### Always registered
-
-- **Health / status / misc**
+- **Health/Meta**
   - `GET /api/health`
-  - `GET /api/health/ready`
-  - `GET /api/health/upstreams`
   - `GET /api/meta`
   - `GET /api/usage/summary`
-
-### `SERVICE_MODE=terminal|full`
-
-- **Discover / terminal data**
-  - `GET /api/discover/tokens`
-- **Quote**
-  - `GET /api/quote`
-- **Swap**
-  - `POST /api/swap`
-
-### `SERVICE_MODE=journal|full`
-
-- **Auth**
-  - `POST /api/auth/register`
-  - `POST /api/auth/login`
-  - `POST /api/auth/refresh`
-  - `POST /api/auth/logout`
-  - `GET /api/auth/me`
 - **Settings**
   - `GET /api/settings`
   - `PATCH /api/settings`
@@ -135,10 +106,8 @@ Teil dieses Contract-Status.
   - `GET /api/alerts/events`
 - **Oracle**
   - `GET /api/oracle/daily`
-  - `GET /api/oracle/read-state`
   - `PUT /api/oracle/read-state`
-  - `POST /api/oracle/read-state/bulk`
-  - `PUT /api/oracle/read-state/bulk`
+  - `POST /api/oracle/read-state/bulk` (Alias: `PUT` ist ebenfalls registriert)
 - **Chart/TA**
   - `POST /api/chart/ta`
   - `POST /api/chart/analyze`
@@ -149,7 +118,7 @@ Teil dieses Contract-Status.
   - `POST /api/reasoning/insight-critic`
   - `POST /api/reasoning/route`
   - `POST /api/llm/execute`
-- **Feed / Signals / Market**
+- **Feed/Signals/Market**
   - `GET /api/feed/oracle`
   - `GET /api/feed/pulse`
   - `GET /api/signals/unified`
@@ -199,22 +168,16 @@ interface ApiError {
 Quelle: `backend/src/http/response.ts` und `backend/src/http/error.ts`.
 
 - **Success**: `{ "status": "ok", "data": <T> }`
-- **Error**: `{ "error": { "code": string, "message": string, "details": { "requestId": string, ... } } }`
+- **Error**: `{ "error": { "code": string, "message": string, "details"?: any } }`
 - Response Header: `x-request-id`
-- `sendError()` echo't `requestId` immer zusätzlich in `error.details.requestId`.
-- `sendNoContent()` nutzt weiterhin den kanonischen Envelope mit `data: null`.
 
-### B) `api/` Envelope (Vercel Functions) — compatibility / non‑canonical surface
+### B) `api/` Envelope (Vercel Functions) — Legacy / non‑canonical
 
 Quelle: `api/_lib/response.ts`.
 
-- **Success**: `{ "status": "ok", "data": <T> }`
+- **Success**: `{ "data": <T>, "status": <number>, "message"?: string }`
 - **Error**: `{ "error": { "code": string, "message": string, "details"?: Record<string,string[]> } }`
 - Response Header: `x-request-id`
-- Abweichung zur Backend-Fehler-Implementierung: `api/_lib/response.ts` setzt `x-request-id`
-  als Header, injiziert ihn aber aktuell nicht automatisch in `error.details.requestId`.
-- `api/` bleibt eine compatibility/non-canonical Surface, solange Production `/api/*` per Vercel
-  Rewrite auf das externe Backend zeigt.
 
 ### Frontend Erwartung (ApiClient)
 
@@ -250,8 +213,6 @@ These tests fail at build time if API response shapes drift from TypeScript cont
 - **R3: Error-Shape drift**
   - `backend/` Errors haben `{error:{...}}`
   - `api/` Errors haben `{error:{...}}`
-  - Bekannte Abweichung: `backend/` injiziert `details.requestId`; `api/` setzt aktuell nur
-    den `x-request-id` Header automatisch.
   - Frontend Error Parsing ist konsistent auf `{ error: {...} }`.
 
 ## Idempotency / Header Contracts
