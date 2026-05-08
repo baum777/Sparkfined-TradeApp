@@ -33,7 +33,7 @@ Canonical: true
 
 - Deploys `backend/` as Docker service:
   - Dockerfile: `backend/Dockerfile`
-  - Start: `node dist/server.js`
+  - Start: `node dist/backend/src/server.js`
   - Healthcheck: `/api/health`
 
 **Important:** This is an always-on process (not Vercel Functions compatible).
@@ -166,4 +166,3 @@ See `PRE_BETA_HARDENING_SUMMARY.md` for implementation details.
 - [Architecture](./ARCHITECTURE.md) - System architecture
 - [Environment](../shared/docs/ENVIRONMENT.md) - Complete env var list
 - [Security](./SECURITY.md) - Security constraints
-
