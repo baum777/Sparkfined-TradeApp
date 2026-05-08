@@ -18,13 +18,11 @@ const repoRoot = process.cwd();
 const vercelPath = path.join(repoRoot, "vercel.json");
 
 function fail(message) {
-  // eslint-disable-next-line no-console
   console.error(`❌ ${message}`);
   process.exit(1);
 }
 
 function warn(message) {
-  // eslint-disable-next-line no-console
   console.warn(`⚠️ ${message}`);
 }
 
@@ -146,5 +144,4 @@ if (violations.length) {
   );
 }
 
-// eslint-disable-next-line no-console
 console.log("✅ Vercel /api ownership verified: all /api/* routes go to the Node backend (no exceptions).");

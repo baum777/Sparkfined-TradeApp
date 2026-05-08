@@ -137,7 +137,7 @@ export default function Journal() {
         setStoredJournalMode(modeParam);
       }
     }
-  }, [searchParams]);
+  }, [searchParams, mode]);
 
   // Sync mode to URL when changed via toggle
   const handleModeChange = useCallback((newMode: JournalMode) => {
@@ -158,7 +158,7 @@ export default function Journal() {
     if (viewParam && ["pending", "confirmed", "archived"].includes(viewParam)) {
       setActiveView(viewParam);
     }
-  }, []);
+  }, [searchParams]);
 
   // Update URL when view changes
   const handleViewChange = useCallback((view: JournalView) => {

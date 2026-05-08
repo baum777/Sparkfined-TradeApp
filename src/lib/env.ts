@@ -53,7 +53,6 @@ export function logSolanaEnvOnce(): void {
     getEnvString('VITE_SOLANA_RPC_URL') ||
     getEnvString('NEXT_PUBLIC_SOLANA_RPC_URL');
 
-  // eslint-disable-next-line no-console
   console.info('[Terminal] Solana config', {
     rpcEndpoint: getSolanaRpcEndpoint(),
     cluster: getSolanaCluster(),
@@ -74,4 +73,3 @@ export function isResearchEmbedTerminalEnabled(): boolean {
   const raw = getEnvString('VITE_RESEARCH_EMBED_TERMINAL');
   return raw === 'true';
 }
-

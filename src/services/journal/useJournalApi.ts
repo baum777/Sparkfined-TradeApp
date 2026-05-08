@@ -90,35 +90,51 @@ export function useJournalApi(): UseJournalApiReturn {
   } = useJournalQueueStore();
 
   // ─────────────────────────────────────────────────────────────
-  // Initialize
+  // Merge API entries with queued optimistic entries
+  // No serverId dependency - only check queue for pending CREATE items
   // ─────────────────────────────────────────────────────────────
 
-  useEffect(() => {
-    if (initRef.current) return;
-    initRef.current = true;
+  const mergeWithQueue = useCallback((
+    apiEntries: JournalEntryV1[],
+    queueItems: typeof queue
+  ): JournalEntryLocal[] => {
+    const result: JournalEntryLocal[] = apiEntries.map(entry => {
+      // For non-CREATE operations, check if entry is queued
+      const queueItem = queueItems.find(q => q.entryId === entry.id && q.operation !== 'CREATE');
+      return {
+        ...entry,
+        _isQueued: !!queueItem,
+        _queueId: queueItem?.id,
+        _syncError: queueItem?.status === 'failed',
+        _syncRetryCount: queueItem?.status === 'failed' ? queueItem?.retryCount : undefined,
+        _syncLastError: queueItem?.status === 'failed' ? queueItem?.lastError : undefined,
+      };
+    });
 
-    async function init() {
-      // NOTE: Runner is started once at App root, not here
-      
-      // Load queue first
-      await loadQueue();
-
-      // Try to load from cache first
-      try {
-        const cached = await dbService.getJournalCache();
-        if (cached.length > 0) {
-          setEntries(mergeWithQueue(cached, queue));
-          setState('ready');
-        }
-      } catch (err) {
-        console.error('[useJournalApi] Failed to load cache:', err);
+    // Add CREATE queue items as optimistic entries
+    // Only add items still in queue (not yet synced)
+    for (const item of queueItems) {
+      if (item.operation === 'CREATE') {
+        const payload = item.payload as JournalCreateRequest;
+        // Only add if this local-* entry is still pending in queue
+        result.unshift({
+          id: item.entryId,
+          status: 'pending',
+          summary: payload?.summary || '',
+          timestamp: payload?.timestamp || new Date().toISOString(),
+          createdAt: new Date(item.createdAt).toISOString(),
+          updatedAt: new Date(item.createdAt).toISOString(),
+          _isQueued: true,
+          _queueId: item.id,
+          _syncError: item.status === 'failed',
+          _syncRetryCount: item.status === 'failed' ? item.retryCount : undefined,
+          _syncLastError: item.status === 'failed' ? item.lastError : undefined,
+          _clientId: item.entryId,
+        });
       }
-
-      // Then fetch from API
-      await fetchEntries();
     }
 
-    init();
+    return result;
   }, []);
 
   // ─────────────────────────────────────────────────────────────
@@ -169,55 +185,39 @@ export function useJournalApi(): UseJournalApiReturn {
         setState('error');
       }
     }
-  }, [queue]);
+  }, [entries.length, mergeWithQueue, queue]);
 
   // ─────────────────────────────────────────────────────────────
-  // Merge API entries with queued optimistic entries
-  // No serverId dependency - only check queue for pending CREATE items
+  // Initialize
   // ─────────────────────────────────────────────────────────────
 
-  function mergeWithQueue(
-    apiEntries: JournalEntryV1[],
-    queueItems: typeof queue
-  ): JournalEntryLocal[] {
-    const result: JournalEntryLocal[] = apiEntries.map(entry => {
-      // For non-CREATE operations, check if entry is queued
-      const queueItem = queueItems.find(q => q.entryId === entry.id && q.operation !== 'CREATE');
-      return {
-        ...entry,
-        _isQueued: !!queueItem,
-        _queueId: queueItem?.id,
-        _syncError: queueItem?.status === 'failed',
-        _syncRetryCount: queueItem?.status === 'failed' ? queueItem?.retryCount : undefined,
-        _syncLastError: queueItem?.status === 'failed' ? queueItem?.lastError : undefined,
-      };
-    });
+  useEffect(() => {
+    if (initRef.current) return;
+    initRef.current = true;
 
-    // Add CREATE queue items as optimistic entries
-    // Only add items still in queue (not yet synced)
-    for (const item of queueItems) {
-      if (item.operation === 'CREATE') {
-        const payload = item.payload as JournalCreateRequest;
-        // Only add if this local-* entry is still pending in queue
-        result.unshift({
-          id: item.entryId,
-          status: 'pending',
-          summary: payload?.summary || '',
-          timestamp: payload?.timestamp || new Date().toISOString(),
-          createdAt: new Date(item.createdAt).toISOString(),
-          updatedAt: new Date(item.createdAt).toISOString(),
-          _isQueued: true,
-          _queueId: item.id,
-          _syncError: item.status === 'failed',
-          _syncRetryCount: item.status === 'failed' ? item.retryCount : undefined,
-          _syncLastError: item.status === 'failed' ? item.lastError : undefined,
-          _clientId: item.entryId,
-        });
+    async function init() {
+      // NOTE: Runner is started once at App root, not here
+      
+      // Load queue first
+      await loadQueue();
+
+      // Try to load from cache first
+      try {
+        const cached = await dbService.getJournalCache();
+        if (cached.length > 0) {
+          setEntries(mergeWithQueue(cached, queue));
+          setState('ready');
+        }
+      } catch (err) {
+        console.error('[useJournalApi] Failed to load cache:', err);
       }
+
+      // Then fetch from API
+      await fetchEntries();
     }
 
-    return result;
-  }
+    init();
+  }, [fetchEntries, loadQueue, mergeWithQueue, queue]);
 
   // ─────────────────────────────────────────────────────────────
   // Reconciliation: when CREATE succeeds, remove local-* entries and refetch
@@ -250,7 +250,7 @@ export function useJournalApi(): UseJournalApiReturn {
         queue
       );
     });
-  }, [queue]);
+  }, [mergeWithQueue, queue]);
 
   // ─────────────────────────────────────────────────────────────
   // Mutations

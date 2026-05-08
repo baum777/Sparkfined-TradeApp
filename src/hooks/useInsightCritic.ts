@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useOffline } from '@/components/offline';
 import type { InsightCriticOnlyResult, JsonObject, ReasoningResponse } from '@/lib/reasoning/types';
@@ -30,8 +30,13 @@ export function useInsightCritic(input: {
   const version = input.version ?? REASONING_CONTRACT_VERSION;
   const contextKey = stableStringify(input.context);
   const insightKey = stableStringify(input.insight);
+  const context = useMemo<JsonObject>(() => JSON.parse(contextKey) as JsonObject, [contextKey]);
+  const insight = useMemo<JsonObject>(() => JSON.parse(insightKey) as JsonObject, [insightKey]);
 
-  const queryKey = ['reasoning', 'insight-critic', input.referenceId, version, contextKey, insightKey] as const;
+  const queryKey = useMemo(
+    () => ['reasoning', 'insight-critic', input.referenceId, version, contextKey, insightKey] as const,
+    [input.referenceId, version, contextKey, insightKey]
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -40,7 +45,7 @@ export function useInsightCritic(input: {
         type: 'insight-critic',
         referenceId: input.referenceId,
         version,
-        context: { ...input.context, __insight: input.insight },
+        context: { ...context, __insight: insight },
       });
 
       const cached = await dbService.getReasoning(key);
@@ -69,15 +74,15 @@ export function useInsightCritic(input: {
     return () => {
       cancelled = true;
     };
-  }, [input.referenceId, version, contextKey, insightKey, isOnline, queryClient]);
+  }, [context, input.referenceId, insight, isOnline, queryClient, queryKey, version]);
 
   const query = useQuery({
     queryKey,
     queryFn: () =>
       reasoningApi.insightCritic({
         referenceId: input.referenceId,
-        context: input.context,
-        insight: input.insight,
+        context,
+        insight,
         version,
       }),
     enabled: Boolean(input.referenceId) && isOnline,
@@ -93,5 +98,3 @@ export function useInsightCritic(input: {
     isStale: result?.isStale ?? true,
   };
 }
-
-

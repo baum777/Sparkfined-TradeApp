@@ -46,6 +46,13 @@ import {
   RefreshCw
 } from "lucide-react";
 
+const SECTION_MAPPING: Record<string, string> = {
+  providers: "provider-params",
+  data: "cache-offline",
+  experiments: "privacy-diagnostics",
+  privacy: "privacy-diagnostics",
+};
+
 export default function Settings() {
   const [searchParams] = useSearchParams();
   const isMobile = useIsMobile();
@@ -55,18 +62,10 @@ export default function Settings() {
   // URL section param for deep linking (consolidated from /settings/*)
   const urlSection = searchParams.get("section");
   
-  // Map URL section param to accordion value
-  const sectionMapping: Record<string, string> = {
-    providers: "provider-params",
-    data: "cache-offline",
-    experiments: "privacy-diagnostics",
-    privacy: "privacy-diagnostics",
-  };
-
   // Default open sections based on URL
   const defaultOpenSections = useMemo(() => {
-    if (urlSection && sectionMapping[urlSection]) {
-      return [sectionMapping[urlSection]];
+    if (urlSection && SECTION_MAPPING[urlSection]) {
+      return [SECTION_MAPPING[urlSection]];
     }
     return [];
   }, [urlSection]);

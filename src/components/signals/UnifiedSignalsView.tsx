@@ -49,7 +49,7 @@ export function UnifiedSignalsView({ assetId }: { assetId: string }) {
   const showUserSection = filter === "all" || filter === "user";
   const showMarketSection = filter === "all" || filter === "market";
 
-  const items = data?.items ?? [];
+  const items = useMemo(() => data?.items ?? [], [data?.items]);
   const userSignals = useMemo(() => items.filter((c) => c.scope === "user"), [items]);
   const marketSignals = useMemo(() => items.filter((c) => c.scope === "market"), [items]);
 

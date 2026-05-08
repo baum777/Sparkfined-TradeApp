@@ -82,6 +82,33 @@ export function SwipeAction({
     const bounded = Math.max(-maxRight, Math.min(maxLeft, deltaX));
     setTranslateX(bounded);
   }, [disabled, leftActions.length, rightActions.length]);
+
+  const executeAction = React.useCallback(async (action: SwipeAction) => {
+    if (action.undoable) {
+      // Show undo toast for destructive actions
+      let undone = false;
+      
+      toast(action.label, {
+        description: action.undoLabel || 'Action completed',
+        action: {
+          label: 'Undo',
+          onClick: () => {
+            undone = true;
+          },
+        },
+        duration: 5000,
+        onDismiss: () => {
+          if (!undone) {
+            action.onAction();
+          }
+        },
+      });
+    } else {
+      await action.onAction();
+    }
+    
+    setTranslateX(0);
+  }, []);
   
   const handlePointerUp = React.useCallback((e: React.PointerEvent) => {
     (e.target as HTMLElement).releasePointerCapture?.(e.pointerId);
@@ -112,34 +139,7 @@ export function SwipeAction({
     startX.current = null;
     startY.current = null;
     isHorizontalSwipe.current = null;
-  }, [leftActions, rightActions, translateX]);
-  
-  const executeAction = React.useCallback(async (action: SwipeAction) => {
-    if (action.undoable) {
-      // Show undo toast for destructive actions
-      let undone = false;
-      
-      toast(action.label, {
-        description: action.undoLabel || 'Action completed',
-        action: {
-          label: 'Undo',
-          onClick: () => {
-            undone = true;
-          },
-        },
-        duration: 5000,
-        onDismiss: () => {
-          if (!undone) {
-            action.onAction();
-          }
-        },
-      });
-    } else {
-      await action.onAction();
-    }
-    
-    setTranslateX(0);
-  }, []);
+  }, [executeAction, leftActions, rightActions, translateX]);
   
   const handleActionClick = React.useCallback((action: SwipeAction) => {
     executeAction(action);

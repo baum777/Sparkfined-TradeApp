@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback, useEffect } from "react";
+import { useMemo, useState } from "react";
 import { format, isToday, isYesterday } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -81,15 +81,6 @@ export function JournalTimelineView({
 
     return sortedGroups;
   }, [entries]);
-
-  // Today is expanded by default, collapse others on first render
-  useEffect(() => {
-    const todayKey = format(new Date(), "yyyy-MM-dd");
-    const otherDays = dayGroups
-      .filter((g) => g.dateKey !== todayKey)
-      .map((g) => g.dateKey);
-    // Don't auto-collapse - keep all expanded for now
-  }, []);
 
   const toggleDay = (dateKey: string) => {
     setCollapsedDays((prev) => {

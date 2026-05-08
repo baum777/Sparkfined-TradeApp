@@ -81,7 +81,7 @@ export function JournalReviewOverlay({
       ];
       setChecklist(items);
     }
-  }, [currentEntry?.id]);
+  }, [currentEntry]);
 
   const handlePrev = useCallback(() => {
     if (hasPrev) setActiveIndex((i) => i - 1);

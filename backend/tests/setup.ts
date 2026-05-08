@@ -54,7 +54,6 @@ beforeAll(async () => {
     (globalThis as any).__DB_READY__ = true;
   } catch (err) {
     (globalThis as any).__DB_READY__ = false;
-    // eslint-disable-next-line no-console
     console.warn('[tests/setup] DB init skipped (native bindings unavailable):', String(err));
   }
 });

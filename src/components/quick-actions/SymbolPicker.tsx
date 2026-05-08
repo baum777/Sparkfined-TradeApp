@@ -175,50 +175,6 @@ export function SymbolPicker({ onSelect, onBack, showBackButton = true, classNam
     setExpandedSymbol(null);
   }, [search]);
 
-  // Keyboard navigation
-  React.useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        setSelectedIndex((prev) => 
-          prev < flatSymbolList.length - 1 ? prev + 1 : prev
-        );
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        setSelectedIndex((prev) => (prev > 0 ? prev - 1 : -1));
-      } else if (e.key === 'Enter' && selectedIndex >= 0) {
-        e.preventDefault();
-        const symbol = flatSymbolList[selectedIndex];
-        if (symbol) {
-          if (expandedSymbol === symbol.symbol) {
-            // If already expanded, trigger default action (chart)
-            handleAction(symbol, 'chart');
-          } else {
-            setExpandedSymbol(symbol.symbol);
-          }
-        }
-      } else if (e.key === 'Escape') {
-        if (expandedSymbol) {
-          setExpandedSymbol(null);
-        }
-      }
-    }
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [selectedIndex, flatSymbolList, expandedSymbol]);
-
-  // Scroll selected item into view
-  React.useEffect(() => {
-    if (selectedIndex >= 0 && listRef.current) {
-      const items = listRef.current.querySelectorAll('[data-symbol-row]');
-      const item = items[selectedIndex];
-      if (item) {
-        item.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-      }
-    }
-  }, [selectedIndex]);
-  
   const handleAction = React.useCallback((symbol: SymbolItem, action: 'chart' | 'replay' | 'alert' | 'journal') => {
     addRecentSymbol(symbol);
     
@@ -262,6 +218,50 @@ export function SymbolPicker({ onSelect, onBack, showBackButton = true, classNam
     
     close();
   }, [navigate, close, onSelect, isOnline, markQueued]);
+
+  // Keyboard navigation
+  React.useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSelectedIndex((prev) => 
+          prev < flatSymbolList.length - 1 ? prev + 1 : prev
+        );
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSelectedIndex((prev) => (prev > 0 ? prev - 1 : -1));
+      } else if (e.key === 'Enter' && selectedIndex >= 0) {
+        e.preventDefault();
+        const symbol = flatSymbolList[selectedIndex];
+        if (symbol) {
+          if (expandedSymbol === symbol.symbol) {
+            // If already expanded, trigger default action (chart)
+            handleAction(symbol, 'chart');
+          } else {
+            setExpandedSymbol(symbol.symbol);
+          }
+        }
+      } else if (e.key === 'Escape') {
+        if (expandedSymbol) {
+          setExpandedSymbol(null);
+        }
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [selectedIndex, flatSymbolList, expandedSymbol, handleAction]);
+
+  // Scroll selected item into view
+  React.useEffect(() => {
+    if (selectedIndex >= 0 && listRef.current) {
+      const items = listRef.current.querySelectorAll('[data-symbol-row]');
+      const item = items[selectedIndex];
+      if (item) {
+        item.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      }
+    }
+  }, [selectedIndex]);
   
   const handleSymbolClick = React.useCallback((symbol: SymbolItem, index: number) => {
     setSelectedIndex(index);

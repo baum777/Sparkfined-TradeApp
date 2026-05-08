@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useOffline } from '@/components/offline';
 import type { JsonObject, ReasoningResponse, TradeReviewInsight } from '@/lib/reasoning/types';
@@ -28,8 +28,12 @@ export function useTradeReviewInsight(input: {
   const queryClient = useQueryClient();
   const version = input.version ?? REASONING_CONTRACT_VERSION;
   const contextKey = stableStringify(input.context);
+  const context = useMemo<JsonObject>(() => JSON.parse(contextKey) as JsonObject, [contextKey]);
 
-  const queryKey = ['reasoning', 'trade-review', input.referenceId, version, contextKey] as const;
+  const queryKey = useMemo(
+    () => ['reasoning', 'trade-review', input.referenceId, version, contextKey] as const,
+    [input.referenceId, version, contextKey]
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -38,7 +42,7 @@ export function useTradeReviewInsight(input: {
         type: 'trade-review',
         referenceId: input.referenceId,
         version,
-        context: input.context,
+        context,
       });
 
       const cached = await dbService.getReasoning(key);
@@ -67,11 +71,11 @@ export function useTradeReviewInsight(input: {
     return () => {
       cancelled = true;
     };
-  }, [input.referenceId, version, contextKey, isOnline, queryClient]);
+  }, [context, input.referenceId, isOnline, queryClient, queryKey, version]);
 
   const query = useQuery({
     queryKey,
-    queryFn: () => reasoningApi.tradeReview({ referenceId: input.referenceId, context: input.context, version }),
+    queryFn: () => reasoningApi.tradeReview({ referenceId: input.referenceId, context, version }),
     enabled: Boolean(input.referenceId) && isOnline,
   });
 
@@ -85,5 +89,3 @@ export function useTradeReviewInsight(input: {
     isStale: result?.isStale ?? true,
   };
 }
-
-

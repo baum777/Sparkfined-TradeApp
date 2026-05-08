@@ -8,7 +8,6 @@ import { getEnv } from '../env';
 import { logger } from '../logger';
 
 // Lazy-loaded Vercel KV client
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let kvClient: any = null;
 
 async function getKVClient() {
@@ -136,4 +135,3 @@ export const vercelKVStore: KVStore = {
     }
   },
 };
-
