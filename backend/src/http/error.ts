@@ -26,6 +26,7 @@ export const ErrorCodes = {
   UNAUTHORIZED: 'UNAUTHORIZED',
   // New: for endpoints that distinguish "no auth" from "bad auth"
   UNAUTHENTICATED: 'UNAUTHENTICATED',
+  CSRF_INVALID: 'CSRF_INVALID',
   INVALID_JSON: 'INVALID_JSON',
   VALIDATION_FAILED: 'VALIDATION_FAILED',
   // Preferred validation code for query/body semantics that should be actionable by clients.

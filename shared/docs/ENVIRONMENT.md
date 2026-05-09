@@ -51,7 +51,8 @@ Beispiel-Konfiguration: `backend/.env.example`.
 | `BACKEND_PORT` | ❌ | ❌ | `3000` | Server Port (wird in `backend/src/config/config.ts` verwendet) |
 | `DATABASE_URL` | ✅ (operational) | ❌ | `sqlite:./.data/tradeapp.sqlite` | DB Connection (SQLite default) |
 | `LOG_LEVEL` | ❌ | ❌ | `info` | Logging Level |
-| `JWT_SECRET` | ✅ | ❌ | `dev-secret` | JWT Verify/Sign Secret (Auth ist optional; ohne Header wird `userId=anon`) |
+| `JWT_SECRET` | ✅ | ✅ (Prod) | `dev-secret` (nur dev/test) | JWT Verify/Sign Secret; in Production: gesetzt, nicht `dev-secret`, min. 32 Zeichen |
+| `BACKEND_CORS_ORIGINS` | ❌ | ✅ (Prod) | `http://localhost:8080,http://127.0.0.1:8080` (dev default) | Komma-separierte CORS-Origin-Whitelist für `backend/` |
 | `API_KEY` | ✅ | ❌ | — | API-Key Auth (derzeit optional; konkrete Nutzung **TODO**) |
 | `VAPID_SUBJECT` | ❌ | ❌ | `mailto:admin@example.com` | Web Push VAPID Subject |
 | `VAPID_PUBLIC_KEY` | ❌ | ❌ | — | Web Push VAPID Public Key |
@@ -158,4 +159,3 @@ Quelle: `apps/backend-alerts/src/env.ts` (Zod Schema).
 | `EVENT_RETENTION_DAYS` | ❌ | ❌ | `30` | Retention |
 | `SSE_HEARTBEAT_MS` | ❌ | ❌ | `20000` | SSE Heartbeat |
 | `ERROR_DEDUPE_MINUTES` | ❌ | ❌ | `10` | Error dedupe window |
-

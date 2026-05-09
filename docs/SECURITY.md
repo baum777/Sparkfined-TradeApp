@@ -17,9 +17,12 @@ Canonical: true
 
 ### Backend `backend/` (Node Server)
 
-- Router extrahiert optional einen JWT aus `Authorization: Bearer <token>` und setzt dann `req.userId = sub`.
+- Router extrahiert JWT aus `Authorization: Bearer <token>` oder `access_token` Cookie und setzt `req.userId = sub`.
 - Ohne gültigen Token läuft alles als `userId = "anon"` (siehe `backend/src/http/router.ts`).
-- JWT Secret: `JWT_SECRET` (Default `dev-secret`, was production-unsafe ist).
+- Credentials-basierte Auth (`auth_users_v1`) mit bcrypt-Hashing (salt rounds 12) für Register/Login.
+- JWT Secret: `JWT_SECRET`; in Production muss es gesetzt sein, darf nicht `dev-secret` sein und muss mind. 32 Zeichen haben.
+- CSRF-Schutz für state-changing Cookie-Auth Requests via Double-Submit (`csrf_token` Cookie + `x-csrf-token` Header).
+- CORS nutzt Origin-Whitelist über `BACKEND_CORS_ORIGINS`.
 
 ### Backend `api/` (Vercel Functions)
 
@@ -79,6 +82,5 @@ Canonical: true
 ## TODOs / Risiken
 
 - **TODO:** Einheitliche Auth-Policy zwischen Frontend + dem tatsächlich in Production genutzten Backend.
-- **TODO:** Production-Härtung für `backend/` JWT_SECRET (kein Default) + Secret Rotation.
+- **TODO:** JWT Secret Rotation-Prozess dokumentieren.
 - **TODO:** Cluster-sicheres Rate Limiting für `backend/` (Redis/KV).
-

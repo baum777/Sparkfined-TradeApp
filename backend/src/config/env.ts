@@ -23,6 +23,7 @@ const envSchema = z.object({
   DATABASE_URL: z.string().default('sqlite:./.data/tradeapp.sqlite'),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
   JWT_SECRET: z.string().default('dev-secret'),
+  BACKEND_CORS_ORIGINS: z.string().optional(),
   
   // Auth
   API_KEY: z.string().optional(),
@@ -151,6 +152,23 @@ export function getEnv(opts?: { strict?: boolean }): Env {
  */
 function validateRequiredForRuntime(env: Env): void {
   if (env.NODE_ENV === 'test') return;
+
+  if (env.NODE_ENV === 'production') {
+    const jwtSecret = env.JWT_SECRET.trim();
+    if (!jwtSecret || jwtSecret === 'dev-secret' || jwtSecret.length < 32) {
+      throw new Error(
+        'JWT_SECRET must be set, not use the dev default, and have at least 32 characters in production'
+      );
+    }
+
+    const allowedOrigins = (env.BACKEND_CORS_ORIGINS || '')
+      .split(',')
+      .map(item => item.trim())
+      .filter(Boolean);
+    if (allowedOrigins.length === 0) {
+      throw new Error('BACKEND_CORS_ORIGINS must list at least one allowed origin in production');
+    }
+  }
 
   const mode = env.SERVICE_MODE;
   if (mode === 'terminal' || mode === 'full') {
