@@ -56,7 +56,7 @@ test.describe('@gatekeeper Trading Terminal Gatekeeper', () => {
     await page.addInitScript(() => {
       (window as Window & { __E2E_WALLET_MOCK__?: boolean }).__E2E_WALLET_MOCK__ = true;
       try {
-        window.localStorage.setItem('walletName', 'E2E Mock Wallet');
+        window.localStorage.setItem('walletName', JSON.stringify('E2E Mock Wallet'));
       } catch {
         // ignore storage access issues in constrained environments
       }

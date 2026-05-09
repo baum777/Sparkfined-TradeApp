@@ -142,8 +142,10 @@ export function WalletProviders({ children }: { children: ReactNode }) {
     try {
       // WalletProvider auto-connect only runs for a selected wallet.
       // Seed deterministic selection in E2E mode before provider mount.
-      if (window.localStorage.getItem('walletName') !== E2E_MOCK_WALLET_NAME) {
-        window.localStorage.setItem('walletName', E2E_MOCK_WALLET_NAME);
+      const storedWalletName = window.localStorage.getItem('walletName');
+      const serializedWalletName = JSON.stringify(E2E_MOCK_WALLET_NAME);
+      if (storedWalletName !== serializedWalletName) {
+        window.localStorage.setItem('walletName', serializedWalletName);
       }
     } catch {
       // ignore storage access issues in constrained test environments
