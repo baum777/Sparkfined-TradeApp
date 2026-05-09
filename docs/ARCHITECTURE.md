@@ -239,7 +239,6 @@ Rules:
 - SW caching headers: `sw.js` / `service-worker.js` must be `max-age=0, must-revalidate`.
 
 ### Backend (external host, canonical)
-- Start: `node dist/server.js` (after `pnpm -C backend build`).
+- Start: `node dist/backend/src/server.js` (after `pnpm -C backend build`).
 - DB: `DATABASE_URL` steuert SQLite vs Postgres.
 - Migrations: `pnpm -C backend migrate` (kontrolliert ausführen; nicht „best-effort“).
-

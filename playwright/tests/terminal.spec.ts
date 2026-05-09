@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { stubApi } from '../fixtures/stubApi';
-import { navTestId } from '../utils/testids';
+import { navTestId, pageTestId } from '../utils/testids';
 import { gotoAndWait, clickNavAndWait } from '../utils/nav';
 
 /**
@@ -20,6 +20,14 @@ import { gotoAndWait, clickNavAndWait } from '../utils/nav';
 
 test.describe('@gatekeeper Trading Terminal Gatekeeper', () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      const e2eWindow = window as Window & {
+        __E2E_WALLET_MOCK__?: boolean;
+      };
+      e2eWindow.__E2E_WALLET_MOCK__ = true;
+      window.localStorage.setItem('walletName', JSON.stringify('E2E Mock Wallet'));
+    });
+
     // Block all non-API and non-static network calls for deterministic E2E
     // This prevents hidden regressions from analytics, RPC, or third-party calls
     await page.route('**/*', (route, request) => {
@@ -140,7 +148,7 @@ test.describe('@gatekeeper Trading Terminal Gatekeeper', () => {
 
     // Hard anchors via testid (always present)
     await expect(page.locator('[data-testid="terminal-shell"]')).toBeVisible();
-    await expect(page.locator('[data-testid="page-terminal"]')).toBeVisible();
+    await expect(page.locator(pageTestId('terminal'))).toBeVisible();
 
     // Wallet-dependent elements (mocked in E2E mode)
     await expect(page.locator('[data-testid="balance-display"]')).toBeVisible();
@@ -155,8 +163,13 @@ test.describe('@gatekeeper Trading Terminal Gatekeeper', () => {
   });
 
   test('Navigation to terminal via Tab', async ({ page }) => {
-    await page.goto('/');
-    await clickNavAndWait(page, navTestId('terminal'), /\/terminal/, 'terminal');
+    await gotoAndWait(page, '/', /\/dashboard/, 'dashboard');
+    await clickNavAndWait(
+      page,
+      page.locator('aside').locator(navTestId('terminal')),
+      /\/terminal/,
+      'terminal'
+    );
 
     // Verify terminal loaded
     await expect(page.locator('[data-testid="terminal-shell"]')).toBeVisible();
@@ -257,9 +270,12 @@ test.describe('@gatekeeper Trading Terminal Gatekeeper', () => {
     const confirmButton = page.locator('[data-testid="swap-confirm-submit"]');
     await expect(confirmButton).toBeVisible();
 
-    // Double-click rapidly on confirm button
-    await confirmButton.click();
-    await confirmButton.click();
+    // Dispatch two click events synchronously to cover the duplicate-submit race
+    // without Playwright waiting on an element that is intentionally removed.
+    await confirmButton.evaluate((button: HTMLButtonElement) => {
+      button.click();
+      button.click();
+    });
 
     // Wait for dialog to close (success)
     await expect(dialog).toBeHidden({ timeout: 5000 });

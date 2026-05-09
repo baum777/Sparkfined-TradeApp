@@ -1,6 +1,7 @@
 import type { LLMRequest, LLMResponse, LLMUseCase } from '../routes/reasoning/types.js';
 import { getEnv } from '../config/env.js';
 import { usageTracker } from '../lib/usage/usageTracker.js';
+import { chatCompletionResponseSchema } from './responseSchemas.js';
 
 function parseFirstJsonObject(text: string): unknown {
   const trimmed = text.trim();
@@ -79,12 +80,12 @@ export async function callGrok(request: LLMRequest, context?: { useCase: LLMUseC
       throw error;
     }
 
-    const json = JSON.parse(text) as any;
-    const rawText = json?.choices?.[0]?.message?.content;
-    
-    if (typeof rawText !== 'string') {
-      throw new Error('Grok response missing message.content');
+    const parsedResponse = chatCompletionResponseSchema.safeParse(JSON.parse(text));
+    if (!parsedResponse.success) {
+      throw new Error('Invalid Grok response schema');
     }
+    const json = parsedResponse.data;
+    const rawText = json.choices[0]?.message?.content;
 
     let parsed: unknown;
     if (request.jsonOnly) {
@@ -98,7 +99,13 @@ export async function callGrok(request: LLMRequest, context?: { useCase: LLMUseC
         
         const usage = json.usage;
         if (usage) {
-             await usageTracker.recordTokens('grok', context.useCase, usage.prompt_tokens, usage.completion_tokens, end);
+             await usageTracker.recordTokens(
+               'grok',
+               context.useCase,
+               usage.prompt_tokens ?? null,
+               usage.completion_tokens ?? null,
+               end
+             );
         } else {
              await usageTracker.recordTokens('grok', context.useCase, null, null, end);
         }

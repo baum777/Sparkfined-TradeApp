@@ -76,6 +76,10 @@ class E2EMockWalletAdapter {
     this.emit('connect', this.publicKey);
   }
 
+  async autoConnect() {
+    await this.connect();
+  }
+
   async disconnect() {
     this.connected = false;
     this.publicKey = null as unknown as PublicKey;

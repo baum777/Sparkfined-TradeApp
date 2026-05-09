@@ -159,7 +159,7 @@ const DISCOVER_CACHE_TTL_MS = 45_000;
 
 export async function handleDiscoverTokens(req: ParsedRequest, res: ServerResponse): Promise<void> {
   const requester = getRequesterIdentifier(req);
-  rateLimiters.discover('/discover/tokens', requester);
+  await rateLimiters.discover('/discover/tokens', requester);
 
   setCacheHeaders(res, { public: true, maxAge: Math.floor(DISCOVER_CACHE_TTL_MS / 1000) });
 

@@ -16,6 +16,7 @@ import { dirname } from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+const workspaceRoot = path.resolve(__dirname, '..', '..');
 
 interface TestRunRow {
   title: string;
@@ -322,9 +323,9 @@ function detectRegressions(
 
 function getGitInfo(): { sha?: string; branch?: string } {
   try {
-    const sha = execSync('git rev-parse HEAD', { encoding: 'utf-8', stdio: 'pipe' })
+    const sha = execSync('git rev-parse HEAD', { cwd: workspaceRoot, encoding: 'utf-8', stdio: 'pipe' })
       .trim();
-    const branch = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf-8', stdio: 'pipe' })
+    const branch = execSync('git rev-parse --abbrev-ref HEAD', { cwd: workspaceRoot, encoding: 'utf-8', stdio: 'pipe' })
       .trim();
     return { sha, branch };
   } catch {
@@ -489,9 +490,9 @@ function saveHistory(metrics: RunMetrics, historyDir: string): void {
 function tryLoadReportFromMultipleSources(): { report: any; path: string } | null {
   // Try multiple possible locations
   const candidates = [
-    path.join(process.cwd(), 'playwright-report', 'results.json', '.last-run.json'),
-    path.join(process.cwd(), 'playwright-report', 'results.json'),
-    path.join(process.cwd(), 'test-results', 'results.json'),
+    path.join(workspaceRoot, 'playwright-report', 'results.json', '.last-run.json'),
+    path.join(workspaceRoot, 'playwright-report', 'results.json'),
+    path.join(workspaceRoot, 'test-results', 'results.json'),
   ];
   
   for (const candidate of candidates) {
@@ -631,4 +632,3 @@ function main() {
 if (import.meta.url === `file://${__filename}` || process.argv[1] === __filename) {
   main();
 }
-

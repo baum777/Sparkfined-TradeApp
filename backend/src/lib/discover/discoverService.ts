@@ -4,6 +4,7 @@
  */
 
 import { getEnv } from '../../config/env.js';
+import { z } from 'zod';
 
 export interface DiscoverToken {
   mint: string;
@@ -79,9 +80,11 @@ type JupiterTokenLite = {
   name: string;
 };
 
-function isObject(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object';
-}
+const jupiterTokenSchema = z.object({
+  address: z.string().min(1),
+  symbol: z.string().optional(),
+  name: z.string().optional(),
+});
 
 function asString(value: unknown, fallback = ''): string {
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : fallback;
@@ -219,12 +222,14 @@ function buildToken(base: JupiterTokenLite, index: number): DiscoverToken {
 }
 
 function normalizeJupiterToken(raw: unknown): JupiterTokenLite | null {
-  if (!isObject(raw)) return null;
-  const address = asString(raw.address);
+  const parsed = jupiterTokenSchema.safeParse(raw);
+  if (!parsed.success) return null;
+
+  const address = asString(parsed.data.address);
   if (!address) return null;
 
-  const symbol = asString(raw.symbol, 'UNKNOWN');
-  const name = asString(raw.name, symbol);
+  const symbol = asString(parsed.data.symbol, 'UNKNOWN');
+  const name = asString(parsed.data.name, symbol);
   return { address, symbol, name };
 }
 

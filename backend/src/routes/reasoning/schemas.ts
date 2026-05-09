@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { tradeReviewV1Schema } from './tradeReviewContract.js';
 
 export const criticIssueSchema = z.object({
   kind: z.enum(['contradiction', 'missing_data', 'overreach']),
@@ -35,6 +36,7 @@ export const tradeReviewInsightSchema = z.object({
     })
   ),
   questions: z.array(z.string()),
+  assistantReview: tradeReviewV1Schema.optional(),
   critic: insightCriticReportSchema,
 });
 
@@ -71,5 +73,3 @@ export const insightCriticOnlyResultSchema = z.object({
   referenceId: z.string().min(1),
   report: insightCriticReportSchema,
 });
-
-
