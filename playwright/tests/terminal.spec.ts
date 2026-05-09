@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { stubApi } from '../fixtures/stubApi';
-import { navTestId } from '../utils/testids';
+import { navTestId, pageTestId } from '../utils/testids';
 import { gotoAndWait, clickNavAndWait } from '../utils/nav';
 
 /**
@@ -148,7 +148,7 @@ test.describe('@gatekeeper Trading Terminal Gatekeeper', () => {
 
     // Hard anchors via testid (always present)
     await expect(page.locator('[data-testid="terminal-shell"]')).toBeVisible();
-    await expect(page.locator('[data-testid="page-terminal"]')).toBeVisible();
+    await expect(page.locator(pageTestId('terminal'))).toBeVisible();
 
     // Wallet-dependent elements (mocked in E2E mode)
     await expect(page.locator('[data-testid="balance-display"]')).toBeVisible();
@@ -163,8 +163,13 @@ test.describe('@gatekeeper Trading Terminal Gatekeeper', () => {
   });
 
   test('Navigation to terminal via Tab', async ({ page }) => {
-    await page.goto('/');
-    await clickNavAndWait(page, navTestId('terminal'), /\/terminal/, 'terminal');
+    await gotoAndWait(page, '/', /\/dashboard/, 'dashboard');
+    await clickNavAndWait(
+      page,
+      page.locator('aside').locator(navTestId('terminal')),
+      /\/terminal/,
+      'terminal'
+    );
 
     // Verify terminal loaded
     await expect(page.locator('[data-testid="terminal-shell"]')).toBeVisible();
@@ -265,9 +270,12 @@ test.describe('@gatekeeper Trading Terminal Gatekeeper', () => {
     const confirmButton = page.locator('[data-testid="swap-confirm-submit"]');
     await expect(confirmButton).toBeVisible();
 
-    // Double-click rapidly on confirm button
-    await confirmButton.click();
-    await confirmButton.click();
+    // Dispatch two click events synchronously to cover the duplicate-submit race
+    // without Playwright waiting on an element that is intentionally removed.
+    await confirmButton.evaluate((button: HTMLButtonElement) => {
+      button.click();
+      button.click();
+    });
 
     // Wait for dialog to close (success)
     await expect(dialog).toBeHidden({ timeout: 5000 });
