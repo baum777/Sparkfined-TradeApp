@@ -24,6 +24,11 @@ test.describe('@gatekeeper Trading Terminal Gatekeeper', () => {
     // even if CI env propagation changes.
     await page.addInitScript(() => {
       (window as Window & { __E2E_WALLET_MOCK__?: boolean }).__E2E_WALLET_MOCK__ = true;
+      try {
+        window.localStorage.setItem('walletName', 'E2E Mock Wallet');
+      } catch {
+        // ignore storage access issues in constrained environments
+      }
     });
 
     // Block all non-API and non-static network calls for deterministic E2E
