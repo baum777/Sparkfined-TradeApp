@@ -278,6 +278,7 @@ jobs:
         env:
           CI: true
           PLAYWRIGHT_BROWSER: chromium
+          VITE_E2E_WALLET_MOCK: '1'
         run: pnpm exec playwright test --project=chromium
 
       - name: Collect E2E Metrics
@@ -343,6 +344,7 @@ jobs:
         env:
           CI: true
           PLAYWRIGHT_BROWSER: firefox
+          VITE_E2E_WALLET_MOCK: '1'
         run: pnpm exec playwright test --project=firefox
 
       - name: Collect E2E Metrics
@@ -408,6 +410,7 @@ jobs:
         env:
           CI: true
           PLAYWRIGHT_BROWSER: webkit
+          VITE_E2E_WALLET_MOCK: '1'
         run: pnpm exec playwright test --project=webkit
 
       - name: Collect E2E Metrics
