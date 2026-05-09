@@ -1,14 +1,14 @@
 ---
 Owner: DevOps Team
 Status: active
-Version: 1.0
-LastUpdated: 2026-02-27
+Version: 1.1
+LastUpdated: 2026-05-09
 Canonical: true
 ---
 
 # Deployment
 
-**Last Updated:** 2024-12-19
+**Last Updated:** 2026-05-09
 
 ---
 
@@ -37,6 +37,37 @@ Canonical: true
   - Healthcheck: `/api/health`
 
 **Important:** This is an always-on process (not Vercel Functions compatible).
+
+---
+
+## Backend Hosting (Fly.io Alternative)
+
+**Source:** `fly.toml` (repo root)
+
+- Deploys the canonical `backend/` via Dockerfile (`backend/Dockerfile`)
+- HTTP Health Check: `GET /api/health`
+- Runs as always-on service (`min_machines_running = 1`, `auto_stop_machines = "off"`)
+- Uses persistent volume mount for SQLite: `/app/backend/.data`
+
+### Minimal Setup
+
+1. Install and authenticate:
+   - `fly auth login`
+2. Create app (or adjust `app` in `fly.toml` first):
+   - `fly apps create <unique-app-name>`
+3. Create persistent volume (same region as `primary_region`):
+   - `fly volumes create backend_data --region <region> --size 5`
+4. Set required secrets/env:
+   - `fly secrets set JWT_SECRET="<>=32chars" HELIUS_API_KEY="<...>" REDIS_URL="<...>"`
+   - `fly secrets set BACKEND_CORS_ORIGINS="https://<frontend-domain>"`
+5. Deploy:
+   - `fly deploy --ha=false`
+
+### Single-Instance Requirement
+
+- Wegen in-memory Discover Cache und internen Scheduler-Jobs muss das Backend aktuell als **eine Instanz** laufen.
+- Auf Fly: initial mit `fly deploy --ha=false` und danach bei Bedarf explizit auf 1 Maschine halten:
+  - `fly scale count 1`
 
 ---
 
@@ -70,7 +101,7 @@ Canonical: true
 | Topic | Local | Production |
 |-------|-------|------------|
 | API Routing | Vite Proxy `/api` → `http://localhost:3000` | Vercel Rewrite `/api/(.*)` → `https://$VERCEL_BACKEND_URL/api/$1` |
-| Backend Runtime | `backend/` Node Server (listen) | External hosted Node Server (Railway) |
+| Backend Runtime | `backend/` Node Server (listen) | External hosted Node Server (Railway oder Fly.io) |
 | Service Worker | Dev: not registered | Production Build: registered optionally (see `VITE_ENABLE_SW_POLLING`) |
 
 ---
@@ -153,7 +184,7 @@ See `PRE_BETA_HARDENING_SUMMARY.md` for implementation details.
 
 **Backend:**
 - Endpoint: `/api/health`
-- Used by Railway for health checks
+- Used by Railway/Fly.io for health checks
 
 **Frontend:**
 - No explicit health check endpoint
