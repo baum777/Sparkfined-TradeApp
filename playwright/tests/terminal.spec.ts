@@ -20,6 +20,12 @@ import { gotoAndWait, clickNavAndWait } from '../utils/nav';
 
 test.describe('@gatekeeper Trading Terminal Gatekeeper', () => {
   test.beforeEach(async ({ page }) => {
+    // Enforce deterministic wallet-connected state for terminal gatekeeper tests,
+    // even if CI env propagation changes.
+    await page.addInitScript(() => {
+      (window as Window & { __E2E_WALLET_MOCK__?: boolean }).__E2E_WALLET_MOCK__ = true;
+    });
+
     // Block all non-API and non-static network calls for deterministic E2E
     // This prevents hidden regressions from analytics, RPC, or third-party calls
     await page.route('**/*', (route, request) => {
@@ -140,7 +146,7 @@ test.describe('@gatekeeper Trading Terminal Gatekeeper', () => {
 
     // Hard anchors via testid (always present)
     await expect(page.locator('[data-testid="terminal-shell"]')).toBeVisible();
-    await expect(page.locator('[data-testid="page-terminal"]')).toBeVisible();
+    await expect(page.locator('[data-testid="trading-terminal"]')).toBeVisible();
 
     // Wallet-dependent elements (mocked in E2E mode)
     await expect(page.locator('[data-testid="balance-display"]')).toBeVisible();
@@ -156,7 +162,7 @@ test.describe('@gatekeeper Trading Terminal Gatekeeper', () => {
 
   test('Navigation to terminal via Tab', async ({ page }) => {
     await page.goto('/');
-    await clickNavAndWait(page, navTestId('terminal'), /\/terminal/, 'terminal');
+    await clickNavAndWait(page, page.locator(navTestId('terminal')).first(), /\/terminal/, 'terminal');
 
     // Verify terminal loaded
     await expect(page.locator('[data-testid="terminal-shell"]')).toBeVisible();
@@ -201,6 +207,7 @@ test.describe('@gatekeeper Trading Terminal Gatekeeper', () => {
     // Wait for quote to load (UI should enable the button)
     const swapButton = page.locator('[aria-label="Buy token"]');
     await expect(swapButton).toBeVisible();
+    await expect(swapButton).toBeEnabled({ timeout: 10_000 });
 
     // Click swap button to open confirm dialog
     await swapButton.click();
@@ -247,6 +254,7 @@ test.describe('@gatekeeper Trading Terminal Gatekeeper', () => {
 
     // Open confirm dialog
     const swapButton = page.locator('[aria-label="Buy token"]');
+    await expect(swapButton).toBeEnabled({ timeout: 10_000 });
     await swapButton.click();
 
     // Wait for dialog
@@ -302,6 +310,7 @@ test.describe('@gatekeeper Trading Terminal Gatekeeper', () => {
 
     // Open confirm dialog
     const swapButton = page.locator('[aria-label="Buy token"]');
+    await expect(swapButton).toBeEnabled({ timeout: 10_000 });
     await swapButton.click();
 
     // Wait for dialog
