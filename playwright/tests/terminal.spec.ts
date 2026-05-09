@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { stubApi } from '../fixtures/stubApi';
 import { navTestId } from '../utils/testids';
 import { gotoAndWait, clickNavAndWait } from '../utils/nav';
@@ -17,6 +17,37 @@ import { gotoAndWait, clickNavAndWait } from '../utils/nav';
  *
  * @gatekeeper
  */
+
+async function ensureWalletConnected(page: Page): Promise<void> {
+  const walletButton = page.locator('button.wallet-adapter-button-trigger').first();
+  await expect(walletButton).toBeVisible({ timeout: 10_000 });
+
+  const walletLabel = ((await walletButton.textContent()) ?? '').trim();
+
+  if (/select wallet/i.test(walletLabel)) {
+    await walletButton.click();
+
+    const mockWalletOption = page.getByRole('button', { name: /e2e mock wallet/i });
+    if (await mockWalletOption.count()) {
+      await mockWalletOption.first().click();
+    } else {
+      const firstWalletOption = page.locator('.wallet-adapter-modal-list button').first();
+      await expect(firstWalletOption).toBeVisible({ timeout: 10_000 });
+      await firstWalletOption.click();
+    }
+  }
+
+  const connectButton = page
+    .locator('button.wallet-adapter-button-trigger')
+    .filter({ hasText: /^connect$/i })
+    .first();
+
+  if (await connectButton.isVisible().catch(() => false)) {
+    await connectButton.click();
+  }
+
+  await expect(page.locator('[data-testid="balance-display"]')).toBeVisible({ timeout: 10_000 });
+}
 
 test.describe('@gatekeeper Trading Terminal Gatekeeper', () => {
   test.beforeEach(async ({ page }) => {
@@ -148,6 +179,7 @@ test.describe('@gatekeeper Trading Terminal Gatekeeper', () => {
 
   test('Terminal renders core anchors', async ({ page }) => {
     await gotoAndWait(page, '/terminal', /\/terminal/, 'terminal');
+    await ensureWalletConnected(page);
 
     // Hard anchors via testid (always present)
     await expect(page.locator('[data-testid="terminal-shell"]')).toBeVisible();
@@ -205,6 +237,7 @@ test.describe('@gatekeeper Trading Terminal Gatekeeper', () => {
 
   test('Swap Confirm Dialog opens (requires wallet mock)', async ({ page }) => {
     await gotoAndWait(page, '/terminal', /\/terminal/, 'terminal');
+    await ensureWalletConnected(page);
 
     // Fill amount
     await page.locator('[aria-label="Trade amount"]').fill('0.1');
@@ -253,6 +286,7 @@ test.describe('@gatekeeper Trading Terminal Gatekeeper', () => {
     });
 
     await gotoAndWait(page, '/terminal', /\/terminal/, 'terminal');
+    await ensureWalletConnected(page);
 
     // Fill amount to enable swap
     await page.locator('[aria-label="Trade amount"]').fill('0.1');
@@ -309,6 +343,7 @@ test.describe('@gatekeeper Trading Terminal Gatekeeper', () => {
     });
 
     await gotoAndWait(page, '/terminal', /\/terminal/, 'terminal');
+    await ensureWalletConnected(page);
 
     // Fill amount to enable swap
     await page.locator('[aria-label="Trade amount"]').fill('0.1');
