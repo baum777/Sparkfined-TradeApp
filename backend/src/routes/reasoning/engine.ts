@@ -27,6 +27,7 @@ import {
   sessionReviewInsightSchema,
   tradeReviewInsightSchema,
 } from './schemas.js';
+import { sanitizePromptText } from '../../lib/llm/promptSecurity.js';
 import { buildCriticPrompt, buildGeneratorPrompt } from './prompts.js';
 import { tradeReviewV1OutputExample } from './tradeReviewContract.js';
 
@@ -182,13 +183,14 @@ async function runCritic(input: {
   const schemaJson = criticOutputSchemaJson();
 
   try {
-    const prompt = buildCriticPrompt({
+    const rawPrompt = buildCriticPrompt({
       referenceId: input.referenceId,
       version: input.version,
       context: input.context,
       insight: input.insight,
       outputSchemaJson: schemaJson,
     });
+    const prompt = sanitizePromptText(rawPrompt, { maxChars: 60_000 });
 
     const result = await routeLLMRequest('reasoning_critic', {
       prompt,
@@ -257,13 +259,14 @@ export async function runReasoning(
               ? sessionReviewOutputSchemaJson()
               : boardScenariosOutputSchemaJson();
 
-        const prompt = buildGeneratorPrompt({
+        const rawPrompt = buildGeneratorPrompt({
           type,
           referenceId: body.referenceId,
           version,
           context: builtContext,
           outputSchemaJson,
         });
+        const prompt = sanitizePromptText(rawPrompt, { maxChars: 60_000 });
 
         const result = await routeLLMRequest('reasoning', {
             prompt,

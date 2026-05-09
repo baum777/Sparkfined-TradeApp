@@ -1,5 +1,6 @@
 import type { ServerResponse } from 'http';
 import { getRequestId } from './requestId.js';
+import { logger } from '../observability/logger.js';
 
 /**
  * Standardized Error Response
@@ -163,7 +164,7 @@ export function handleError(res: ServerResponse, error: unknown): void {
   }
 
   // Log unexpected errors
-  console.error('Unexpected error:', error);
+  logger.error('Unexpected error', { error });
 
   const appError = internalError(
     error instanceof Error ? error.message : 'Unknown error'
