@@ -33,10 +33,24 @@ type SuspiciousActivitySignal = {
 
 type SecuritySignal = FailedLoginSignal | RateLimitHitSignal | SuspiciousActivitySignal;
 
+export type SecuritySignalSummary = {
+  windowStartedAt: string;
+  windowEndedAt: string;
+  totalSignals: number;
+  counters: {
+    failedLogin: number;
+    rateLimitHit: number;
+    suspiciousActivity: number;
+  };
+  topRateLimitScopes: Array<{ scope: string; hits: number }>;
+  suspiciousDetectors: Array<{ detector: string; hits: number }>;
+};
+
 const USER_AGENT_MAX = 256;
 const FAILED_LOGIN_WINDOW_MS = 10 * 60 * 1000;
 const FAILED_LOGIN_BURST_THRESHOLD = 5;
 const MAX_BURST_ENTRIES = 10_000;
+const SUMMARY_TOP_LIMIT = 5;
 
 type FailedLoginBurstEntry = {
   count: number;
@@ -45,6 +59,14 @@ type FailedLoginBurstEntry = {
 };
 
 const failedLoginBursts = new Map<string, FailedLoginBurstEntry>();
+const rateLimitScopeCounts = new Map<string, number>();
+const suspiciousDetectorCounts = new Map<string, number>();
+
+let summaryWindowStartedAt = Date.now();
+let totalSignals = 0;
+let failedLoginSignals = 0;
+let rateLimitSignals = 0;
+let suspiciousSignals = 0;
 
 export function hashForSecurityTelemetry(value?: string | null): string | undefined {
   const source = typeof value === 'string' ? value.trim() : '';
@@ -60,7 +82,35 @@ function cleanUserAgent(userAgent?: string): string | undefined {
   return trimmed.slice(0, USER_AGENT_MAX);
 }
 
+function incrementMap(map: Map<string, number>, key?: string): void {
+  if (!key) return;
+  map.set(key, (map.get(key) ?? 0) + 1);
+}
+
+function topEntries(map: Map<string, number>, limit: number): Array<{ key: string; count: number }> {
+  return Array.from(map.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([key, count]) => ({ key, count }));
+}
+
+function trackSignalSummary(signal: SecuritySignal): void {
+  totalSignals += 1;
+  if (signal.signalType === 'failed_login') {
+    failedLoginSignals += 1;
+    return;
+  }
+  if (signal.signalType === 'rate_limit_hit') {
+    rateLimitSignals += 1;
+    incrementMap(rateLimitScopeCounts, signal.scope);
+    return;
+  }
+  suspiciousSignals += 1;
+  incrementMap(suspiciousDetectorCounts, signal.detector);
+}
+
 function emitSecuritySignal(signal: SecuritySignal): void {
+  trackSignalSummary(signal);
   logger.warn('security.signal', signal as unknown as Record<string, unknown>);
 }
 
@@ -148,6 +198,45 @@ export function emitRateLimitHitSignal(input: {
   });
 }
 
+export function consumeSecuritySignalsSummary(): SecuritySignalSummary {
+  const now = Date.now();
+  const summary: SecuritySignalSummary = {
+    windowStartedAt: new Date(summaryWindowStartedAt).toISOString(),
+    windowEndedAt: new Date(now).toISOString(),
+    totalSignals,
+    counters: {
+      failedLogin: failedLoginSignals,
+      rateLimitHit: rateLimitSignals,
+      suspiciousActivity: suspiciousSignals,
+    },
+    topRateLimitScopes: topEntries(rateLimitScopeCounts, SUMMARY_TOP_LIMIT).map((entry) => ({
+      scope: entry.key,
+      hits: entry.count,
+    })),
+    suspiciousDetectors: topEntries(suspiciousDetectorCounts, SUMMARY_TOP_LIMIT).map((entry) => ({
+      detector: entry.key,
+      hits: entry.count,
+    })),
+  };
+
+  summaryWindowStartedAt = now;
+  totalSignals = 0;
+  failedLoginSignals = 0;
+  rateLimitSignals = 0;
+  suspiciousSignals = 0;
+  rateLimitScopeCounts.clear();
+  suspiciousDetectorCounts.clear();
+
+  return summary;
+}
+
 export function resetSecuritySignalsStateForTesting(): void {
   failedLoginBursts.clear();
+  rateLimitScopeCounts.clear();
+  suspiciousDetectorCounts.clear();
+  summaryWindowStartedAt = Date.now();
+  totalSignals = 0;
+  failedLoginSignals = 0;
+  rateLimitSignals = 0;
+  suspiciousSignals = 0;
 }
