@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ParsedRequest } from '../../src/http/router.js';
 import { getDatabase } from '../../src/db/index.js';
+import { logger } from '../../src/observability/logger.js';
 import {
   handleAuthLogin,
   handleAuthRefresh,
@@ -57,6 +58,10 @@ function parseSetCookie(headers: Record<string, string | string[]>): string[] {
   if (!value) return [];
   return Array.isArray(value) ? value : [value];
 }
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe('Auth routes (security)', () => {
   it('register hashes password and persists user', async () => {
@@ -121,6 +126,44 @@ describe('Auth routes (security)', () => {
       status: 401,
       code: 'UNAUTHENTICATED',
     });
+  });
+
+  it('emits failed_login security signal for wrong password attempts', async () => {
+    const email = 'routes-auth-signal@example.com';
+    const registerReq = baseReq({
+      body: {
+        email,
+        password: 'CorrectHorseBatteryStaple!103',
+      },
+    });
+    await handleAuthRegister(registerReq, createMockResponse() as any);
+
+    const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => {});
+    const loginReq = baseReq({
+      path: '/api/auth/login',
+      headers: {
+        'x-forwarded-for': '198.51.100.77',
+        'user-agent': 'vitest-auth-signal',
+      },
+      body: {
+        email,
+        password: 'definitely-wrong',
+      },
+    });
+
+    await expect(handleAuthLogin(loginReq, createMockResponse() as any)).rejects.toMatchObject({
+      status: 401,
+      code: 'UNAUTHENTICATED',
+    });
+
+    expect(warnSpy).toHaveBeenCalled();
+    const signalCall = warnSpy.mock.calls.find((call) => call[0] === 'security.signal');
+    expect(signalCall).toBeTruthy();
+    const payload = (signalCall?.[1] ?? {}) as Record<string, unknown>;
+    expect(payload.signalType).toBe('failed_login');
+    expect(payload.reason).toBe('wrong_password');
+    expect(payload.emailHash).toBeDefined();
+    expect(String(payload.emailHash)).not.toContain(email);
   });
 
   it('refresh rejects missing CSRF when refresh cookie is used', async () => {

@@ -1,11 +1,12 @@
 import { randomBytes } from 'crypto';
-import type { ServerResponse } from 'http';
+import type { IncomingHttpHeaders, ServerResponse } from 'http';
 import bcrypt from 'bcryptjs';
 import type { ParsedRequest } from '../http/router.js';
 import { sendJson } from '../http/response.js';
 import { AppError, badRequest, ErrorCodes, unauthorized } from '../http/error.js';
 import { getEnv } from '../config/env.js';
 import { signToken, verifyToken } from '../lib/auth/jwt.js';
+import { emitFailedLoginSignal } from '../observability/securitySignals.js';
 import {
   createAuthUser,
   findAuthUserByEmail,
@@ -164,6 +165,22 @@ function validateCsrfFromCookies(req: ParsedRequest): void {
   }
 }
 
+function headerValue(headers: IncomingHttpHeaders, key: string): string | undefined {
+  const raw = headers[key];
+  if (Array.isArray(raw)) return raw[0];
+  return raw;
+}
+
+function clientIpFromHeaders(headers: IncomingHttpHeaders): string | undefined {
+  const xff = headerValue(headers, 'x-forwarded-for');
+  if (xff) {
+    const ip = xff.split(',')[0]?.trim();
+    if (ip) return ip;
+  }
+  const realIp = headerValue(headers, 'x-real-ip');
+  return realIp?.trim() || undefined;
+}
+
 function isUniqueEmailViolation(error: unknown): boolean {
   const message = String(error);
   return (
@@ -226,11 +243,23 @@ export async function handleAuthLogin(req: ParsedRequest, res: ServerResponse): 
 
   const userRecord = await findAuthUserByEmail(body.email);
   if (!userRecord) {
+    emitFailedLoginSignal({
+      reason: 'unknown_email',
+      email: body.email,
+      ip: clientIpFromHeaders(req.headers),
+      userAgent: headerValue(req.headers, 'user-agent'),
+    });
     throw unauthorized('Invalid credentials', ErrorCodes.UNAUTHENTICATED);
   }
 
   const matches = await bcrypt.compare(body.password, userRecord.password_hash);
   if (!matches) {
+    emitFailedLoginSignal({
+      reason: 'wrong_password',
+      email: userRecord.email,
+      ip: clientIpFromHeaders(req.headers),
+      userAgent: headerValue(req.headers, 'user-agent'),
+    });
     throw unauthorized('Invalid credentials', ErrorCodes.UNAUTHENTICATED);
   }
 

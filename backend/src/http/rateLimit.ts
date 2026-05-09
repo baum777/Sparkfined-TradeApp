@@ -1,6 +1,7 @@
 import type { ServerResponse } from 'http';
 import { AppError, ErrorCodes } from './error.js';
 import { getRateLimitCounterStore, resetRateLimitCounterStoreForTesting } from '../lib/rateLimit/store.js';
+import { emitRateLimitHitSignal } from '../observability/securitySignals.js';
 
 interface RateLimitConfig {
   windowMs: number;
@@ -15,6 +16,14 @@ export function createRateLimiter(config: RateLimitConfig) {
 
     if (count > config.max) {
       const retryAfter = Math.ceil((resetAt - Date.now()) / 1000);
+      emitRateLimitHitSignal({
+        scope: `route:${config.scope}`,
+        path,
+        actorId: userId,
+        count,
+        limit: config.max,
+        retryAfterSeconds: Math.max(1, retryAfter),
+      });
       throw new AppError(
         `Rate limit exceeded. Try again in ${Math.max(1, retryAfter)} seconds.`,
         429,
