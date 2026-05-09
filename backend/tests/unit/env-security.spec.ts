@@ -8,6 +8,8 @@ const KEYS = [
   'SERVICE_MODE',
   'JWT_SECRET',
   'BACKEND_CORS_ORIGINS',
+  'RATE_LIMIT_STORE',
+  'REDIS_URL',
   'HELIUS_API_KEY',
 ] as const;
 
@@ -40,6 +42,8 @@ describe('Environment Security Validation', () => {
       process.env.SERVICE_MODE = 'journal';
       process.env.JWT_SECRET = 'dev-secret';
       process.env.BACKEND_CORS_ORIGINS = 'https://allowed.example';
+      process.env.RATE_LIMIT_STORE = 'redis';
+      process.env.REDIS_URL = 'redis://localhost:6379';
       process.env.HELIUS_API_KEY = 'not-used-in-journal-mode';
       resetEnvCache();
 
@@ -56,6 +60,8 @@ describe('Environment Security Validation', () => {
       process.env.SERVICE_MODE = 'journal';
       process.env.JWT_SECRET = 'this-is-a-valid-production-jwt-secret-with-32-plus';
       delete process.env.BACKEND_CORS_ORIGINS;
+      process.env.RATE_LIMIT_STORE = 'redis';
+      process.env.REDIS_URL = 'redis://localhost:6379';
       process.env.HELIUS_API_KEY = 'not-used-in-journal-mode';
       resetEnvCache();
 
@@ -72,10 +78,30 @@ describe('Environment Security Validation', () => {
       process.env.SERVICE_MODE = 'journal';
       process.env.JWT_SECRET = 'this-is-a-valid-production-jwt-secret-with-32-plus';
       process.env.BACKEND_CORS_ORIGINS = 'https://allowed.example,https://app.example';
+      process.env.RATE_LIMIT_STORE = 'redis';
+      process.env.REDIS_URL = 'redis://localhost:6379';
       process.env.HELIUS_API_KEY = 'not-used-in-journal-mode';
       resetEnvCache();
 
       expect(() => getEnv({ strict: true })).not.toThrow();
+    } finally {
+      restoreEnv(envBefore);
+    }
+  });
+
+  it('rejects production config with non-redis rate-limit store', () => {
+    const envBefore = snapshotEnv();
+    try {
+      process.env.NODE_ENV = 'production';
+      process.env.SERVICE_MODE = 'journal';
+      process.env.JWT_SECRET = 'this-is-a-valid-production-jwt-secret-with-32-plus';
+      process.env.BACKEND_CORS_ORIGINS = 'https://allowed.example';
+      process.env.RATE_LIMIT_STORE = 'memory';
+      process.env.REDIS_URL = 'redis://localhost:6379';
+      process.env.HELIUS_API_KEY = 'not-used-in-journal-mode';
+      resetEnvCache();
+
+      expect(() => getEnv({ strict: true })).toThrow(/RATE_LIMIT_STORE/);
     } finally {
       restoreEnv(envBefore);
     }

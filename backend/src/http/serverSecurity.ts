@@ -51,6 +51,23 @@ function setCorsHeaders(req: IncomingMessage, res: ServerResponse, config: AppCo
   return false;
 }
 
+function setSecurityHeaders(res: ServerResponse, config: AppConfig): void {
+  // Baseline hardening headers (raw Node HTTP, no Express middleware).
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
+  res.setHeader(
+    'Content-Security-Policy',
+    "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'; form-action 'self'"
+  );
+
+  if (config.isProd) {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
+}
+
 export function applyServerSecurity(req: IncomingMessage, res: ServerResponse, config: AppConfig): boolean {
+  setSecurityHeaders(res, config);
   return setCorsHeaders(req, res, config);
 }

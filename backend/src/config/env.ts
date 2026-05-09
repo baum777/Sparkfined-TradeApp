@@ -64,6 +64,7 @@ const envSchema = z.object({
   KV_REST_API_URL: z.string().optional(),
   KV_REST_API_TOKEN: z.string().optional(),
   REDIS_URL: z.string().optional(),
+  RATE_LIMIT_STORE: z.enum(['memory', 'redis']).default('memory'),
 
   // LLM Router / timeouts / retries
   LLM_ROUTER_ENABLED: z.enum(['true', 'false']).default('true').transform(v => v === 'true'),
@@ -167,6 +168,13 @@ function validateRequiredForRuntime(env: Env): void {
       .filter(Boolean);
     if (allowedOrigins.length === 0) {
       throw new Error('BACKEND_CORS_ORIGINS must list at least one allowed origin in production');
+    }
+
+    if (env.RATE_LIMIT_STORE !== 'redis') {
+      throw new Error('RATE_LIMIT_STORE must be set to "redis" in production');
+    }
+    if (!env.REDIS_URL?.trim()) {
+      throw new Error('REDIS_URL is required when RATE_LIMIT_STORE=redis in production');
     }
   }
 

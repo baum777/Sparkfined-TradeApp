@@ -15,7 +15,7 @@ const boardScenariosRequestSchema = z.object({
 });
 
 export async function handleReasoningBoardScenarios(req: ParsedRequest, res: ServerResponse): Promise<void> {
-  rateLimiters.reasoning(req.path, req.userId);
+  await rateLimiters.reasoning(req.path, req.userId);
 
   const body = validateBody(boardScenariosRequestSchema, req.body);
   const normalized = { ...body, version: body.version ?? REASONING_CONTRACT_VERSION };

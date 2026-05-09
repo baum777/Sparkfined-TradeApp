@@ -5,6 +5,7 @@
 
 import { getEnv } from '../../../config/env.js';
 import { logger } from '../../../observability/logger.js';
+import { moralisMetadataResponseSchema } from './schemas.js';
 
 export interface HoldersData {
   holdersCount: number;
@@ -42,7 +43,12 @@ export async function fetchHoldersData(
       return { holdersCount: 0 };
     }
     
-    const data = await res.json() as any;
+    const parsed = moralisMetadataResponseSchema.safeParse(await res.json());
+    if (!parsed.success) {
+      logger.warn('Holders provider response validation failed', { address });
+      return { holdersCount: 0 };
+    }
+    const data = parsed.data;
     
     // Note: Moralis may not directly provide holder count in metadata
     // This is a placeholder - adjust based on actual API response
@@ -54,4 +60,3 @@ export async function fetchHoldersData(
     return { holdersCount: 0 };
   }
 }
-
