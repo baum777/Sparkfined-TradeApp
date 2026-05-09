@@ -20,6 +20,14 @@ import { gotoAndWait, clickNavAndWait } from '../utils/nav';
 
 test.describe('@gatekeeper Trading Terminal Gatekeeper', () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      const e2eWindow = window as Window & {
+        __E2E_WALLET_MOCK__?: boolean;
+      };
+      e2eWindow.__E2E_WALLET_MOCK__ = true;
+      window.localStorage.setItem('walletName', JSON.stringify('E2E Mock Wallet'));
+    });
+
     // Block all non-API and non-static network calls for deterministic E2E
     // This prevents hidden regressions from analytics, RPC, or third-party calls
     await page.route('**/*', (route, request) => {

@@ -282,7 +282,7 @@ jobs:
 
       - name: Collect E2E Metrics
         if: always()
-        run: node playwright/metrics/collect.ts
+        run: pnpm -C backend exec tsx ../playwright/metrics/collect.ts
         continue-on-error: true
 
       - name: Upload Test Results
@@ -347,7 +347,7 @@ jobs:
 
       - name: Collect E2E Metrics
         if: always()
-        run: node playwright/metrics/collect.ts
+        run: pnpm -C backend exec tsx ../playwright/metrics/collect.ts
         continue-on-error: true
 
       - name: Upload Test Results
@@ -412,7 +412,7 @@ jobs:
 
       - name: Collect E2E Metrics
         if: always()
-        run: node playwright/metrics/collect.ts
+        run: pnpm -C backend exec tsx ../playwright/metrics/collect.ts
         continue-on-error: true
 
       - name: Upload Test Results
