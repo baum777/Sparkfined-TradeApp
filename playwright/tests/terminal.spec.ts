@@ -304,9 +304,12 @@ test.describe('@gatekeeper Trading Terminal Gatekeeper', () => {
     const confirmButton = page.locator('[data-testid="swap-confirm-submit"]');
     await expect(confirmButton).toBeVisible();
 
-    // Double-click rapidly on confirm button
-    await confirmButton.click();
-    await confirmButton.click();
+    // Fire two clicks in the same JS task to emulate a rapid double-click
+    // without waiting on Playwright actionability for a button that may disable immediately.
+    await confirmButton.evaluate((button) => {
+      (button as HTMLButtonElement).click();
+      (button as HTMLButtonElement).click();
+    });
 
     // Wait for dialog to close (success)
     await expect(dialog).toBeHidden({ timeout: 5000 });
