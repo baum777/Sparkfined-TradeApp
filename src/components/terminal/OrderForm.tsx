@@ -143,6 +143,7 @@ export function OrderForm({ wallet, connection }: OrderFormProps) {
     } catch (error) {
       console.error('Swap execution error:', error);
     } finally {
+      confirmInFlightRef.current = false;
       setIsExecuting(false);
       isConfirmSubmittingRef.current = false;
     }

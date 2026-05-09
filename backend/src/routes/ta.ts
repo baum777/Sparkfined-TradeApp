@@ -21,7 +21,7 @@ export async function handleTAAnalysis(req: ParsedRequest, res: ServerResponse):
   const body = validateBody(chartAnalysisRequestSchema, req.body);
   
   // Rate limit check
-  rateLimiters.ta(req.path, req.userId);
+  await rateLimiters.ta(req.path, req.userId);
 
   // Keep handler thin: validate → call service → sendJson
   const tier = (body.tier ?? env.LLM_TIER_DEFAULT) as AnalysisTier;

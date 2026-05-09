@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { stubApi } from '../fixtures/stubApi';
-import { navTestId } from '../utils/testids';
+import { navTestId, pageTestId } from '../utils/testids';
 import { gotoAndWait, clickNavAndWait } from '../utils/nav';
 
 /**

@@ -1,5 +1,6 @@
 import { getKV } from '../kv/store.js';
 import { AppSettingsV1 } from './types.js';
+import { logger } from '../../observability/logger.js';
 
 export async function getUserSettings(userId: string): Promise<AppSettingsV1> {
   const kv = getKV();
@@ -11,7 +12,7 @@ export async function getUserSettings(userId: string): Promise<AppSettingsV1> {
       return settings;
     }
   } catch (err) {
-    console.error(`Failed to fetch settings for user ${userId}:`, err);
+    logger.warn('Failed to fetch user settings; using defaults', { userId, error: err });
   }
 
   // Default to Free tier if not found or error
@@ -20,4 +21,3 @@ export async function getUserSettings(userId: string): Promise<AppSettingsV1> {
     adminFailOpen: false,
   };
 }
-
