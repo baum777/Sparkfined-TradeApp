@@ -1,0 +1,6 @@
+## [2026-05-09] create | function-wiki MVP baseline [[functions/buildGeneratorPrompt]] [[dashboards/performance-hotspots]]
+## [2026-05-09] profile | buildGeneratorPrompt | avg_tokens_est: 169 | avg_latency_ms: 0 | token_authority: v1_estimate_chars_div_4 [[functions/buildGeneratorPrompt]]
+## [2026-05-09] risk | verification gate open [[packets/2026-05-09-verification-gate]]
+## [2026-05-09] resolve | verification gate resolved | backend typecheck + root typecheck exit 0 [[packets/2026-05-09-verification-gate]]
+## [2026-05-09] apply | provider usage hook v2 | final provider calls persist calls latency tokens errors [[functions/llm-execute-provider-usage]]
+## [2026-05-09] verify | provider usage hook v2 | llm-execute integration + mirror parity + typecheck passed [[functions/llm-execute-provider-usage]]

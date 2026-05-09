@@ -47,6 +47,30 @@ async function postJson(url: string, body: unknown): Promise<{ status: number; t
   });
 }
 
+async function getJson(url: string): Promise<{ status: number; body: any }> {
+  const u = new URL(url);
+  return new Promise((resolve, reject) => {
+    const req = httpRequest(
+      {
+        method: 'GET',
+        hostname: u.hostname,
+        port: u.port,
+        path: u.pathname + u.search,
+      },
+      (res) => {
+        const chunks: Buffer[] = [];
+        res.on('data', (c) => chunks.push(Buffer.from(c)));
+        res.on('end', () => {
+          const text = Buffer.concat(chunks).toString('utf8');
+          resolve({ status: res.statusCode || 0, body: JSON.parse(text) });
+        });
+      }
+    );
+    req.on('error', reject);
+    req.end();
+  });
+}
+
 describe('POST /api/llm/execute (router + provider)', () => {
   let server: Server;
   let baseUrl: string;
@@ -222,5 +246,61 @@ describe('POST /api/llm/execute (router + provider)', () => {
     expect(calls[0]?.url).toContain('api.deepseek.test/chat/completions');
     expect(calls[1]?.url).toContain('api.openai.test/v1/chat/completions');
   });
-});
 
+  it('records final provider usage for llm execute calls', async () => {
+    const before = await getJson(`${baseUrl}/api/usage/summary`);
+    const beforeCharts = before.body.data.today.openai.charts;
+
+    const fetchMock = vi.fn(async (url: any, init?: any) => {
+      const urlStr = String(url);
+      const bodyText = init?.body ? String(init.body) : '';
+      const body = bodyText ? JSON.parse(bodyText) : undefined;
+
+      if (urlStr.startsWith('https://api.deepseek.test/chat/completions')) {
+        return jsonResponse({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  provider: 'openai',
+                  templateId: 'CHART_SETUPS',
+                  maxTokens: 120,
+                  compressedPrompt: 'USAGE_TRACKED_PROMPT',
+                  mustInclude: [],
+                  redactions: [],
+                }),
+              },
+            },
+          ],
+        });
+      }
+
+      if (urlStr.startsWith('https://api.openai.test/v1/chat/completions')) {
+        expect(JSON.stringify(body)).toContain('USAGE_TRACKED_PROMPT');
+        return jsonResponse({
+          choices: [{ message: { content: 'TRACKED_FINAL' } }],
+          usage: { prompt_tokens: 13, completion_tokens: 17, total_tokens: 30 },
+        });
+      }
+
+      throw new Error(`Unexpected fetch url: ${urlStr}`);
+    });
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { status } = await postJson(`${baseUrl}/api/llm/execute`, {
+      tier: 'standard',
+      taskKind: 'chart_analysis',
+      userMessage: 'Track usage for this chart call',
+    });
+
+    const after = await getJson(`${baseUrl}/api/usage/summary`);
+    const afterCharts = after.body.data.today.openai.charts;
+
+    expect(status).toBe(200);
+    expect(afterCharts.calls).toBe(beforeCharts.calls + 1);
+    expect(afterCharts.tokensIn).toBe(beforeCharts.tokensIn + 13);
+    expect(afterCharts.tokensOut).toBe(beforeCharts.tokensOut + 17);
+    expect(afterCharts.latencyCount).toBe(beforeCharts.latencyCount + 1);
+  });
+});

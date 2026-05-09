@@ -1,0 +1,15 @@
+id: 2026-05-09-verification-gate
+type: verification-risk
+status: resolved
+trigger: typecheck-verification
+observed_backend_typecheck: "TS6059 shared/contracts/reasoning-prompts.ts outside backend/src rootDir"
+observed_root_typecheck_script: "pnpm not found inside typecheck script when invoked through corepack pnpm typecheck"
+verified_substitutes: "tsconfig.app.json and tsconfig.node.json direct tsc checks passed"
+decision_tools_import: "keep relative import ../shared/contracts/reasoning-prompts.ts"
+decision_tsconfig_aliases: "no aliases for tools"
+resolution_backend_typecheck: "backend-local reasoning prompt mirror"
+resolution_root_typecheck_script: "root scripts call tsc directly instead of nested pnpm"
+verified_backend_typecheck: "corepack pnpm -C backend run typecheck exit 0"
+verified_root_typecheck: "corepack pnpm typecheck exit 0"
+blocked_by: none
+next_gate: "v2 provider-usage-hook allowed after review of backend mirror parity"
