@@ -15,6 +15,7 @@ const E2E_WALLET_MOCK =
 
 // Stable test public key (deterministic across browsers)
 const TEST_PUBLIC_KEY = new PublicKey('So11111111111111111111111111111111111111112');
+const E2E_MOCK_WALLET_NAME = 'E2E Mock Wallet';
 
 /**
  * E2E Mock Wallet Adapter
@@ -22,7 +23,7 @@ const TEST_PUBLIC_KEY = new PublicKey('So111111111111111111111111111111111111111
  * Never signs real transactions - returns mock data for UI testing.
  */
 class E2EMockWalletAdapter {
-  name = 'E2E Mock Wallet';
+  name = E2E_MOCK_WALLET_NAME;
   url = 'https://mock.wallet';
   icon = 'data:image/svg+xml;base64,PHN2Zy8+';
   readyState = WalletReadyState.Installed;
@@ -136,6 +137,18 @@ export function WalletProviders({ children }: { children: ReactNode }) {
   logSolanaEnvOnce();
   validateSolanaEnv();
   const endpoint = getRpcEndpoint();
+
+  if (E2E_WALLET_MOCK && typeof window !== 'undefined') {
+    try {
+      // WalletProvider auto-connect only runs for a selected wallet.
+      // Seed deterministic selection in E2E mode before provider mount.
+      if (window.localStorage.getItem('walletName') !== E2E_MOCK_WALLET_NAME) {
+        window.localStorage.setItem('walletName', E2E_MOCK_WALLET_NAME);
+      }
+    } catch {
+      // ignore storage access issues in constrained test environments
+    }
+  }
 
   const wallets = useMemo<WalletAdapter[]>(() => {
     if (E2E_WALLET_MOCK) {
