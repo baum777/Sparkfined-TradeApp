@@ -1,8 +1,8 @@
 ---
 Owner: Security Team
 Status: active
-Version: 1.0
-LastUpdated: 2026-02-27
+Version: 1.1
+LastUpdated: 2026-05-09
 Canonical: true
 ---
 
@@ -58,9 +58,10 @@ Canonical: true
 
 ### `backend/`
 
-- In-memory rate limiter (`backend/src/http/rateLimit.ts`), inkl. `setInterval` Cleanup.
-- Limits sind pro Path+userId definiert (journal/alerts/oracle/ta/reasoning).
-- **Production Hinweis:** in-memory ist nicht cluster-safe (TODO: Redis/KV-backed).
+- Einheitlicher Counter-Store für HTTP-Limits und globale User/IP-Limits (`backend/src/lib/rateLimit/store.ts`).
+- Backend-Limits sind pro Scope/Path/User definiert (`backend/src/http/rateLimit.ts`, `backend/src/lib/rateLimit/limiter.ts`).
+- Store-Auswahl über `RATE_LIMIT_STORE=memory|redis`; in Production ist `redis` verpflichtend.
+- `REDIS_URL` ist in Production verpflichtend, wenn `RATE_LIMIT_STORE=redis`.
 
 ### `api/`
 
@@ -72,7 +73,23 @@ Canonical: true
 - `x-request-id` wird serverseitig gesetzt:
   - `backend/`: `backend/src/http/requestId.ts` + `backend/src/http/response.ts`
   - `api/`: `api/_lib/request-id.ts` + `api/_lib/response.ts`
-- Logging existiert in beiden Backends; Provider-Calls enthalten explizite Regeln, keine Secrets zu loggen (z.B. LLM Router Prompt-Redactions).
+- `backend/` Logger schreibt strukturierte JSON-Logs mit Redaction sensibler Felder (`authorization`, `token`, `secret`, `cookie`, etc.).
+- Provider-Calls enthalten zusätzliche Prompt-Redaction/Sanitizing-Regeln.
+
+## CI/CD Security Gates
+
+- CI blockiert bei High/Critical Dependency Findings (`pnpm audit`) in `.github/workflows/ci.yml`.
+- SAST läuft verpflichtend als CodeQL-Job (`codeql-sast`) im selben CI-Workflow.
+
+## Incident Response (Owner Gate)
+
+- Incident Response ist Security-Team-owned.
+- Ein verbindlicher Kontaktkanal (On-Call Alias/Channel) ist **noch nicht in diesem Repo hinterlegt**.
+- Bis dieser Kanal vom Owner freigegeben ist, darf keine feste externe Kontaktadresse in diese Doku aufgenommen werden.
+- Mindestprozess bis zur Owner-Freigabe:
+  - Security-relevanten Vorfall intern als P0 markieren.
+  - Reproduzierbare Evidenz + betroffene Surface (`backend`, `api`, `apps/backend-alerts`) dokumentieren.
+  - Security Team als Owner zur Kanal-Freigabe und Priorisierung anfordern.
 
 ## Cron / interne Endpoints
 
@@ -83,4 +100,4 @@ Canonical: true
 
 - **TODO:** Einheitliche Auth-Policy zwischen Frontend + dem tatsächlich in Production genutzten Backend.
 - **TODO:** JWT Secret Rotation-Prozess dokumentieren.
-- **TODO:** Cluster-sicheres Rate Limiting für `backend/` (Redis/KV).
+- **TODO:** Security Team muss verbindlichen Incident-Response-Kontaktkanal freigeben.

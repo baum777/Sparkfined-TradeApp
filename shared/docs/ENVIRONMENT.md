@@ -1,8 +1,8 @@
 ---
 Owner: DevOps Team
 Status: active
-Version: 1.0
-LastUpdated: 2026-02-27
+Version: 1.1
+LastUpdated: 2026-05-09
 Canonical: true
 ---
 
@@ -77,6 +77,8 @@ Beispiel-Konfiguration: `backend/.env.example`.
 | `PULSE_TICKER_MAP` | ❌ | ❌ | — | Optionales Mapping `"SOL=...,USDC=..."` |
 | `KV_REST_API_URL` | ✅ | ❌ | — | Vercel KV URL (optional; Backend hat KV/Store‑Code) |
 | `KV_REST_API_TOKEN` | ✅ | ❌ | — | Vercel KV Token |
+| `REDIS_URL` | ✅ | ✅ (wenn `RATE_LIMIT_STORE=redis`) | — | Redis Store für Rate Limiting |
+| `RATE_LIMIT_STORE` | ❌ | ✅ (Prod: muss `redis` sein) | `memory` | Store-Auswahl für Rate-Limit Counter (`memory` oder `redis`) |
 | `LLM_ROUTER_ENABLED` | ❌ | ❌ | `true` | LLM Router Aktiv |
 | `LLM_ROUTER_DEBUG` | ❌ | ❌ | `false` | Debug |
 | `LLM_TIMEOUT_MS` | ❌ | ❌ | `20000` | Timeout |
@@ -97,6 +99,11 @@ Beispiel-Konfiguration: `backend/.env.example`.
 | `SSE_HEARTBEAT_MS` | ❌ | ❌ | `20000` | SSE Heartbeat |
 
 **TODO (Drift):** `API_BASE_PATH` ist konfigurierbar, aber der Router in `backend/src/app.ts` konstruiert aktuell `new Router('/api')` fix.
+
+**Production Policy (backend):**
+- `JWT_SECRET` muss gesetzt sein, darf nicht `dev-secret` sein und braucht mindestens 32 Zeichen.
+- `BACKEND_CORS_ORIGINS` muss mindestens eine explizite Origin enthalten.
+- `RATE_LIMIT_STORE` muss `redis` sein und `REDIS_URL` muss gesetzt sein.
 
 ## Backend: `api/` (Vercel Serverless) — runtime env
 
