@@ -98,6 +98,6 @@ Canonical: true
 
 ## TODOs / Risiken
 
-- **TODO:** Einheitliche Auth-Policy zwischen Frontend + dem tatsächlich in Production genutzten Backend.
-- **TODO:** JWT Secret Rotation-Prozess dokumentieren.
-- **TODO:** Security Team muss verbindlichen Incident-Response-Kontaktkanal freigeben.
+- ~~**TODO:** Einheitliche Auth-Policy zwischen Frontend + dem tatsächlich in Production genutzten Backend.~~ → **IN PROGRESS**: Siehe `SECURITY_HARDENING_ROADMAP.md` für Implementierungsplan
+- ~~**TODO:** JWT Secret Rotation-Prozess dokumentieren.~~ → **ERLEDIGT**: Script verfügbar unter `scripts/rotate-jwt-secret.mjs`
+- **TODO:** Security Team muss verbindlichen Incident-Response-Kontaktkanal freigeben. → **BLOCKED**: Wartet auf Owner-Freigabe
