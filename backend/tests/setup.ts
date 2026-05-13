@@ -1,10 +1,11 @@
-import { beforeAll, afterAll, beforeEach } from 'vitest';
+import { afterAll, beforeEach } from 'vitest';
 import { initDatabase, closeDatabase, getDatabase, resetDatabase } from '../src/db/index.js';
 import { runMigrations } from '../src/db/migrate.js';
 import { resetEnvCache } from '../src/config/env.js';
 import { resetConfigCache } from '../src/config/config.js';
 import { join } from 'path';
 import { unlinkSync, existsSync, mkdirSync } from 'fs';
+import { spawnSync } from 'node:child_process';
 
 // Test database path - use unique path per test run
 const TEST_DB_PATH = `./.data/test-${process.pid}.sqlite`;
@@ -35,19 +36,27 @@ function cleanupTestDb(): void {
   }
 }
 
-beforeAll(async () => {
-  // Clean up before starting
+function detectPortBindingCapability(): boolean {
+  const probeScript = `
+const net = require('node:net');
+const server = net.createServer();
+server.once('error', () => process.exit(1));
+server.listen(0, '127.0.0.1', () => server.close(() => process.exit(0)));
+setTimeout(() => process.exit(2), 1500);
+`;
+  const probe = spawnSync(process.execPath, ['-e', probeScript], { timeout: 4000 });
+  return probe.status === 0;
+}
+
+async function initializeTestEnvironment(): Promise<void> {
   cleanupTestDb();
-  
-  // Reset caches
+
   resetEnvCache();
   resetConfigCache();
   resetDatabase();
-  
-  // Initialize test database.
-  // In some CI/sandboxed environments, native bindings (better-sqlite3) may be unavailable.
-  // In that case we skip DB-backed test setup to allow non-DB suites (e.g. routing/contract)
-  // to execute.
+
+  (globalThis as any).__CAN_BIND_PORT__ = detectPortBindingCapability();
+
   try {
     await initDatabase(process.env.DATABASE_URL || TEST_DB_PATH);
     await runMigrations(join(process.cwd(), 'migrations'));
@@ -56,7 +65,9 @@ beforeAll(async () => {
     (globalThis as any).__DB_READY__ = false;
     console.warn('[tests/setup] DB init skipped (native bindings unavailable):', String(err));
   }
-});
+}
+
+await initializeTestEnvironment();
 
 beforeEach(() => {
   if (!(globalThis as any).__DB_READY__) return;

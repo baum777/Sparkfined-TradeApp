@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { it, expect, beforeAll, afterAll } from 'vitest';
 import { createServer, type Server } from 'http';
 import { createApp } from '../../src/app';
 import { signToken } from '../../src/lib/auth/jwt';
+import { describeIfDbAndNet } from '../helpers/testGuards';
 
 async function readJson(res: Response): Promise<any> {
   const text = await res.text();
@@ -12,7 +13,7 @@ async function readJson(res: Response): Promise<any> {
   }
 }
 
-describe('Settings API (Grok toggle)', () => {
+describeIfDbAndNet('Settings API (Grok toggle)', () => {
   let server: Server;
   let baseUrl: string;
 
@@ -133,4 +134,3 @@ describe('Settings API (Grok toggle)', () => {
     expect(disableBody.data).toEqual({ ai: { grokEnabled: false } });
   });
 });
-

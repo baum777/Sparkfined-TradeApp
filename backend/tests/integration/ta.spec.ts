@@ -1,8 +1,9 @@
-import { describe, it, expect } from 'vitest';
+import { it, expect } from 'vitest';
 import { generateTAReport } from '../../src/domain/ta/taGenerator';
 import { taCacheGet, taCacheSet } from '../../src/domain/ta/cacheRepo';
+import { describeIfDb } from '../helpers/testGuards';
 
-describe('TA Integration', () => {
+describeIfDb('TA Integration', () => {
   describe('Report Generation', () => {
     it('should generate complete report', () => {
       const report = generateTAReport('BTC', '1h', false, new Date());

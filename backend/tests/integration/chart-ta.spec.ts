@@ -1,10 +1,11 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
+import { it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
 import { createServer, type Server } from 'http';
 import { createApp } from '../../src/app';
 import { resetEnvCache } from '../../src/config/env';
 import type { InputCandle } from '../../src/domain/solChart/types';
 import { buildChartFeaturePackWithCacheMeta } from '../../src/domain/solChart/builder';
 import { generateSetupCardsFromChart } from '../../src/domain/solChartAnalysis/setupGenerator';
+import { describeIfDbAndNet } from '../helpers/testGuards';
 
 async function readJson(res: Response): Promise<any> {
   const text = await res.text();
@@ -35,7 +36,7 @@ function mkTrendUpCandles(count = 80, startTs = 1_700_000_000_000, stepMs = 60_0
   return out;
 }
 
-describe('POST /api/chart/ta (Chart → Setups → Onchain → Gates → Sort → Response)', () => {
+describeIfDbAndNet('POST /api/chart/ta (Chart → Setups → Onchain → Gates → Sort → Response)', () => {
   let server: Server;
   let baseUrl: string;
 
@@ -226,4 +227,3 @@ describe('POST /api/chart/ta (Chart → Setups → Onchain → Gates → Sort �
     expect(outPlan[0].confidence).not.toBe(setupsBase[0]!.confidence);
   });
 });
-

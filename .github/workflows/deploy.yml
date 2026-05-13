@@ -1,4 +1,4 @@
-name: Deploy to Production
+name: Deploy to Vercel
 
 on:
   push:
@@ -17,38 +17,48 @@ on:
           - staging
           - production
 
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  # Build Job
   build:
     name: Build for Deployment
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.17.1
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
+          cache: 'pnpm'
 
       - name: Install Dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Build Production
-        run: npm run build
+        run: pnpm run build
         env:
           NODE_ENV: production
 
       - name: Create Build Info
         run: |
-          echo "{
-            \"version\": \"${{ github.ref_name }}\",
-            \"commit\": \"${{ github.sha }}\",
-            \"buildDate\": \"$(date -u +"%Y-%m-%dT%H:%M:%SZ")\",
-            \"branch\": \"${{ github.ref_name }}\"
-          }" > dist/build-info.json
+          cat > dist/build-info.json <<EOF
+          {
+            "version": "${{ github.ref_name }}",
+            "commit": "${{ github.sha }}",
+            "buildDate": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+            "branch": "${{ github.ref_name }}"
+          }
+          EOF
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
@@ -57,53 +67,53 @@ jobs:
           path: dist/
           retention-days: 30
 
-  # Deployment zu Staging
   deploy-staging:
-    name: Deploy to Staging
+    name: Deploy to Staging (Preview)
     runs-on: ubuntu-latest
     needs: build
     if: github.ref == 'refs/heads/main' || github.event.inputs.environment == 'staging'
     environment:
       name: staging
-      url: https://staging.tradeapp.example.com
-    
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Download Build Artifacts
-        uses: actions/download-artifact@v4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
         with:
-          name: production-build
-          path: dist/
+          version: 10.17.1
 
-      - name: Deploy to Staging
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Verify Vercel Secrets
         run: |
-          echo "🚀 Deployment zu Staging..."
-          echo "Hier würde das Deployment zu Vercel/Netlify/AWS stattfinden"
-          
-          # Beispiel für Vercel:
-          # npm install -g vercel
-          # vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }}
-          
-          # Beispiel für Netlify:
-          # npm install -g netlify-cli
-          # netlify deploy --prod --dir=dist --auth=${{ secrets.NETLIFY_TOKEN }}
+          set -euo pipefail
+          [ -n "${{ secrets.VERCEL_TOKEN }}" ] || { echo "Missing VERCEL_TOKEN"; exit 1; }
+          [ -n "${{ secrets.VERCEL_ORG_ID }}" ] || { echo "Missing VERCEL_ORG_ID"; exit 1; }
+          [ -n "${{ secrets.VERCEL_PROJECT_ID }}" ] || { echo "Missing VERCEL_PROJECT_ID"; exit 1; }
 
-      - name: Run Smoke Tests
+      - name: Deploy Preview
+        id: deploy_preview
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
-          echo "🧪 Smoke Tests auf Staging..."
-          # Hier würden kritische E2E Tests gegen Staging laufen
+          set -euo pipefail
+          DEPLOY_URL=$(pnpm dlx vercel@latest deploy --yes --token "$VERCEL_TOKEN")
+          echo "deploy_url=$DEPLOY_URL" >> "$GITHUB_OUTPUT"
+          echo "Preview URL: $DEPLOY_URL"
 
-      - name: Notify Slack (optional)
-        if: always()
+      - name: Smoke Test Preview
         run: |
-          echo "📢 Würde Slack-Notification senden"
-          # curl -X POST -H 'Content-type: application/json' \
-          #   --data '{"text":"Staging deployment completed"}' \
-          #   ${{ secrets.SLACK_WEBHOOK_URL }}
+          set -euo pipefail
+          curl -fsSL "${{ steps.deploy_preview.outputs.deploy_url }}" > /dev/null
 
-  # Deployment zu Production
   deploy-production:
     name: Deploy to Production
     runs-on: ubuntu-latest
@@ -111,63 +121,43 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.environment == 'production'
     environment:
       name: production
-      url: https://tradeapp.example.com
-    
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Download Build Artifacts
-        uses: actions/download-artifact@v4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
         with:
-          name: production-build
-          path: dist/
+          version: 10.17.1
 
-      - name: Deploy to Production
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Verify Vercel Secrets
         run: |
-          echo "🚀 Deployment zu Production..."
-          echo "Hier würde das Deployment zu Vercel/Netlify/AWS stattfinden"
+          set -euo pipefail
+          [ -n "${{ secrets.VERCEL_TOKEN }}" ] || { echo "Missing VERCEL_TOKEN"; exit 1; }
+          [ -n "${{ secrets.VERCEL_ORG_ID }}" ] || { echo "Missing VERCEL_ORG_ID"; exit 1; }
+          [ -n "${{ secrets.VERCEL_PROJECT_ID }}" ] || { echo "Missing VERCEL_PROJECT_ID"; exit 1; }
 
-      - name: Run Smoke Tests
-        run: |
-          echo "🧪 Smoke Tests auf Production..."
-          # Hier würden kritische E2E Tests gegen Production laufen
-
-      - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: actions/create-release@v1
+      - name: Deploy Production
+        id: deploy_prod
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref_name }}
-          release_name: Release ${{ github.ref_name }}
-          body: |
-            ## Changes in this Release
-            - See commit history for details
-            
-            ## Deployment Info
-            - Environment: Production
-            - Build Date: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
-            - Commit: ${{ github.sha }}
-          draft: false
-          prerelease: false
-
-      - name: Notify Team
-        if: always()
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
-          echo "📢 Production Deployment abgeschlossen!"
-          # Hier würden Notifications an Team-Kanäle gehen
+          set -euo pipefail
+          DEPLOY_URL=$(pnpm dlx vercel@latest deploy --prod --yes --token "$VERCEL_TOKEN")
+          echo "deploy_url=$DEPLOY_URL" >> "$GITHUB_OUTPUT"
+          echo "Production URL: $DEPLOY_URL"
 
-  # Rollback Job (manuell auslösbar)
-  rollback:
-    name: Rollback Deployment
-    runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch'
-    environment:
-      name: ${{ github.event.inputs.environment }}
-    
-    steps:
-      - name: Rollback
+      - name: Smoke Test Production
         run: |
-          echo "⏪ Rollback zu vorheriger Version..."
-          echo "Implementierung hängt vom Hosting-Provider ab"
+          set -euo pipefail
+          curl -fsSL "${{ steps.deploy_prod.outputs.deploy_url }}" > /dev/null
+

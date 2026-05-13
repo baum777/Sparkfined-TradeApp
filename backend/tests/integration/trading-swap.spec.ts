@@ -1,8 +1,9 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
+import { it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
 import { createServer, type Server } from 'http';
 import { createApp } from '../../src/app';
 import { resetEnvCache } from '../../src/config/env';
 import { swapTxResultSchema } from '../contracts/tradingTerminal';
+import { describeIfDbAndNet } from '../helpers/testGuards';
 
 async function readJson(res: Response): Promise<unknown> {
   const text = await res.text();
@@ -17,7 +18,7 @@ function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 }
 
-describe('POST /api/swap', () => {
+describeIfDbAndNet('POST /api/swap', () => {
   let server: Server;
   let baseUrl: string;
 

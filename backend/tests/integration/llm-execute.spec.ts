@@ -1,8 +1,9 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
+import { it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
 import { createServer, type Server } from 'http';
 import { createApp } from '../../src/app';
 import { resetEnvCache } from '../../src/config/env';
 import { request as httpRequest } from 'http';
+import { describeIfDbAndNet } from '../helpers/testGuards';
 
 async function readJson(res: Response): Promise<any> {
   const text = await res.text();
@@ -71,7 +72,7 @@ async function getJson(url: string): Promise<{ status: number; body: any }> {
   });
 }
 
-describe('POST /api/llm/execute (router + provider)', () => {
+describeIfDbAndNet('POST /api/llm/execute (router + provider)', () => {
   let server: Server;
   let baseUrl: string;
 
