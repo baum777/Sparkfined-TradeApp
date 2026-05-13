@@ -8,3 +8,4 @@
 [[packets/2026-05-13-p0-runtime-verification-risk]] | Residual verification risk for runtime parity and CI secrets | #mspr #risk #verification #p0 | 2026-05-13
 [[functions/vercel-backend-alerts-startup-resilience]] | Startup-safe backend-alerts Vercel runtime with root-level config alignment | #vercel #runtime #backend-alerts | 2026-05-13
 [[packets/2026-05-13-vercel-deploy-policy-block]] | External deploy execution blocked by policy gate | #mspr #risk #deploy #vercel | 2026-05-13
+[[functions/backend-alerts-local-postgres-docker]] | Local Postgres via Docker Compose for backend-alerts dev runtime | #backend-alerts #postgres #docker #local-dev | 2026-05-13

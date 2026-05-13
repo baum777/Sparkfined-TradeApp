@@ -28,3 +28,7 @@ export const createServer = () => {
 
   return app;
 };
+
+const app = createServer();
+
+export default app;
