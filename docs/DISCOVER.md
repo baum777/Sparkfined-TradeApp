@@ -2,245 +2,183 @@
 Owner: Discover Team
 Status: active
 Version: 1.0
-LastUpdated: 2026-02-27
+LastUpdated: 2026-05-16
 Canonical: true
 ---
 
 # Discover Overlay
 
-**Implementation Status:** ✅ Phase 2 Complete  
-**Last Updated:** 2024-12-19
-
----
+**Implementation Status:** ✅ Phase 2 Complete
 
 ## Overview
 
 The Discover Overlay provides token discovery with:
-- Filter engine (hard rejects, presets, requirements)
-- Ranking system (0-100 scores)
-- Reason chips (max 2 per token)
-- Deep-link integration with Terminal
+- tab-specific filter rules and presets
+- ranking for the `ranked` tab
+- memoized evaluation and virtualized rendering
+- direct handoff into Terminal pair selection
 
 **Access:**
-- Terminal: "Discover" button in TerminalShell
+- Terminal: Discover button in `TerminalShell`
 - Global: `useDiscoverStore().openOverlay()`
 
----
-
 ## Architecture
+
+```mermaid
+flowchart LR
+    Trigger["TerminalShell / global action"] --> Overlay["DiscoverOverlay"]
+    Overlay --> Store["discoverStore"]
+    Overlay --> Tabs["DiscoverTabs"]
+    Tabs --> Filters["DiscoverFiltersPanel"]
+    Tabs --> List["DiscoverTokenList\nreact-window List"]
+    Overlay --> Service["discoverService.getTokens()"]
+    Service --> API["GET /api/discover/tokens"]
+    API --> Backend["backend handleDiscoverTokens"]
+    Backend --> Catalog["Jupiter token catalog\nor deterministic backend fallback"]
+    Service -. "error / empty fallback" .-> Mock["frontend mock tokens"]
+    List --> Card["DiscoverTokenCard"]
+    Card --> Terminal["terminalStore.setPair()"]
+```
 
 ### Components
 
 **DiscoverOverlay** (`src/components/discover/DiscoverOverlay.tsx`)
-- Drawer component (90vh height)
-- Opens/closes without page reload
-- Dismissible via ESC, click outside, or close button
+- Vaul drawer with 90vh height
+- fetches token data on open
+- keeps rendering entirely client-side
 
 **DiscoverTabs** (`src/components/discover/DiscoverTabs.tsx`)
-- Tab navigation: Not Bonded / Bonded / Ranked
-- Each tab has default preset
-- Tab switch resets to default preset
+- tabs: `not_bonded`, `bonded`, `ranked`
+- resets each tab to its default preset on tab switch
+- lays out filters left and the token list right
 
 **DiscoverFiltersPanel** (`src/components/discover/DiscoverFiltersPanel.tsx`)
-- Launchpad multi-select (pumpfun, moonshot)
-- Time window selector (5m, 15m, 60m, all)
-- Min liquidity input (SOL)
-- Search input (symbol/name/mint)
-- Preset profile selector (5 presets, tab-specific)
+- launchpad multi-select
+- time window selector
+- min-liquidity filter
+- search input
+- preset selector per active tab
 
 **DiscoverTokenList** (`src/components/discover/DiscoverTokenList.tsx`)
-- Virtualized token list (ScrollArea)
-- Memoized token evaluation
-- Handles 200+ tokens smoothly
+- uses `react-window` `List`
+- measures container height dynamically
+- renders evaluated token rows only for visible items plus overscan
 
 **DiscoverTokenCard** (`src/components/discover/DiscoverTokenCard.tsx`)
-- Token card UI with:
-  - Symbol / name
-  - Liquidity metric (SOL)
-  - Volume metric (5m USD)
-  - Holder count
-  - Launchpad badge
-  - Up to 2 reason chips
-  - Score badge (ranked tab only, 0-100)
+- symbol, name, liquidity, volume, holders, launchpad, reason chips
+- optional score badge on ranked results
+- click action hands the token to Terminal and closes the overlay
 
 ### State Management
 
 **DiscoverStore** (`src/lib/state/discoverStore.ts`)
-- Zustand store with:
-  - `isOpen: boolean`
-  - `activeTab: 'not_bonded' | 'bonded' | 'ranked'`
-  - `filters: DiscoverFilters`
-  - `selectedPreset: Record<Tab, PresetId>`
-  - `tokens: Token[]`
-  - `isLoading: boolean`
-  - `error: string | null`
-
----
+- overlay state: `isOpen`, `activeTab`
+- filter state: `filters`, `selectedPreset`
+- data state: `tokens`, `isLoading`, `error`
+- actions: `retryFetch()`, `resetFilters()`, open/close/tab changes
 
 ## Filter Engine
 
-### Evaluation Flow
-
-1. **Hard Reject Rules** (fixed per tab)
-   - Applied first, immediate reject if matched
-   - Examples: freeze authority present, mint authority present, Jupiter Shield critical
-
-2. **Requirements** (fixed per tab)
-   - Min liquidity, top holder caps, activity floors
-   - Applied per tab (not_bonded, bonded, ranked)
-
-3. **Preset Rules** (user-selectable)
-   - Merged with fixed rules (stricter wins)
-   - Tab-specific presets available
-
-4. **Fallback Rules**
-   - Applied if token passes all above checks
-
-5. **Ranking** (ranked tab only)
-   - Score calculation (0-100)
-   - Downrank if score < 30
+```mermaid
+flowchart TD
+    Token["Token"] --> RejectCheck{"Hard reject?"}
+    RejectCheck -- yes --> Reject["Exclude"]
+    RejectCheck -- no --> ReqCheck{"Tab requirements pass?"}
+    ReqCheck -- no --> Reject
+    ReqCheck -- yes --> Preset["Merge preset with fixed rules"]
+    Preset --> Fallback["Apply fallback / explanation rules"]
+    Fallback --> Ranked{"Active tab = ranked?"}
+    Ranked -- no --> Visible["Visible result"]
+    Ranked -- yes --> Score["computeRankScore()"]
+    Score --> Threshold{"score < 30?"}
+    Threshold -- yes --> Downrank["Mark as downrank"]
+    Threshold -- no --> Allow["Allow"]
+    Visible --> Explain["Trim reasons for UI"]
+    Downrank --> Explain
+    Allow --> Explain
+```
 
 ### Presets
+- `not_bonded`: `bundler_exclusion_gate`
+- `bonded`: `strict_safety_gate`
+- `ranked`: `signal_fusion`
 
-**Not Bonded Tab:**
-- `bundler_exclusion_gate` (default)
-
-**Bonded Tab:**
-- `strict_safety_gate` (default)
-
-**Ranked Tab:**
-- `signal_fusion` (default)
-
-**Preset Merge Logic:**
-- Fixed rules remain active
-- Preset rules add/strengthen requirements
-- Stricter rules win in conflicts
-
----
+**Merge rule:** fixed rules stay active; stricter preset thresholds win on conflicts.
 
 ## Ranking System
 
-### Score Calculation
-
-**Ranked Tab Only:**
-- Score range: 0-100
-- Calculated via `computeRankScore()`
-- Based on: liquidity, volume, holder count, launchpad, safety metrics
-
-**Downranking:**
-- If score < 30 and action is 'allow' → action becomes 'downrank'
-- Downranked tokens still shown, but lower in list
-
----
+- Score range: `0-100`
+- Implemented via `computeRankScore()` in `src/features/discover/filter/scoring.ts`
+- Inputs include liquidity, activity, holder concentration, safety signals and optional social/oracle signals
+- `ranked` results below 30 are still shown, but explicitly downranked
 
 ## Integration
 
 ### Terminal → Discover
-
-- "Discover" button in TerminalShell
-- Calls `useDiscoverStore().openOverlay()`
-- Overlay opens without page reload
+- Discover button calls `useDiscoverStore().openOverlay()`
+- overlay opens without route change or reload
 
 ### Discover → Terminal
-
-- Token card click calls `terminalStore.setPair()`
-- Pair set with:
-  - `baseMint`: token.mint
-  - `quoteMint`: USDC (default)
-  - `baseSymbol`: token.symbol
-  - `quoteSymbol`: 'USDC'
-- Overlay closes after pair is set
-- Quote fetch triggered automatically
-
----
-
-## UI Components
-
-- **Drawer** (vaul) - Overlay container
-- **Tabs** (Radix) - Tab navigation
-- **Card** - Token cards + filter panel
-- **ScrollArea** - Virtualized list container
-- **Badge** - Reason chips + score badges
-- **Select** - Preset + filter dropdowns
-- **Checkbox** - Launchpad multi-select
-- **Input** - Search + min liquidity
-
----
+- clicking a token calls `terminalStore.setPair()`
+- quote mint is pinned to the default USDC quote asset
+- overlay closes after the pair handoff
+- Terminal quote fetching starts automatically via store debounce
 
 ## Data Source
 
-**Current Implementation:**
+**Current Implementation**
 - `discoverService.getTokens()` calls `/api/discover/tokens`
-- Returns empty array if endpoint not available (graceful fallback)
-- Ready for backend integration
+- canonical backend route: `backend/src/routes/trading.ts -> handleDiscoverTokens`
+- backend builds a cached deterministic catalog from the Jupiter token list and falls back to generated tokens if upstream fetch fails
+- frontend has an additional mock fallback when the request fails or returns an empty array
 
-**Required Endpoint:**
-```
+**Endpoint Contract**
+```text
 GET /api/discover/tokens
-Response: Token[] (normalized Token[] matching filter/types.ts schema)
+Query: limit?, cursor?
+Response: Token[]
+Header: x-next-cursor when pagination continues
 ```
-
-**Note:** For MVP testing, mock data can be added in `discoverService.ts`.
-
----
 
 ## Performance
 
-- **Memoized Evaluation:** Token evaluation memoized per filter change
-- **ScrollArea:** Handles 200+ tokens smoothly
-- **Virtualization:** Consider `@tanstack/react-virtual` for 500+ tokens
-
----
+- Memoized selectors via `createDiscoverTokenSelector()`
+- Virtualized rendering via `react-window`
+- Dynamic height measurement via `ResizeObserver`
+- Current implementation is comfortable for 200+ visible candidates and supports paging up to the backend cap
 
 ## Testing Checklist
 
-### Manual Verification
+1. Overlay Behavior:
+   - overlay opens and closes without page reload
+   - ESC / outside click / close button all dismiss the drawer
+   - token click sets the pair and closes the overlay
 
-1. **Overlay Behavior:**
-   - [ ] Overlay opens without page reload
-   - [ ] Overlay dismissible (ESC, click outside, close button)
-   - [ ] Token click → pair set in Terminal → overlay closes
+2. Tabs and Presets:
+   - each tab restores its default preset on tab change
+   - ranked tab shows score badges
 
-2. **Tabs & Defaults:**
-   - [ ] Not Bonded tab shows default preset
-   - [ ] Bonded tab shows default preset
-   - [ ] Ranked tab shows default preset
-   - [ ] Tab switch resets to default preset
+3. Data Paths:
+   - successful `/api/discover/tokens` response renders live rows
+   - failed or empty response falls back to mock tokens without crashing the UI
 
-3. **Filters:**
-   - [ ] Launchpad multi-select works
-   - [ ] Time window selector works
-   - [ ] Min liquidity input works
-   - [ ] Search input works (symbol/name/mint)
-   - [ ] Preset selector works
-
-4. **Token Display:**
-   - [ ] Symbol / name shown
-   - [ ] Liquidity metric shown
-   - [ ] Volume metric shown
-   - [ ] Holder count shown
-   - [ ] Launchpad badge shown
-   - [ ] Up to 2 reason chips shown
-   - [ ] Score badge shown (ranked tab only)
-
-5. **Performance:**
-   - [ ] 200+ tokens scroll smoothly
-   - [ ] Filter changes don't freeze UI
-   - [ ] Scrolling remains smooth
-
----
+4. Performance:
+   - long lists remain scrollable without layout thrash
+   - filter changes re-evaluate rows without blocking the drawer
 
 ## Known Limitations
 
-1. **Virtualization:** Currently using `ScrollArea`. For 500+ tokens, consider true virtualization.
-2. **Data Source:** `/api/discover/tokens` endpoint not yet implemented (returns empty array gracefully).
-3. **Quick Amount Buttons:** In Terminal, still using placeholder logic.
+1. **Data is deterministic, not market-native alpha**
+   The canonical backend currently seeds Discover from the Jupiter token catalog plus generated metrics.
 
----
+2. **Frontend still has a mock fallback**
+   Network failures degrade to locally generated tokens instead of a hard error state.
+
+3. **Terminal handoff assumes a default quote asset**
+   Discover always routes selected tokens into the default USDC quote pair.
 
 ## Related Documentation
 
-- [Terminal](../docs/TERMINAL.md) - Terminal integration
-- [Architecture](../docs/ARCHITECTURE.md) - System architecture
-- [QA](../docs/QA.md) - Testing procedures
-
+- [Terminal](./TERMINAL.md)
+- [Architecture](./ARCHITECTURE.md)
+- [QA](./QA.md)

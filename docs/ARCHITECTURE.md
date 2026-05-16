@@ -2,7 +2,7 @@
 Owner: Architecture Team
 Status: active
 Version: 1.0
-LastUpdated: 2026-02-27
+LastUpdated: 2026-05-16
 Canonical: true
 ---
 
@@ -16,120 +16,111 @@ Scope: **Ist-Zustand** (keine Roadmap).
 ### Web-App (Vite/React SPA)
 - **Code**: `src/`
 - **Routing/Layout**: React Router unter einer AppShell (Navigation + `Outlet`).
-- **API Access**: zentral über `src/services/api/client.ts` (kanonisches Response-Envelope enforced).
-- **Service Worker**: `src/sw/*` (Polling für Alerts/Oracle, Dedupe in IndexedDB, Notifications).
+- **API Access**: zentral über `src/services/api/client.ts` mit kanonischem Envelope `{ status: "ok", data }`.
+- **Service Worker**: Registrierung in Production via `src/main.tsx`; Handler in `src/sw/*` reagieren auf Nachrichten, deduplizieren in IndexedDB und zeigen Notifications an.
 
 ### Backend (canonical)
 - **Code**: `backend/`
-- **Runtime-Modell**: Always-on Node HTTP Server (nicht serverless-funktional gedacht).
-- **API Base Path**: `/api` (siehe `backend/src/app.ts`).
+- **Runtime-Modell**: Always-on Node HTTP Server mit Basisrouter `/api`.
 - **Persistence**: SQLite default (Dev/CI), Postgres optional via `DATABASE_URL`.
-- **Jobs**: Scheduler + Cleanup (z.B. Events/Oracle/TA Cache).
+- **Jobs**: Scheduler + Cleanup für Alerts, Oracle und TA-Cache.
 
-> Parallel-Implementierungen (nicht canonical in Production, sofern Vercel-`/api` Rewrite aktiv ist):
+> Parallel-Implementierungen (nicht canonical in Production, solange `vercel.json` alle `/api/*` Requests umschreibt):
 > - `api/`: Vercel Functions Alternative
-> - `apps/backend-alerts/`: separater Alerts-Service
+> - `apps/backend-alerts/`: separater Alerts-Service mit eigener Railway-Konfiguration
 
 ### Shared Contracts
-- **Cross-package Contracts**: `shared/contracts/*` (additive-only, versioniert).
-- **Frontend Contracts**: `src/types/*` (UI-boundary).
-- **Backend kann `shared/` nicht importieren** (tsconfig rootDir), daher werden Contracts bei Bedarf gespiegelt
-  (z.B. Dominance: `shared/contracts/sparkfined-dominance.ts` ↔ `backend/src/lib/dominance/contracts.ts`).
+- **Cross-package Contracts**: `shared/contracts/*` und `shared/trading/*`.
+- **Frontend Contracts**: `src/types/*` für UI-boundaries.
+- **Backend kann `shared/` nicht direkt importieren**; notwendige Contracts werden gespiegelt, z. B. Dominance in `backend/src/lib/dominance/contracts.ts`.
 
 ### Dominance Layer (Governance + Quality Gates)
 - **Code**: `backend/src/lib/dominance/*`
-- **Aufgabe**: Risiko-Policy, Autonomy-Tiers, Golden-Tasks, Auto-Correct Loop, Trace/Cost Layer, Memory Artifacts.
+- **Aufgabe**: Risiko-Policy, Autonomy-Tiers, Golden Tasks, Auto-Correct Loop, Trace/Cost Layer, Memory Artifacts.
 - **Aktivierung**: runtime flag `ENABLE_SPARKFINED_DOMINANCE=true`.
 
-## 2) Data Flow Diagram (text)
+## 2) Data Flow Diagram
 
+```mermaid
+flowchart LR
+    Browser["Browser / React SPA"] -->|"Navigation + fetch('/api/*')"| Vercel["Vercel SPA Hosting"]
+    Browser -. "registerSW() in PROD" .-> SW["Service Worker\nsrc/sw/*"]
+    SW -->|"alerts/events + oracle/daily\nmessage-driven handlers"| Vercel
+    Vercel -->|"rewrite /api/(.*)"| Backend["Canonical backend\nbackend/"]
+    Backend --> DB["SQLite default\noder Postgres"]
+    Backend --> Providers["Jupiter, Helius, LLMs,\nMarket/Pulse Provider"]
+    Vercel -. "optionale Parallel-Deployments" .-> ApiFns["api/\nVercel Functions"]
+    Vercel -. "separater Service" .-> AlertsSvc["apps/backend-alerts"]
 ```
-Browser
-  |
-  | 1) SPA navigation + data fetch
-  v
-Vercel (Static Frontend)
-  |\
-  | \ 2) /api/* rewrite
-  |  \
-  |   v
-  |  External Backend Host (z.B. Railway)  <---- (VERCEL_BACKEND_URL)
-  |        |
-  |        | 3) /api/* handlers (envelope + requestId)
-  |        v
-  |     backend/ (Node)
-  |      |  \
-  |      |   \ 4) External providers (best-effort, budgeted)
-  |      |    \- LLM Router/Providers (DeepSeek/OpenAI/Grok)
-  |      |    \- Onchain (Helius)
-  |      |    \- Market/Pulse data (z.B. DexPaprika/Moralis)
-  |      |
-  |      v
-  |   DB/KV (SQLite default, Postgres optional)
-  |
-  | 5) SW polling (foreground-driven)
-  v
-Service Worker (src/sw/*)
-  - GET /api/alerts/events?since=...
-  - GET /api/oracle/daily
-  - IndexedDB dedupe + notifications
-```
+
+**Observed:** Der Worker ist aktuell **message-driven**. Die Poll-Handler in `src/sw/service-worker.ts` laufen erst, wenn der Worker `SW_TICK`-Nachrichten erhält.
 
 ## 3) Request Lifecycle (canonical)
 
-1. **Client build-time config**:
-   - `baseURL = VITE_API_URL || "/api"` (Frontend).
-   - `credentials = same-origin` (default) oder `include` wenn `VITE_ENABLE_AUTH="true"`.
-2. **HTTP call**: `fetch()` via `ApiClient`.
-3. **Vercel routing**:
-   - `/api/(.*)` → `https://$VERCEL_BACKEND_URL/api/$1` (siehe `vercel.json`).
-4. **Backend router**:
-   - Request Context + `x-request-id` Extraktion/Generierung.
-   - Auth-Parsing (wenn aktiv) und `userId` Resolution.
-   - Input validation (Zod).
-5. **Domain execution**:
-   - Repo/Service Layer (DB/KV/Cache).
-   - Optional: Provider Calls (Onchain/LLM) mit Timeouts/Budget/Tier gating.
-6. **Response**:
-   - **Success**: `{ "status": "ok", "data": ... }`
-   - **Error**: `{ "error": { "code": "...", "message": "...", "details": { "...", "requestId": "..." } } }`
-   - Header: `x-request-id` immer gesetzt.
+```mermaid
+sequenceDiagram
+    participant UI as React Client
+    participant Edge as Vercel / same-origin /api
+    participant API as backend Router('/api')
+    participant Domain as Route + Domain Layer
+    participant Upstream as DB / Provider
+
+    UI->>Edge: fetch('/api/...')
+    Edge->>API: rewrite /api/(.*)
+    API->>API: requestId, auth parse, validation
+    API->>Domain: invoke handler
+    alt cache / storage path
+        Domain->>Upstream: SQLite / Postgres / KV
+    else provider path
+        Domain->>Upstream: Jupiter / Helius / LLM / Market data
+    end
+    Upstream-->>Domain: data or error
+    Domain-->>API: result
+    API-->>UI: { status:"ok", data } or { error:{...} } + x-request-id
+```
+
+1. **Client config**:
+   - Dev: `apiClient` nutzt `/api` und damit den Vite-Proxy.
+   - Prod: Default ist same-origin root; Requests auf `/api/*` werden von Vercel umgeschrieben.
+   - `credentials`: `same-origin` default, `include` nur wenn `VITE_ENABLE_AUTH="true"`.
+2. **HTTP boundary**: JSON + Envelope, keine TypeScript-Imports über die Laufzeitgrenze.
+3. **Backend router**: Request Context, `x-request-id`, optionales JWT-Parsing, Zod-Validierung.
+4. **Domain execution**: Repos/Services + optionale Provider-Calls mit Budget-/Tier-Gating.
+5. **Response**:
+   - Success: `{ "status": "ok", "data": ... }`
+   - Error: `{ "error": { "code": "...", "message": "...", "details": { ... } } }`
 
 ## 4) Golden Task System (Dominance)
 
-Definition: **Deterministische Qualitäts-Gates** als Befehlsliste.
+Definition: **deterministische Qualitäts-Gates** als Befehlsliste.
 
-- **Global Suite** (Default):
+- **Global Suite**:
   - `npm run lint`
   - `npx tsc --noEmit`
   - `npm run build`
   - `npm run test:backend`
   - `npm run test:e2e`
-- **Subset Planning** (diff-basiert):
+- **Subset Planning**:
   - `backend_only`: lint + tsc + test:backend
   - `frontend_only`: lint + tsc + build
   - `ci_deploy`: globale Suite
   - `llm_router_or_adapters`: lint + tsc + build + test:backend
 
-Workstreams werden automatisch nach Pfadgruppen gesliced (z.B. `backend/`, `src/`, `.github/`, …), um parallel-by-default zu planen.
-
 ## 5) Risk Policy Flow (Dominance)
 
-Input: `diffStats = { filesChanged, linesAdded, linesDeleted, largestFileDeltaLines?, touchedPaths[] }`
-
-```
-requiresApproval(diff) -> { required, reasons[] }
-deriveRiskLevel(diff)  -> low|medium|high|critical
-decidePolicy(enabled, diff) -> autonomyTier + guardrails + goldenTaskPlan + maxAutoFixIterations
+```mermaid
+flowchart TD
+    Diff["diffStats"] --> Approval["requiresApproval(diff)"]
+    Diff --> Risk["deriveRiskLevel(diff)"]
+    Enabled["ENABLE_SPARKFINED_DOMINANCE?"] --> Policy["decideSparkfinedPolicy(...)"]
+    Approval --> Policy
+    Risk --> Policy
+    Policy --> Tier1["Tier 1\nDominance disabled"]
+    Policy --> Tier2["Tier 2\nEnabled, no approval"]
+    Policy --> Tier4["Tier 4\nEscalation required"]
 ```
 
 Approval-Reasons (exakt): `core_engine`, `adapters`, `ci_deploy`, `large_diff`.
-
-Autonomy-Tier (aktuell):
-- **Tier 1**: Dominance disabled (keine Auto-Aktionen, keine Golden Tasks).
-- **Tier 2**: Enabled + keine Approval-Pflicht (default).
-- **Tier 4**: Enabled + Approval required (Escalation).
-- **Tier 3**: reserviert (vertraglich vorhanden, aktuell nicht aktiv genutzt).
 
 Max Auto-Fix Iterations:
 - `critical`: 3
@@ -140,21 +131,23 @@ Max Auto-Fix Iterations:
 
 | Flag | Ort | Default | Effekt |
 |---|---|---:|---|
-| `VITE_ENABLE_AUTH` | Frontend build-time | false | `credentials="include"` + SW/Client behandeln 401/403 als authRequired nur wenn Flag an + Token genutzt |
+| `VITE_ENABLE_AUTH` | Frontend build-time | false | `credentials="include"`; SW/Client behandeln 401/403 nur dann als authRequired |
 | `VITE_ENABLE_DEV_NAV` | Frontend build-time | false | Dev-Navigation sichtbar/unsichtbar |
+| `VITE_RESEARCH_EMBED_TERMINAL` | Frontend build-time | false | Embedded Terminal im Research-Workspace aktiv |
+| `VITE_SENTRY_DSN` | Frontend build-time | unset | Initialisiert Sentry in `src/lib/monitoring/sentry.ts` |
 | `ENABLE_SPARKFINED_DOMINANCE` | Backend runtime | false | Dominance Policy/Tracing/Memory/Golden Tasks aktiv |
 | `LLM_TIER_DEFAULT` | Backend runtime | `free` | Default Tier für kosten-/fähigkeitsabhängige Endpoints |
-| `ONCHAIN_TUNING_PROFILE` | Backend runtime | `default` | Onchain gating/confidence tuning (determinism + cost) |
+| `ONCHAIN_TUNING_PROFILE` | Backend runtime | `default` | Onchain gating / confidence tuning |
 
 ## 7) Dependency Model
 
-```
-src/ (web)  --->  shared/contracts (optional consume)  --->  (no backend imports)
-   \                 ^
-    \                |
-     ---> /api (HTTP boundary) <--- backend/ (Node)
-
-backend/ cannot import shared/ => mirrors contracts when needed (dominance_v1).
+```mermaid
+flowchart LR
+    Web["src/ (web)"] -->|"imports"| Shared["shared/contracts\nshared/trading"]
+    Web -->|"HTTP JSON envelope"| Backend["backend/"]
+    Backend -. "mirrored contracts only" .-> Shared
+    ApiFns["api/"] -. "parallel deployable" .-> Web
+    AlertsSvc["apps/backend-alerts"] -. "separate service boundary" .-> Web
 ```
 
 Rules:
@@ -163,82 +156,79 @@ Rules:
 
 ## 8) Routing Architecture
 
-### Canonical Routes
+```mermaid
+flowchart TD
+    Root["/"] --> Dashboard["/dashboard"]
+    Root --> Research["/research?view=chart"]
+    Root --> Journal["/journal?view=pending"]
+    Root --> Insights["/insights"]
+    Root --> Alerts["/alerts"]
+    Root --> Terminal["/terminal"]
+    Root --> Settings["/settings"]
 
-**Primary Routes:**
+    Chart["/chart"] --> Research
+    Replay["/replay"] --> ResearchReplay["/research?view=chart&replay=true"]
+    Watchlist["/watchlist"] --> ResearchWatchlist["/research?view=chart&panel=watchlist"]
+    Asset["/asset/:assetId"] --> ResearchAsset["/research/:assetId"]
+    Oracle["/oracle"] --> Insights
+    JournalEntry["/journal?entry=<id>"] --> JournalDetail["/journal/:entryId"]
+```
+
+### Canonical Primary Routes
+- `/dashboard`
 - `/research?view=chart&q=<ticker|solanaBase58>`
-  - `view=chart` is required and normalized automatically
-  - `q` carries the market query
-  - `/research/:assetId` preserves path segment during normalization
-  - Optional `replay=true` toggles replay mode
-  - Optional `panel=watchlist` shows watchlist panel
-
-- `/insights`
-  - Consolidated workspace for Oracle area
-  - Optional URL state: `?filter=unread`, `?mode=status`
-  - Detail route: `/insights/:insightId`
-
+- `/research/:assetId`
 - `/journal?view=pending|confirmed|archived`
-  - List filters only; UI mode (`mode=inbox|learn|timeline`) stays on `/journal`
-  - `/journal/:entryId` is the only detail route
-
+- `/journal/:entryId`
+- `/insights`
+- `/insights/:insightId`
+- `/alerts`
 - `/terminal`
-  - Standalone Trading Terminal
-  - Also available embedded in Research (feature-flagged)
+- `/settings`
 
-**Legacy Redirects:**
+### Legacy Redirects
 - `/chart` → `/research?view=chart`
 - `/replay` → `/research?view=chart&replay=true`
 - `/watchlist` → `/research?view=chart&panel=watchlist`
 - `/oracle` → `/insights`
 - `/asset/:assetId` → `/research/:assetId`
-- `/journal?entry=<id>` → `/journal/<id>`
-
-**Notes:**
-- Query parameter ordering is order-independent
-- Legacy redirects preserve existing query params
-- Canonical defaults are injected (e.g. `view=chart`)
-
----
+- `/journal?entry=<id>` → `/journal/:entryId`
+- `/learn` → `/journal?view=pending&mode=learn`
+- `/handbook` → `/journal?view=pending&mode=playbook`
+- `/settings/providers|data|privacy|experiments` → `/settings?section=...`
 
 ## 9) Reasoning Layer
 
-**Purpose:** LLM-powered reasoning for trade review, session review, board scenarios, and insight critic.
+**Purpose:** LLM-powered reasoning for trade review, session review, board scenarios, routing and ad-hoc execution.
 
-**Architecture:**
-- **Code:** `backend/src/routes/reasoning/*`, `api/reasoning/*`
-- **Offline-first:** Last valid insights cached in IndexedDB
-- **Revalidate:** Online insights are revalidated and cache updated
-- **Machine-parseable:** Strict JSON outputs validated against Zod schemas
-- **Safety:** Insight Critic is separate final step (conflicts/missing data/overreach)
+**Code:** `backend/src/routes/reasoning/*`, `backend/src/routes/reasoningRoute.ts`, `backend/src/routes/llm.ts`, parallele `api/reasoning/*`-Implementierungen.
 
 **Routes:**
 - `POST /api/reasoning/trade-review`
 - `POST /api/reasoning/session-review`
 - `POST /api/reasoning/board-scenarios`
 - `POST /api/reasoning/insight-critic`
+- `POST /api/reasoning/route`
+- `POST /api/llm/execute`
 
-**Data Contract:**
-- `ReasoningResponse<T>` with `status`, `data`, `warnings`, `confidence`
-- `ReasoningMeta` with `latency_ms`, `model`, `version`
-- `ReasoningError` for error cases
-
-**Offline Cache Key:**
-```
-{ type, referenceId, version, hash(context) }
-```
-
----
+**Characteristics:**
+- Strict JSON outputs validated against Zod schemas
+- Last valid insights cached client-side for offline-first flows
+- Insight Critic als separater finaler Safety Step
 
 ## 10) Deployment Model
 
 ### Frontend (Vercel)
-- Build: `npm run build` (Vite), output `dist/`.
-- Routing: SPA fallback rewrite to `/index.html`.
-- API: `/api/*` rewrite to external backend via `VERCEL_BACKEND_URL`.
-- SW caching headers: `sw.js` / `service-worker.js` must be `max-age=0, must-revalidate`.
+- Build: `pnpm run build`, Output `dist/`
+- Routing: SPA fallback rewrite auf `/index.html`
+- API: `/api/*` rewrite auf `https://$VERCEL_BACKEND_URL/api/$1`
+- SW caching headers: `sw.js` / `service-worker.js` mit `max-age=0, must-revalidate`
 
 ### Backend (external host, canonical)
-- Start: `node dist/backend/src/server.js` (after `pnpm -C backend build`).
-- DB: `DATABASE_URL` steuert SQLite vs Postgres.
-- Migrations: `pnpm -C backend migrate` (kontrolliert ausführen; nicht „best-effort“).
+- Start: `node dist/backend/src/server.js` nach `pnpm -C backend build`
+- DB: `DATABASE_URL` steuert SQLite vs. Postgres
+- Migrations: `pnpm -C backend migrate` (kontrolliert ausführen; nicht „best-effort“)
+
+### Parallel Deployables
+- `api/`: Vercel Functions Backend, separat deploybar, aber nicht canonical für dieses Frontend
+- `apps/backend-alerts/`: separater Alerts-Service mit eigener Railway-Konfiguration

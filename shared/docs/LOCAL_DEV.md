@@ -2,7 +2,7 @@
 Owner: Core Team
 Status: active
 Version: 1.0
-LastUpdated: 2026-02-27
+LastUpdated: 2026-05-16
 Canonical: true
 ---
 
@@ -104,5 +104,5 @@ Das `backend/` validiert Env Vars beim Start. Typische Ursache:
 ### 4) Service Worker Verhalten
 
 - Service Worker wird in Dev standardmäßig **nicht** registriert (`src/main.tsx` registriert nur in Production Builds).
-- SW Polling kann über `VITE_ENABLE_SW_POLLING="true"` aktiviert werden (Production Build).
-
+- Im aktuellen Repo gibt es **keinen** `VITE_ENABLE_SW_POLLING`-Schalter.
+- Production Builds registrieren den Worker automatisch; die Poll-Handler reagieren auf `SW_TICK`-Nachrichten.
