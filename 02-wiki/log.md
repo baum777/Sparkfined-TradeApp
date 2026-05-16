@@ -15,3 +15,4 @@
 ## [2026-05-13] risk | external deploy blocked by policy gate | local verification done but external upload pending trusted context [[packets/2026-05-13-vercel-deploy-policy-block]]
 ## [2026-05-13] apply | backend-alerts local postgres docker | compose service plus env defaults and db lifecycle scripts [[functions/backend-alerts-local-postgres-docker]]
 ## [2026-05-13] verify | backend-alerts local postgres docker | docker compose config and app tsc exit 0 [[functions/backend-alerts-local-postgres-docker]]
+## [2026-05-16] applied | Planning-Prompt Backend-API ergänzt, Backend-RootDir-Konflikt per Mirror gelöst und Drift-Test abgesichert [[reasoning-planning-api]]
