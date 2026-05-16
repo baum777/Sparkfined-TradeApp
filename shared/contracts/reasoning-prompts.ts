@@ -18,6 +18,25 @@
 
 export type JsonObject = Record<string, unknown>;
 export type ReasoningType = 'trade-review' | 'session-review' | 'board-scenarios' | 'insight-critic';
+export type PlanningType =
+  | 'feature-planning'
+  | 'refactor-planning'
+  | 'risk-assessment'
+  | 'dependency-mapping';
+
+export interface PlanningPromptInput {
+  type: PlanningType;
+  scope: string;
+  referenceId: string;
+  version: string;
+  context: {
+    current_state: string;
+    constraints: string[];
+    success_criteria: string[];
+    risk_gates: string[];
+  };
+  outputSchemaJson: string;
+}
 
 function rulesBlock(): string {
   return [
@@ -89,5 +108,46 @@ export function buildCriticPrompt(input: {
     '- Mark overreach (claims not supported by input).',
     '- Adjust confidence DOWN when issues exist; NEVER increase above 1.',
     '- Output must be strict JSON only.',
+  ].join('\n');
+}
+
+export function buildPlanningPrompt(input: PlanningPromptInput): string {
+  const riskGates = input.context.risk_gates.length > 0 ? input.context.risk_gates.join(', ') : 'none';
+
+  return [
+    `TASK: PLAN_${input.type.toUpperCase().replace(/-/g, '_')}`,
+    '',
+    'INPUT_JSON:',
+    JSON.stringify(
+      {
+        scope: input.scope,
+        referenceId: input.referenceId,
+        version: input.version,
+        context: input.context,
+      },
+      null,
+      2
+    ),
+    '',
+    'OUTPUT_SCHEMA_JSON:',
+    input.outputSchemaJson,
+    '',
+    'PLANNING_RULES:',
+    '- Output MUST be strict JSON only (no markdown, no prose).',
+    '- Structure: { plan_steps: [], risks: [], gates: [], next_action: string }',
+    '- Each step: { id, action, owner_tier, estimated_effort, validation_gate }',
+    '- Risks: classify as [p0_blocking, p1_review, p2_optional].',
+    '- Never invent data; mark unknowns via "requires_human_review" flag.',
+    '- Respect canonical boundaries: backend/ > shared/contracts/ > api/.',
+    '',
+    'DOMINANCE_LAYER_CONSTRAINTS:',
+    `- Autonomy Tier: ${input.context.risk_gates.length > 0 ? '2' : '1'} (default)`,
+    '- Golden Tasks required before merge: lint, tsc, build, test:backend',
+    `- Risk gates trigger approval workflow: ${riskGates}`,
+    '',
+    'SPARKFINED_SPECIFIC:',
+    '- Contracts in shared/contracts/ are additive-only',
+    '- HTTP boundary is JSON, not TS imports',
+    '- No prompt duplication: import from canonical source only',
   ].join('\n');
 }

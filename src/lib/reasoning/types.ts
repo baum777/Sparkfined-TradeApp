@@ -24,7 +24,8 @@ export type ReasoningType =
   | 'trade-review'
   | 'session-review'
   | 'board-scenarios'
-  | 'insight-critic';
+  | 'insight-critic'
+  | 'planning';
 
 export type ReasoningStatus = 'ok' | 'error';
 
@@ -157,6 +158,56 @@ export interface InsightCriticOnlyResult {
   report: InsightCriticReport;
 }
 
+export type PlanningType =
+  | 'feature-planning'
+  | 'refactor-planning'
+  | 'risk-assessment'
+  | 'dependency-mapping';
+
+export type PlanningRiskSeverity = 'p0_blocking' | 'p1_review' | 'p2_optional';
+export type PlanningEstimatedEffort = 'xs' | 's' | 'm' | 'l' | 'xl';
+
+export interface PlanningContext {
+  current_state: string;
+  constraints: string[];
+  success_criteria: string[];
+  risk_gates: string[];
+}
+
+export interface PlanningRequest {
+  type: PlanningType;
+  scope: string;
+  referenceId: string;
+  version: string;
+  context: PlanningContext;
+  outputSchemaJson: string;
+}
+
+export interface PlanningStep {
+  id: string;
+  action: string;
+  owner_tier: 1 | 2 | 3 | 4;
+  estimated_effort?: PlanningEstimatedEffort;
+  validation_gate: string;
+  canonical_check?: boolean;
+}
+
+export interface PlanningRisk {
+  id: string;
+  description: string;
+  severity: PlanningRiskSeverity;
+  mitigation?: string;
+}
+
+export interface PlanningResult {
+  plan_steps: PlanningStep[];
+  risks?: PlanningRisk[];
+  gates?: string[];
+  next_action: string;
+  requires_human_review?: boolean;
+  confidence: number;
+}
+
 // ─────────────────────────────────────────────────────────────
 // Requests (POST bodies)
 // ─────────────────────────────────────────────────────────────
@@ -170,5 +221,4 @@ export interface ReasoningBaseRequest {
 export interface InsightCriticRequest extends ReasoningBaseRequest {
   insight: JsonObject; // the insight to critique (strict JSON)
 }
-
 

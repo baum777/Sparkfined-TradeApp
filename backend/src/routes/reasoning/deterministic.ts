@@ -43,7 +43,7 @@ function baseCritic(seed: number) {
 }
 
 export function deterministicGenerate(
-  type: Exclude<ReasoningType, 'insight-critic'>,
+  type: Exclude<ReasoningType, 'insight-critic' | 'planning'>,
   input: {
     referenceId: string;
     version: string;
@@ -144,5 +144,4 @@ export function deterministicCritic(input: {
     report,
   };
 }
-
 

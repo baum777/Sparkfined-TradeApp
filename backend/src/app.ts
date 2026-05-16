@@ -33,6 +33,7 @@ import {
   handleReasoningSessionReview,
   handleReasoningBoardScenarios,
   handleReasoningInsightCritic,
+  handleReasoningPlanning,
   handleUsageSummary,
   handleFeedOracle,
   handleFeedPulse,
@@ -123,6 +124,7 @@ export function createApp(): Router {
     router.post('/reasoning/session-review', handleReasoningSessionReview);
     router.post('/reasoning/board-scenarios', handleReasoningBoardScenarios);
     router.post('/reasoning/insight-critic', handleReasoningInsightCritic);
+    router.post('/reasoning/planning', handleReasoningPlanning);
     router.post('/reasoning/route', handleReasoningRoute);
 
     // LLM Execute

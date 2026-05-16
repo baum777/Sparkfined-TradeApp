@@ -4,6 +4,10 @@ import type {
   InsightCriticOnlyResult,
   InsightCriticRequest,
   JsonObject,
+  PlanningRequest,
+  PlanningResult,
+  PlanningType,
+  PlanningContext,
   ReasoningBaseRequest,
   ReasoningResponse,
   ReasoningType,
@@ -197,6 +201,25 @@ export const reasoningApi = {
     await saveCached('insight-critic', { ...req, context: contextForKey }, fresh as unknown as ReasoningResponse<unknown>);
     return { response: fresh, isStale: false, cacheKey: cached.cacheKey };
   },
-};
 
+  async planning(input: {
+    type: PlanningType;
+    scope: string;
+    referenceId: string;
+    context: PlanningContext;
+    outputSchemaJson: string;
+    version?: string;
+  }): Promise<ReasoningResponse<PlanningResult>> {
+    const req: PlanningRequest = {
+      type: input.type,
+      scope: input.scope,
+      referenceId: input.referenceId,
+      version: input.version ?? REASONING_CONTRACT_VERSION,
+      context: input.context,
+      outputSchemaJson: input.outputSchemaJson,
+    };
+
+    return reasoningClient.postReasoning<PlanningRequest, PlanningResult>('/reasoning/planning', req, { retries: 2 });
+  },
+};
 

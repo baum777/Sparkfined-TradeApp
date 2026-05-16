@@ -72,4 +72,27 @@ export const insightCriticOnlyResultSchema = z.object({
   report: insightCriticReportSchema,
 });
 
+export const planningStepSchema = z.object({
+  id: z.string().min(1),
+  action: z.string().min(1),
+  owner_tier: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
+  estimated_effort: z.enum(['xs', 's', 'm', 'l', 'xl']).optional(),
+  validation_gate: z.string().min(1),
+  canonical_check: z.boolean().optional(),
+});
 
+export const planningRiskSchema = z.object({
+  id: z.string().min(1),
+  description: z.string().min(1),
+  severity: z.enum(['p0_blocking', 'p1_review', 'p2_optional']),
+  mitigation: z.string().min(1).optional(),
+});
+
+export const planningResultSchema = z.object({
+  plan_steps: z.array(planningStepSchema),
+  risks: z.array(planningRiskSchema).optional(),
+  gates: z.array(z.string()).optional(),
+  next_action: z.string().min(1),
+  requires_human_review: z.boolean().optional(),
+  confidence: z.number().min(0).max(1),
+});
