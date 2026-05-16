@@ -23,6 +23,7 @@ const envSchema = z.object({
   DATABASE_URL: z.string().default('sqlite:./.data/tradeapp.sqlite'),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
   JWT_SECRET: z.string().default('dev-secret'),
+  BACKEND_CORS_ORIGINS: z.string().optional(),
   
   // Auth
   API_KEY: z.string().optional(),
@@ -63,6 +64,7 @@ const envSchema = z.object({
   KV_REST_API_URL: z.string().optional(),
   KV_REST_API_TOKEN: z.string().optional(),
   REDIS_URL: z.string().optional(),
+  RATE_LIMIT_STORE: z.enum(['memory', 'redis']).default('memory'),
 
   // LLM Router / timeouts / retries
   LLM_ROUTER_ENABLED: z.enum(['true', 'false']).default('true').transform(v => v === 'true'),
@@ -151,6 +153,30 @@ export function getEnv(opts?: { strict?: boolean }): Env {
  */
 function validateRequiredForRuntime(env: Env): void {
   if (env.NODE_ENV === 'test') return;
+
+  if (env.NODE_ENV === 'production') {
+    const jwtSecret = env.JWT_SECRET.trim();
+    if (!jwtSecret || jwtSecret === 'dev-secret' || jwtSecret.length < 32) {
+      throw new Error(
+        'JWT_SECRET must be set, not use the dev default, and have at least 32 characters in production'
+      );
+    }
+
+    const allowedOrigins = (env.BACKEND_CORS_ORIGINS || '')
+      .split(',')
+      .map(item => item.trim())
+      .filter(Boolean);
+    if (allowedOrigins.length === 0) {
+      throw new Error('BACKEND_CORS_ORIGINS must list at least one allowed origin in production');
+    }
+
+    if (env.RATE_LIMIT_STORE !== 'redis') {
+      throw new Error('RATE_LIMIT_STORE must be set to "redis" in production');
+    }
+    if (!env.REDIS_URL?.trim()) {
+      throw new Error('REDIS_URL is required when RATE_LIMIT_STORE=redis in production');
+    }
+  }
 
   const mode = env.SERVICE_MODE;
   if (mode === 'terminal' || mode === 'full') {

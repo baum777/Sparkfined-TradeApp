@@ -61,6 +61,7 @@ export function OrderForm({ wallet, connection }: OrderFormProps) {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const amountInputRef = useRef<HTMLInputElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  const isConfirmSubmittingRef = useRef(false);
 
   // Sprint 3.1 PATCH 2: Robust editable target detection
   const isEditableTarget = useCallback((target: EventTarget | null): boolean => {
@@ -120,10 +121,15 @@ export function OrderForm({ wallet, connection }: OrderFormProps) {
   }, [canExecute]);
 
   const handleConfirmSwap = useCallback(async () => {
+    if (isConfirmSubmittingRef.current) {
+      return;
+    }
+
     if (!canExecute || !wallet.publicKey || !wallet.signTransaction) {
       return;
     }
 
+    isConfirmSubmittingRef.current = true;
     setIsConfirmOpen(false);
     setIsExecuting(true);
     try {
@@ -137,7 +143,9 @@ export function OrderForm({ wallet, connection }: OrderFormProps) {
     } catch (error) {
       console.error('Swap execution error:', error);
     } finally {
+      confirmInFlightRef.current = false;
       setIsExecuting(false);
+      isConfirmSubmittingRef.current = false;
     }
   }, [canExecute, wallet.publicKey, wallet.signTransaction, executeSwap, connection]);
 
@@ -409,4 +417,3 @@ const AdvancedSettingsAccordion = React.memo(function AdvancedSettingsAccordion(
     </Accordion>
   );
 });
-

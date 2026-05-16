@@ -11,6 +11,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
 # Copy source code
 COPY backend ./backend
+COPY shared ./shared
 COPY api ./api
 COPY apps ./apps
 
@@ -63,4 +64,4 @@ USER node
 
 # Start server
 WORKDIR /app/backend
-CMD ["node", "dist/server.js"]
+CMD ["node", "dist/backend/src/server.js"]

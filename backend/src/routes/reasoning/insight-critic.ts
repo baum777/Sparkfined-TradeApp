@@ -16,7 +16,7 @@ const insightCriticRequestSchema = z.object({
 });
 
 export async function handleReasoningInsightCritic(req: ParsedRequest, res: ServerResponse): Promise<void> {
-  rateLimiters.reasoning(req.path, req.userId);
+  await rateLimiters.reasoning(req.path, req.userId);
 
   const body = validateBody(insightCriticRequestSchema, req.body);
   const normalized = { ...body, version: body.version ?? REASONING_CONTRACT_VERSION };

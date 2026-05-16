@@ -11,6 +11,7 @@ import { taCacheCleanup } from './domain/ta/cacheRepo.js';
 import { createApp } from './app.js';
 import { logger } from './observability/logger.js';
 import { startScheduledJobs } from './jobs/scheduler.js';
+import { applyServerSecurity } from './http/serverSecurity.js';
 
 /**
  * Backend Server Entry Point
@@ -39,19 +40,7 @@ const scheduledJobs = startScheduledJobs();
 
 // Create HTTP server
 const server: HTTPServer = createServer((req, res) => {
-  // CORS headers for development
-  if (config.isDev) {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-request-id, Idempotency-Key');
-    
-    if (req.method === 'OPTIONS') {
-      res.writeHead(204);
-      res.end();
-      return;
-    }
-  }
-  
+  if (applyServerSecurity(req, res, config)) return;
   app.handle(req, res);
 });
 

@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse, IncomingHttpHeaders } from 'http';
 import { parse as parseUrl } from 'url';
-import { handleError, invalidJson, methodNotAllowed, notFound, ErrorCodes } from './error.js';
+import { AppError, handleError, invalidJson, methodNotAllowed, notFound, ErrorCodes } from './error.js';
 import { createRequestContext, setRequestIdHeader, clearRequestId } from './requestId.js';
 import { logger } from '../observability/logger.js';
 import { verifyToken, type AuthUser } from '../lib/auth/jwt.js';
@@ -24,6 +24,7 @@ export interface ParsedRequest {
   body: unknown;
   headers: IncomingHttpHeaders;
   userId: string; // Extracted from auth or 'anon'
+  authSource: 'none' | 'bearer' | 'cookie';
   user?: AuthUser;
 }
 
@@ -158,7 +159,11 @@ export class Router {
     return out;
   }
 
-  private extractAuth(req: IncomingMessage): { userId: string; user?: AuthUser } {
+  private extractAuth(req: IncomingMessage): {
+    userId: string;
+    authSource: 'none' | 'bearer' | 'cookie';
+    user?: AuthUser;
+  } {
     const authHeader = req.headers['authorization'];
     
     // Expect "Bearer <token>"
@@ -168,7 +173,7 @@ export class Router {
       if (token) {
         const user = verifyToken(token);
         if (user) {
-          return { userId: user.userId, user };
+          return { userId: user.userId, authSource: 'bearer', user };
         }
       }
     }
@@ -178,12 +183,35 @@ export class Router {
     if (cookieToken) {
       const user = verifyToken(cookieToken);
       if (user) {
-        return { userId: user.userId, user };
+        return { userId: user.userId, authSource: 'cookie', user };
       }
     }
     
     // Default to anonymous if no valid token found
-    return { userId: 'anon' };
+    return { userId: 'anon', authSource: 'none' };
+  }
+
+  private isStateChangingMethod(method: HttpMethod): boolean {
+    return method === 'POST' || method === 'PUT' || method === 'PATCH' || method === 'DELETE';
+  }
+
+  private isCsrfExemptPath(path: string): boolean {
+    return path === `${this.basePath}/auth/login` || path === `${this.basePath}/auth/register`;
+  }
+
+  private validateCsrf(req: IncomingMessage, method: HttpMethod, path: string, authSource: ParsedRequest['authSource']): void {
+    if (!this.isStateChangingMethod(method)) return;
+    if (authSource !== 'cookie') return;
+    if (this.isCsrfExemptPath(path)) return;
+
+    const cookies = this.parseCookies(req.headers['cookie']);
+    const cookieToken = cookies.csrf_token;
+    const headerRaw = req.headers['x-csrf-token'];
+    const headerToken = Array.isArray(headerRaw) ? headerRaw[0] : headerRaw;
+
+    if (!cookieToken || !headerToken || cookieToken !== headerToken) {
+      throw new AppError('Invalid CSRF token', 403, ErrorCodes.CSRF_INVALID);
+    }
   }
 
   async handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
@@ -210,7 +238,8 @@ export class Router {
       }
 
       const body = await this.parseBody(req);
-      const { userId, user } = this.extractAuth(req);
+      const { userId, authSource, user } = this.extractAuth(req);
+      this.validateCsrf(req, method, path, authSource);
 
       const parsedReq: ParsedRequest = {
         method,
@@ -220,6 +249,7 @@ export class Router {
         body,
         headers: req.headers,
         userId,
+        authSource,
         user,
       };
 

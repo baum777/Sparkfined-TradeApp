@@ -5,6 +5,7 @@
 
 import { getEnv } from '../../../config/env.js';
 import { logger } from '../../../observability/logger.js';
+import { dexTokenResponseSchema } from './schemas.js';
 
 export interface LiquidityData {
   liquidityUsd: number;
@@ -39,7 +40,12 @@ export async function fetchLiquidityData(
       return { liquidityUsd: 0 };
     }
     
-    const data = await res.json() as any;
+    const parsed = dexTokenResponseSchema.safeParse(await res.json());
+    if (!parsed.success) {
+      logger.warn('Liquidity provider response validation failed', { symbolOrAddress });
+      return { liquidityUsd: 0 };
+    }
+    const data = parsed.data;
     
     return {
       liquidityUsd: data.summary?.liquidity_usd ?? 0,
@@ -49,4 +55,3 @@ export async function fetchLiquidityData(
     return { liquidityUsd: 0 };
   }
 }
-

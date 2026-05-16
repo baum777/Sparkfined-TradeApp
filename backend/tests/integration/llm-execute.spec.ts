@@ -143,6 +143,8 @@ describeIfDbAndNet('POST /api/llm/execute (router + provider)', () => {
         // Ensure compressed prompt is used, and secret context is NOT sent.
         const sent = JSON.stringify(body);
         expect(sent).toContain('COMPRESSED_PROMPT_ONLY');
+        expect(sent).toContain('<BEGIN_UNTRUSTED_USER_INPUT>');
+        expect(sent).toContain('<END_UNTRUSTED_USER_INPUT>');
         expect(sent).not.toContain('SECRET_CONTEXT_SHOULD_NOT_LEAK');
 
         return jsonResponse({
