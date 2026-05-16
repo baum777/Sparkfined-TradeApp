@@ -1,6 +1,5 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { createServer, type Server } from 'http';
-import { createApp } from '../../src/app';
+import { describe, it, expect } from 'vitest';
+import { createAppFetch } from '../helpers/httpClient';
  
 async function readJson(res: Response): Promise<any> {
   const text = await res.text();
@@ -12,30 +11,10 @@ async function readJson(res: Response): Promise<any> {
 }
  
 describe('Theme Group 5: Missing/Expected Endpoints (Feeds & Signals)', () => {
-  let server: Server;
-  let baseUrl: string;
- 
-  beforeAll(async () => {
-    const app = createApp();
-    server = createServer((req, res) => app.handle(req, res));
- 
-    await new Promise<void>((resolve) => {
-      server.listen(0, '127.0.0.1', () => resolve());
-    });
- 
-    const addr = server.address();
-    if (!addr || typeof addr === 'string') throw new Error('Failed to bind test server');
-    baseUrl = `http://127.0.0.1:${addr.port}`;
-  });
- 
-  afterAll(async () => {
-    await new Promise<void>((resolve, reject) => {
-      server.close((err) => (err ? reject(err) : resolve()));
-    });
-  });
+  const request = createAppFetch();
  
   it('GET /api/feed/oracle exists and returns canonical envelope', async () => {
-    const res = await fetch(`${baseUrl}/api/feed/oracle?asset=SOL`);
+    const res = await request('/api/feed/oracle?asset=SOL');
     const body = await readJson(res);
  
     expect(res.status).toBe(200);
@@ -45,7 +24,7 @@ describe('Theme Group 5: Missing/Expected Endpoints (Feeds & Signals)', () => {
   });
  
   it('GET /api/feed/pulse exists and returns canonical envelope', async () => {
-    const res = await fetch(`${baseUrl}/api/feed/pulse?asset=So11111111111111111111111111111111111111112`);
+    const res = await request('/api/feed/pulse?asset=So11111111111111111111111111111111111111112');
     const body = await readJson(res);
  
     expect(res.status).toBe(200);
@@ -59,7 +38,7 @@ describe('Theme Group 5: Missing/Expected Endpoints (Feeds & Signals)', () => {
   });
 
   it('GET /api/feed/pulse resolves ticker-like assets', async () => {
-    const res = await fetch(`${baseUrl}/api/feed/pulse?asset=SOL`);
+    const res = await request('/api/feed/pulse?asset=SOL');
     const body = await readJson(res);
 
     expect(res.status).toBe(200);
@@ -72,7 +51,7 @@ describe('Theme Group 5: Missing/Expected Endpoints (Feeds & Signals)', () => {
   });
 
   it('GET /api/feed/pulse invalid asset returns canonical validation error', async () => {
-    const res = await fetch(`${baseUrl}/api/feed/pulse?asset=not$valid`);
+    const res = await request('/api/feed/pulse?asset=not$valid');
     const body = await readJson(res);
 
     expect(res.status).toBe(400);
@@ -81,7 +60,7 @@ describe('Theme Group 5: Missing/Expected Endpoints (Feeds & Signals)', () => {
   });
 
   it('GET /api/feed/pulse unknown ticker returns NOT_FOUND', async () => {
-    const res = await fetch(`${baseUrl}/api/feed/pulse?asset=ZZZZZZ`);
+    const res = await request('/api/feed/pulse?asset=ZZZZZZ');
     const body = await readJson(res);
 
     expect(res.status).toBe(404);
@@ -90,7 +69,7 @@ describe('Theme Group 5: Missing/Expected Endpoints (Feeds & Signals)', () => {
   });
  
   it('GET /api/signals/unified exists and returns canonical envelope', async () => {
-    const res = await fetch(`${baseUrl}/api/signals/unified?asset=SOL`);
+    const res = await request('/api/signals/unified?asset=SOL');
     const body = await readJson(res);
  
     expect(res.status).toBe(200);
@@ -101,7 +80,7 @@ describe('Theme Group 5: Missing/Expected Endpoints (Feeds & Signals)', () => {
   });
  
   it('GET /api/market/daily-bias aliases oracle daily feed', async () => {
-    const res = await fetch(`${baseUrl}/api/market/daily-bias`);
+    const res = await request('/api/market/daily-bias');
     const body = await readJson(res);
  
     expect(res.status).toBe(200);
@@ -112,7 +91,7 @@ describe('Theme Group 5: Missing/Expected Endpoints (Feeds & Signals)', () => {
   });
  
   it('GET /api/signals/unified without asset returns canonical error envelope', async () => {
-    const res = await fetch(`${baseUrl}/api/signals/unified`);
+    const res = await request('/api/signals/unified');
     const body = await readJson(res);
  
     expect(res.status).toBe(400);
@@ -122,8 +101,7 @@ describe('Theme Group 5: Missing/Expected Endpoints (Feeds & Signals)', () => {
   });
 
   it('GET /api/terminal/processes returns 404 (Research Terminal removed)', async () => {
-    const res = await fetch(`${baseUrl}/api/terminal/processes`);
+    const res = await request('/api/terminal/processes');
     expect(res.status).toBe(404);
   });
 });
-

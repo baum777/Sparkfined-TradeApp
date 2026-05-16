@@ -1,7 +1,6 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { createServer, type Server } from 'http';
-import { createApp } from '../../src/app';
+import { describe, it, expect } from 'vitest';
 import { signToken } from '../../src/lib/auth/jwt';
+import { createAppFetch } from '../helpers/httpClient';
 
 async function readJson(res: Response): Promise<any> {
   const text = await res.text();
@@ -13,37 +12,14 @@ async function readJson(res: Response): Promise<any> {
 }
 
 describe('Journal v1 Contract (Diary/Reflection)', () => {
-  let server: Server;
-  let baseUrl: string;
-  let authHeader: string;
-
-  beforeAll(async () => {
-    const app = createApp();
-    server = createServer((req, res) => app.handle(req, res));
-
-    await new Promise<void>((resolve) => {
-      server.listen(0, '127.0.0.1', () => resolve());
-    });
-
-    const addr = server.address();
-    if (!addr || typeof addr === 'string') throw new Error('Failed to bind test server');
-    baseUrl = `http://127.0.0.1:${addr.port}`;
-
-    // Provide a valid JWT for protected endpoints.
-    authHeader = `Bearer ${signToken({ userId: 'test-user-contract', tier: 'pro' })}`;
-  });
-
-  afterAll(async () => {
-    await new Promise<void>((resolve, reject) => {
-      server.close((err) => (err ? reject(err) : resolve()));
-    });
-  });
+  const request = createAppFetch();
+  const authHeader = `Bearer ${signToken({ userId: 'test-user-contract', tier: 'pro' })}`;
 
   it('POST /api/journal is idempotent by Idempotency-Key', async () => {
     const key = 'idem-test-key-1';
     const payload = { summary: 'Hello diary' };
 
-    const res1 = await fetch(`${baseUrl}/api/journal`, {
+    const res1 = await request('/api/journal', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -66,7 +42,7 @@ describe('Journal v1 Contract (Diary/Reflection)', () => {
     expect(body1.data).not.toHaveProperty('confirmData');
     expect(body1.data).not.toHaveProperty('archiveData');
 
-    const res2 = await fetch(`${baseUrl}/api/journal`, {
+    const res2 = await request('/api/journal', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -82,7 +58,7 @@ describe('Journal v1 Contract (Diary/Reflection)', () => {
     expect(body2).toHaveProperty('data');
     expect(body2.data.id).toBe(body1.data.id);
 
-    const listRes = await fetch(`${baseUrl}/api/journal`, {
+    const listRes = await request('/api/journal', {
       headers: { Authorization: authHeader },
     });
     const listBody = await readJson(listRes);
@@ -97,7 +73,7 @@ describe('Journal v1 Contract (Diary/Reflection)', () => {
   });
 
   it('confirm/archive/restore accept empty bodies and follow timestamp rules', async () => {
-    const createRes = await fetch(`${baseUrl}/api/journal`, {
+    const createRes = await request('/api/journal', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -111,7 +87,7 @@ describe('Journal v1 Contract (Diary/Reflection)', () => {
     expect(created).toHaveProperty('status', 'ok');
     const id = created.data.id as string;
 
-    const confirmRes = await fetch(`${baseUrl}/api/journal/${id}/confirm`, {
+    const confirmRes = await request(`/api/journal/${id}/confirm`, {
       method: 'POST',
       headers: { Authorization: authHeader },
     });
@@ -123,7 +99,7 @@ describe('Journal v1 Contract (Diary/Reflection)', () => {
     expect(confirmBody.data).toHaveProperty('confirmedAt');
     expect(confirmBody.data).not.toHaveProperty('archivedAt');
 
-    const archiveRes = await fetch(`${baseUrl}/api/journal/${id}/archive`, {
+    const archiveRes = await request(`/api/journal/${id}/archive`, {
       method: 'POST',
       headers: { Authorization: authHeader },
     });
@@ -135,7 +111,7 @@ describe('Journal v1 Contract (Diary/Reflection)', () => {
     // confirmedAt must only exist when status === "confirmed"
     expect(archiveBody.data).not.toHaveProperty('confirmedAt');
 
-    const restoreRes = await fetch(`${baseUrl}/api/journal/${id}/restore`, {
+    const restoreRes = await request(`/api/journal/${id}/restore`, {
       method: 'POST',
       headers: { Authorization: authHeader },
     });
@@ -150,7 +126,7 @@ describe('Journal v1 Contract (Diary/Reflection)', () => {
 
   it('invalid transitions return 409 INVALID_TRANSITION', async () => {
     // confirm after archive => invalid
-    const createRes = await fetch(`${baseUrl}/api/journal`, {
+    const createRes = await request('/api/journal', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -163,16 +139,16 @@ describe('Journal v1 Contract (Diary/Reflection)', () => {
     const id = created.data.id as string;
 
     // Confirm first; user archive of pending is invalid.
-    await fetch(`${baseUrl}/api/journal/${id}/confirm`, {
+    await request(`/api/journal/${id}/confirm`, {
       method: 'POST',
       headers: { Authorization: authHeader },
     });
-    await fetch(`${baseUrl}/api/journal/${id}/archive`, {
+    await request(`/api/journal/${id}/archive`, {
       method: 'POST',
       headers: { Authorization: authHeader },
     });
 
-    const badConfirmRes = await fetch(`${baseUrl}/api/journal/${id}/confirm`, {
+    const badConfirmRes = await request(`/api/journal/${id}/confirm`, {
       method: 'POST',
       headers: { Authorization: authHeader },
     });
@@ -182,7 +158,7 @@ describe('Journal v1 Contract (Diary/Reflection)', () => {
     expect(badConfirmBody.error).toHaveProperty('code', 'INVALID_TRANSITION');
 
     // restore on confirmed => invalid
-    const createRes2 = await fetch(`${baseUrl}/api/journal`, {
+    const createRes2 = await request('/api/journal', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -194,11 +170,11 @@ describe('Journal v1 Contract (Diary/Reflection)', () => {
     const created2 = await readJson(createRes2);
     const id2 = created2.data.id as string;
 
-    await fetch(`${baseUrl}/api/journal/${id2}/confirm`, {
+    await request(`/api/journal/${id2}/confirm`, {
       method: 'POST',
       headers: { Authorization: authHeader },
     });
-    const badRestoreRes = await fetch(`${baseUrl}/api/journal/${id2}/restore`, {
+    const badRestoreRes = await request(`/api/journal/${id2}/restore`, {
       method: 'POST',
       headers: { Authorization: authHeader },
     });
@@ -208,4 +184,3 @@ describe('Journal v1 Contract (Diary/Reflection)', () => {
     expect(badRestoreBody.error).toHaveProperty('code', 'INVALID_TRANSITION');
   });
 });
-

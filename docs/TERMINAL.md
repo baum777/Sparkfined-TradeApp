@@ -2,158 +2,144 @@
 Owner: Trading Terminal Team
 Status: active
 Version: 1.0
-LastUpdated: 2026-02-27
+LastUpdated: 2026-05-16
 Canonical: true
 ---
 
 # Trading Terminal
 
-**Implementation Status:** ✅ Phase 1 Complete + Research Integration (Feature-Flagged)  
-**Last Updated:** 2024-12-19
-
----
+**Implementation Status:** ✅ Phase 1 Complete + Research Integration (Feature-Flagged)
 
 ## Overview
 
 The Trading Terminal provides non-custodial Solana swap execution with:
-- Jupiter integration for routing
+- Jupiter integration for quote + swap building
 - Fee engine with tier-based reduction
 - Race-safe quote fetching
 - Stale quote protection
-- Safety warnings (slippage, priority fee)
+- Safety warnings for slippage and priority fee
 
 **Routes:**
 - Standalone: `/terminal`
-- Embedded in Research: `/research` (feature-flagged via `VITE_RESEARCH_EMBED_TERMINAL`)
-
----
+- Embedded in Research: `/research?view=chart...` when `VITE_RESEARCH_EMBED_TERMINAL="true"`
 
 ## Architecture
+
+```mermaid
+flowchart LR
+    TerminalRoute["/terminal -> TradingShell"] --> Shell["TerminalShell"]
+    ResearchRoute["/research?view=chart..."] -. "feature flag" .-> Sync["ResearchTerminalSync"]
+    Sync --> Store["terminalStore"]
+    Discover["DiscoverOverlay"] --> Store
+    Shell --> Pair["PairSelector + Discover trigger"]
+    Pair --> Store
+    Shell --> Chart["ChartPanel\nlightweight-charts + seeded candles"]
+    Shell --> Exec["ExecutionPanel / OrderForm"]
+    Store --> Chart
+    Store --> Exec
+    Exec --> Quote["quoteService\nGET /api/quote"]
+    Exec --> Swap["swapService\nPOST /api/swap"]
+    Quote --> Backend["canonical backend /api"]
+    Swap --> Backend
+    Backend --> Jupiter["Jupiter provider"]
+    Exec --> Wallet["Wallet Adapter + Solana connection"]
+```
 
 ### Components
 
 **TerminalShell** (`src/components/terminal/TerminalShell.tsx`)
-- Top Bar: Wallet Connect + PairSelector + Discover Button
-- Main: ChartPanel (left) + ExecutionPanel (right, w-96)
-- Bottom: TxStatusToast (global notifications)
+- Top bar with `WalletMultiButton`, `PairSelector` and Discover trigger.
+- Main layout: `ChartPanel` + `ExecutionPanel`.
+- Global `TxStatusToast` for send/confirm feedback.
 
 **ExecutionPanel** (`src/components/terminal/ExecutionPanel.tsx`)
-- OrderForm (Buy/Sell toggle, Amount input, Slippage, Priority Fee)
-- FeePreviewCard (Expected Out, Min Out, Fee, Price Impact)
+- Hosts `OrderForm`, fee preview, warnings and execute action.
+- Reads and mutates `terminalStore`.
 
 **ChartPanel** (`src/components/terminal/ChartPanel.tsx`)
-- Currently: Placeholder (shows pair label)
-- Props: `baseMint`, `quoteMint`
-- Ready for chart library integration
+- Uses `lightweight-charts`.
+- Renders seeded mock candles per `baseMint/quoteMint` pair.
+- Shows an empty-state card when no pair is selected.
 
 **EmbeddedTerminal** (`src/components/terminal/EmbeddedTerminal.tsx`)
-- Wrapper for embedding in Research tab
-- No TopBar (Wallet/PairSelector removed)
-- Responsive: `flex-col` on mobile, `flex-row` on desktop
+- Reuses the same store and execution logic as standalone Terminal.
+- Removes the top bar and is wrapped by a `Collapsible` in Research.
+- Layout is `flex-col` on mobile and `flex-row` on desktop.
 
 ### State Management
 
 **TerminalStore** (`src/lib/state/terminalStore.ts`)
-- Zustand store with:
-  - `pair: TerminalPair | null`
-  - `side: 'buy' | 'sell'`
-  - `amount: TerminalAmountState`
-  - `slippageBps: number`
-  - `priorityFee: { enabled: boolean; microLamports?: number }`
-  - `feeTier: FeeTier`
-  - `quote: TerminalQuoteState`
-  - `tx: TerminalTxState`
+- Core inputs: `pair`, `side`, `amount`, `slippageBps`, `priorityFee`, `feeTier`
+- Derived/runtime state: `quote`, `tx`, `balances`
+- Key actions: `setPair()`, `setSide()`, `setAmountValue()`, `fetchQuote()`, `executeSwap()`, `fetchBalances()`
 
-**Key Actions:**
-- `setPair()` - Sets pair and triggers quote fetch
-- `setSide()` - Sets buy/sell side
-- `setAmountValue()` - Sets amount input
-- `executeSwap()` - Executes swap transaction
-
-**Race-Safe Quote Fetching:**
-- `requestId` sequencing prevents out-of-order responses
-- `scheduledSeq` marks in-flight responses as obsolete
-- 400ms debounce prevents excessive API calls
-- 25s stale quote guard
-
----
+**Quote Fetch Strategy**
+- `requestId` sequencing drops out-of-order responses.
+- `scheduleQuoteFetch()` debounces requests by 400 ms.
+- Successful quotes expire after 25 seconds.
+- `executeSwap()` snapshots the current inputs before requesting or reusing a quote.
 
 ## Research Integration
 
 ### Feature Flag
 
 **`VITE_RESEARCH_EMBED_TERMINAL`** (default: `false`)
-- When `true`: Trading Terminal appears as collapsible drawer in Research tab
-- When `false`: Research tab unchanged, Terminal only available at `/terminal`
+- `true`: Research renders a collapsible Embedded Terminal below the chart workspace.
+- `false`: Terminal remains available only at `/terminal`.
 
 ### One-Way Sync
 
 **ResearchTerminalSync** (`src/components/Research/ResearchTerminalSync.tsx`)
-- Syncs `selectedSymbol` (Research) → `terminalStore.setPair()` (Terminal)
-- Uses `resolveSymbolToMint()` to convert symbols to mint addresses
-- Supported symbols: SOL, USDC, USDT, mSOL, BONK
-- Guards: Skips if symbol→mint mapping fails or pair already set
+- Syncs `selectedSymbol` from Research into `terminalStore.setPair()`.
+- Uses `resolveSymbolToMint()` and skips unresolved or already-synced pairs.
+- Current well-known mint coverage is intentionally limited.
 
-**Symbol → Mint Resolver** (`src/lib/trading/symbolResolver.ts`)
-- Converts trading symbols to Solana mint addresses
-- Well-known mints only (no Jupiter registry lookup in MVP)
-- Returns `null` for unknown symbols (no partial behavior)
+### Research Layout
 
-### Layout
-
-**Bottom Drawer Pattern:**
-```
-┌─────────────────────────────────────────┐
-│ ChartTopBar                             │
-├─────────────────────────────────────────┤
-│ Chart Canvas (Research)                 │
-├─────────────────────────────────────────┤
-│ [▼ Trading Terminal] (Collapsible)     │
-├─────────────────────────────────────────┤
-│ ┌─────────────────────────────────────┐ │
-│ │ ChartPanel + ExecutionPanel         │ │
-│ └─────────────────────────────────────┘ │
-└─────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    Top["ChartTopBar + MarketsBanner + Watchlist controls"] --> Canvas["ChartCanvas / Chart empty state"]
+    Canvas --> Feed["ChartFeedPanel + BottomCardsCarousel"]
+    Feed --> Trigger["Collapsible trigger: Trading Terminal"]
+    Trigger --> Embedded["EmbeddedTerminal\nChartPanel + ExecutionPanel"]
 ```
 
----
+**Observed:** The Research terminal drawer is **closed by default** and only rendered when the feature flag is enabled.
 
 ## Execution Flow
 
-### 1. Pair Selection
-- User selects pair via PairSelector or Discover Overlay
-- `terminalStore.setPair()` called
-- Quote fetch scheduled (400ms debounce)
+```mermaid
+sequenceDiagram
+    participant User
+    participant UI as Terminal UI
+    participant Store as terminalStore
+    participant Quote as quoteService
+    participant Swap as swapService
+    participant API as backend /api
+    participant Jupiter
+    participant Wallet
 
-### 2. Quote Fetching
-- `fetchQuote()` validates inputs (pair, amount, slippage, fee)
-- Calls `/api/quote` with parameters
-- Updates `quote` state (loading → success/error)
-- Stale check: 25s TTL, force fetch if stale
+    User->>UI: Select pair or click token in Discover
+    UI->>Store: setPair()
+    Store-->>Store: debounce 400 ms
+    Store->>Quote: getQuote(params)
+    Quote->>API: GET /api/quote
+    API->>Jupiter: quote request
+    Jupiter-->>API: provider quote
+    API-->>Quote: { status:"ok", data }
+    Quote-->>Store: quote success
 
-### 3. Order Configuration
-- User sets side (buy/sell)
-- User sets amount (quote currency for buy, base for sell)
-- User sets slippage (default 50bps, warning at >500bps)
-- User sets priority fee (optional, warning at >50k microLamports)
-
-### 4. Swap Execution
-- User clicks "Buy" or "Sell"
-- `executeSwap()` called with wallet + connection
-- **Input Snapshot:** State captured at execution start (prevents drift)
-- **Fresh Quote Check:** Ensures quote is not stale
-- Transaction built via `/api/swap`
-- Transaction simulated (best-effort, RPC errors ignored)
-- Transaction signed by wallet
-- Transaction sent with retry logic (maxRetries: 3)
-- Transaction confirmed with blockhash validation
-
-### 5. Confirmation
-- TxStatusToast shows success/failure
-- Explorer link provided for successful transactions
-- Error messages displayed for failures
-
----
+    User->>UI: Execute buy / sell
+    UI->>Store: executeSwap()
+    Store->>Swap: POST /api/swap (+ providerQuote)
+    Swap->>API: build swap transaction
+    API->>Jupiter: swap transaction request
+    Jupiter-->>API: base64 transaction
+    API-->>Swap: { status:"ok", data }
+    Swap-->>Store: swapTransactionBase64
+    Store->>Wallet: sign + send + confirm
+    Wallet-->>UI: signature or error
+```
 
 ## Fee Engine
 
@@ -167,124 +153,84 @@ The Trading Terminal provides non-custodial Solana swap execution with:
 | hardII | 30 | Hard lock tier II |
 | genesis | 20 | Genesis tier |
 
-**Current Implementation:**
-- Frontend shows `free` tier (65 bps) by default
-- Backend may apply tier reduction based on lock status
-- Fee calculation: Round DOWN to prevent overcharging
-
-### Fee Calculation
+**Current Implementation**
+- Frontend starts with `free` tier.
+- Backend may reduce the effective fee tier based on lock status.
+- Fee calculation uses integer math and rounds down.
 
 ```typescript
 feeAmount = (notionalBaseUnits * feeBps) / 10000n
 ```
 
-**Important:** Integer math, rounds down (prevents overcharging).
-
----
-
 ## Safety Features
 
 ### Slippage Warning
-- **Threshold:** >500 bps (5%)
-- **Display:** Yellow warning box below SlippageSelector
-- **Message:** "High slippage tolerance - You may receive significantly less than expected"
-- **Non-blocking:** Does not prevent swap execution
+- Threshold: `> 500` bps (5%)
+- Non-blocking warning below the slippage selector
 
 ### Priority Fee Warning
-- **Threshold:** >50,000 microLamports (0.05 SOL)
-- **Display:** Yellow warning box below PriorityFeeToggle
-- **Message:** "High priority fee - This will significantly increase transaction costs"
-- **Non-blocking:** Does not prevent swap execution
+- Threshold: `> 50_000` microLamports
+- Non-blocking warning below the priority fee control
 
 ### Error Boundaries
-- Terminal page wrapped in ErrorBoundary
-- Research embedded terminal wrapped in ErrorBoundary
-- Fallback UI with error ID, reset, and reload actions
-
----
-
-## Testing Checklist
-
-### Manual Verification
-
-1. **Standalone Terminal:**
-   - [ ] Navigate to `/terminal`
-   - [ ] Wallet connects successfully
-   - [ ] Pair selector works (SOL/USDC, USDT/USDC, mSOL/USDC)
-   - [ ] Discover button opens overlay
-   - [ ] Quote loads after pair selection
-   - [ ] Swap executes successfully
-
-2. **Research Integration (if feature enabled):**
-   - [ ] Navigate to `/research?q=SOL`
-   - [ ] Trading Terminal drawer opens
-   - [ ] Terminal shows SOL/USDC pair (via sync)
-   - [ ] Wallet connects in embedded terminal
-   - [ ] Swap executes from Research tab
-   - [ ] `/terminal` route still works unchanged
-
-3. **Safety Warnings:**
-   - [ ] Set slippage to 10% → warning appears
-   - [ ] Set priority fee to 100k microLamports → warning appears
-   - [ ] Swap still executable with warnings
-
-4. **Error Handling:**
-   - [ ] Force error in Terminal → fallback appears
-   - [ ] Reset button works (closes overlays)
-   - [ ] Reload button works
-
----
-
-## Environment Variables
-
-See `shared/docs/ENVIRONMENT.md` for complete list.
-
-**Terminal-Specific:**
-- `VITE_SOLANA_CLUSTER` - devnet | mainnet-beta
-- `VITE_SOLANA_RPC_URL` - Custom RPC endpoint (optional)
-- `VITE_RESEARCH_EMBED_TERMINAL` - Enable Research integration (default: false)
-
----
+- `TradingShell` wraps standalone Terminal in `ErrorBoundary`.
+- Research embeds the terminal inside its own guarded surface.
+- Reset closes overlays before re-render.
 
 ## API Endpoints
 
-**Quote:**
-```
+**Quote**
+```text
 GET /api/quote
 Query: baseMint, quoteMint, side, amount, amountMode, slippageBps, feeBps, priorityFeeEnabled, priorityFeeMicroLamports
 Response: TerminalQuoteData
 ```
 
-**Swap:**
-```
+**Swap**
+```text
 POST /api/swap
 Body: { publicKey, baseMint, quoteMint, side, amount, amountMode, slippageBps, feeBps, priorityFee, providerQuote }
-Response: { swapTransactionBase64, lastValidBlockHeight }
+Response: { swapTransactionBase64, lastValidBlockHeight?, prioritizationFeeLamports? }
 ```
 
----
+## Testing Checklist
+
+1. Standalone Terminal:
+   - Navigate to `/terminal`
+   - Wallet connects successfully
+   - Pair selector works
+   - Discover overlay opens
+   - Quote loads after pair selection
+
+2. Research Integration (feature enabled):
+   - Navigate to `/research?view=chart&q=SOL`
+   - Open the Trading Terminal drawer
+   - Confirm `SOL/USDC` sync via `ResearchTerminalSync`
+   - Execute quote + swap flow without breaking `/terminal`
+
+3. Safety and Error Handling:
+   - Raise slippage above 5% and confirm warning
+   - Enable high priority fee and confirm warning
+   - Force an error path and verify boundary/reset behavior
 
 ## Known Limitations
 
-1. **Symbol Coverage:** Only well-known mints supported (SOL, USDC, USDT, mSOL, BONK)
-   - **Workaround:** User can set pair manually via Discover Overlay
+1. **Chart data is synthetic**
+   Current `ChartPanel` uses seeded mock candles, not live market candles.
 
-2. **ChartPanel:** Placeholder (not implemented)
-   - **Workaround:** Research chart remains functional above terminal
+2. **Symbol resolver is intentionally narrow**
+   Embedded Research sync only resolves a well-known symbol subset.
 
-3. **Fee Tier Selection:** Frontend shows only `free` tier
-   - **Note:** Backend may apply tier reduction based on lock status
+3. **Fee tier selection is not user-configurable**
+   Frontend defaults to `free`; higher tiers are backend-driven.
 
-4. **Priority Fee Input:** No UI for custom microLamports value
-   - **Note:** Default 5k microLamports used when enabled
-
----
+4. **Priority fee UI is coarse-grained**
+   Users can enable priority fees, but there is no full expert editor for arbitrary microLamports values.
 
 ## Related Documentation
 
-- [Architecture](../docs/ARCHITECTURE.md) - System architecture
-- [Discover](../docs/DISCOVER.md) - Discover overlay integration
-- [Deployment](../docs/DEPLOYMENT.md) - Feature flags, monitoring
-- [Security](../docs/SECURITY.md) - Non-custodial constraints
-- [QA](../docs/QA.md) - Testing procedures
-
+- [Architecture](./ARCHITECTURE.md)
+- [Discover](./DISCOVER.md)
+- [Deployment](./DEPLOYMENT.md)
+- [Security](./SECURITY.md)
+- [QA](./QA.md)

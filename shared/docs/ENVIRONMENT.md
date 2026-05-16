@@ -2,7 +2,7 @@
 Owner: DevOps Team
 Status: active
 Version: 1.0
-LastUpdated: 2026-02-27
+LastUpdated: 2026-05-16
 Canonical: true
 ---
 
@@ -25,14 +25,16 @@ Ziel: Vollständige Liste aller im Repo **referenzierten** Environment Variables
 
 | Variable | Secret | Required | Default | Zweck | Verwendet in |
 |---|---:|---:|---|---|---|
-| `VITE_API_URL` | ❌ | ❌ | `"/api"` | API Base URL für Frontend + SW | `src/services/api/client.ts`, `src/services/reasoning/client.ts`, `src/sw/sw-alerts.ts`, `src/sw/sw-oracle.ts` |
+| `VITE_API_URL` | ❌ | ❌ | `"/api"` in Dev, sonst same-origin root | API Base URL für Frontend + SW | `src/services/api/client.ts`, `src/services/reasoning/client.ts`, `src/sw/sw-alerts.ts`, `src/sw/sw-oracle.ts` |
 | `VITE_ENABLE_DEV_NAV` | ❌ | ❌ | `"false"` (in `.env.example`) | Dev-Navigation sichtbar machen | `src/config/navigation.ts` |
 | `VITE_ENABLE_ANALYTICS` | ❌ | ❌ | `"false"` (in `.env.example`) | Analytics Toggle (Nutzung im Code aktuell **unklar**) | **TODO:** tatsächliche Verwendung im Code verifizieren |
 | `VITE_APP_VERSION` | ❌ | ❌ | `"0.1.0"` (in `.env.example`) | UI Versionsanzeige (Nutzung im Code aktuell **unklar**) | **TODO:** tatsächliche Verwendung im Code verifizieren |
-| `VITE_SENTRY_DSN` | ❌ | ❌ | — | Sentry DSN (nur sinnvoll, wenn im Code integriert) | **TODO:** tatsächliche Verwendung im Code verifizieren |
+| `VITE_SENTRY_DSN` | ❌ | ❌ | — | Sentry DSN für Initialisierung von Error Tracking, Tracing und Replay | `src/lib/monitoring/sentry.ts` |
 | `VITE_ANALYTICS_ID` | ❌ | ❌ | — | Analytics Provider ID (nur sinnvoll, wenn integriert) | **TODO:** tatsächliche Verwendung im Code verifizieren |
-| `VITE_ENABLE_AUTH` | ❌ | ❌ | `"false"` (implizit) | Schaltet Auth‑Features in UI frei. Aktuell bewusst deaktiviert. | `src/config/features.ts`, `src/services/api/client.ts`, `src/sw/*`, `src/main.tsx` |
-| `VITE_ENABLE_SW_POLLING` | ❌ | ❌ | `"false"` (implizit) | Aktiviert periodische `SW_TICK` Nachrichten in Production Build | `src/main.tsx` |
+| `VITE_ENABLE_AUTH` | ❌ | ❌ | `"false"` (implizit) | Schaltet Auth‑Features in UI frei. Aktuell bewusst deaktiviert. | `src/config/features.ts`, `src/services/api/client.ts`, `src/sw/*` |
+| `VITE_RESEARCH_EMBED_TERMINAL` | ❌ | ❌ | `"false"` (implizit) | Aktiviert das Embedded Terminal im Research-Workspace | `src/lib/env.ts`, `src/pages/Research.tsx`, `src/lib/monitoring/sentry.ts` |
+| `VITE_SOLANA_CLUSTER` | ❌ | ❌ | `mainnet-beta` | Solana Cluster-Auswahl für Wallet + RPC | `src/lib/env.ts`, `src/lib/solana/connection.ts` |
+| `VITE_SOLANA_RPC_URL` | ❌ | ❌ | cluster-basiert | Optionaler RPC Override für Solana | `src/lib/env.ts`, `src/lib/solana/connection.ts` |
 | `VITE_OFFLINE_QUEUE_MAX_RETRIES` | ❌ | ❌ | `5` | Offline Queue Retry Policy | `src/services/sync/queuePolicy.ts` |
 | `VITE_OFFLINE_QUEUE_BASE_DELAY_MS` | ❌ | ❌ | `1000` | Offline Queue Backoff Basis (ms) | `src/services/sync/queuePolicy.ts` |
 | `VITE_OFFLINE_QUEUE_MAX_JITTER_MS` | ❌ | ❌ | `250` | Offline Queue Jitter (ms) | `src/services/sync/queuePolicy.ts` |
@@ -158,4 +160,3 @@ Quelle: `apps/backend-alerts/src/env.ts` (Zod Schema).
 | `EVENT_RETENTION_DAYS` | ❌ | ❌ | `30` | Retention |
 | `SSE_HEARTBEAT_MS` | ❌ | ❌ | `20000` | SSE Heartbeat |
 | `ERROR_DEDUPE_MINUTES` | ❌ | ❌ | `10` | Error dedupe window |
-

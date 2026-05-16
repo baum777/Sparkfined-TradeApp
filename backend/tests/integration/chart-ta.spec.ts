@@ -1,10 +1,9 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
-import { createServer, type Server } from 'http';
-import { createApp } from '../../src/app';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { resetEnvCache } from '../../src/config/env';
 import type { InputCandle } from '../../src/domain/solChart/types';
 import { buildChartFeaturePackWithCacheMeta } from '../../src/domain/solChart/builder';
 import { generateSetupCardsFromChart } from '../../src/domain/solChartAnalysis/setupGenerator';
+import { createAppFetch } from '../helpers/httpClient';
 
 async function readJson(res: Response): Promise<any> {
   const text = await res.text();
@@ -36,27 +35,7 @@ function mkTrendUpCandles(count = 80, startTs = 1_700_000_000_000, stepMs = 60_0
 }
 
 describe('POST /api/chart/ta (Chart → Setups → Onchain → Gates → Sort → Response)', () => {
-  let server: Server;
-  let baseUrl: string;
-
-  beforeAll(async () => {
-    const app = createApp();
-    server = createServer((req, res) => app.handle(req, res));
-
-    await new Promise<void>((resolve) => {
-      server.listen(0, '127.0.0.1', () => resolve());
-    });
-
-    const addr = server.address();
-    if (!addr || typeof addr === 'string') throw new Error('Failed to bind test server');
-    baseUrl = `http://127.0.0.1:${addr.port}`;
-  });
-
-  afterAll(async () => {
-    await new Promise<void>((resolve, reject) => {
-      server.close((err) => (err ? reject(err) : resolve()));
-    });
-  });
+  const request = createAppFetch();
 
   beforeEach(() => {
     process.env.HELIUS_API_KEY = 'test-helius-api-key';
@@ -79,7 +58,6 @@ describe('POST /api/chart/ta (Chart → Setups → Onchain → Gates → Sort �
     const setupsBase = generateSetupCardsFromChart(chart, { tier: 'free', taskKind: 'chart_setups' });
     expect(setupsBase.length).toBeGreaterThan(0);
 
-    const realFetch = globalThis.fetch;
     let enhancedCalls = 0;
     const fetchMock = vi.fn(async (url: any, init?: any) => {
       const u = String(url);
@@ -100,12 +78,11 @@ describe('POST /api/chart/ta (Chart → Setups → Onchain → Gates → Sort �
       if (u === 'https://rpc.test' && body?.method === 'getTransactionsForAddress') {
         return jsonResponse({ jsonrpc: '2.0', id: '1', result: { transactions: [], paginationToken: null } });
       }
-      // Allow the test to call the local HTTP server via fetch().
-      return await realFetch(url, init);
+      throw new Error(`Unexpected fetch url: ${u}`);
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    const res = await fetch(`${baseUrl}/api/chart/ta`, {
+    const res = await request('/api/chart/ta', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ mint, timeframe: '1m', candles, tier: 'free', taskKind: 'chart_setups' }),
@@ -122,7 +99,6 @@ describe('POST /api/chart/ta (Chart → Setups → Onchain → Gates → Sort �
     const mint = 'So11111111111111111111111111111111111111112';
     const candles = mkTrendUpCandles();
 
-    const realFetch = globalThis.fetch;
     let enhancedCalls = 0;
     const fetchMock = vi.fn(async (url: any, init?: any) => {
       const u = String(url);
@@ -143,11 +119,11 @@ describe('POST /api/chart/ta (Chart → Setups → Onchain → Gates → Sort �
       if (u === 'https://rpc.test' && body?.method === 'getTransactionsForAddress') {
         return jsonResponse({ jsonrpc: '2.0', id: '1', result: { transactions: [], paginationToken: null } });
       }
-      return await realFetch(url, init);
+      throw new Error(`Unexpected fetch url: ${u}`);
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    const res = await fetch(`${baseUrl}/api/chart/ta`, {
+    const res = await request('/api/chart/ta', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       // taskKind intentionally returns [] in generator, ensuring hasSetups=false.
@@ -170,7 +146,6 @@ describe('POST /api/chart/ta (Chart → Setups → Onchain → Gates → Sort �
     const setupsBase = generateSetupCardsFromChart(chart, { tier: 'pro', taskKind: 'chart_setups' });
     expect(setupsBase.length).toBeGreaterThan(0);
 
-    const realFetch = globalThis.fetch;
     let enhancedCalls = 0;
     const enhancedTxs = [
       // Minimal single tx so the enhanced endpoint is exercised deterministically.
@@ -204,11 +179,11 @@ describe('POST /api/chart/ta (Chart → Setups → Onchain → Gates → Sort �
       if (u === 'https://rpc.test' && body?.method === 'getTransactionsForAddress') {
         return jsonResponse({ jsonrpc: '2.0', id: '1', result: { transactions: [], paginationToken: null } });
       }
-      return await realFetch(url, init);
+      throw new Error(`Unexpected fetch url: ${u}`);
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    const res = await fetch(`${baseUrl}/api/chart/ta`, {
+    const res = await request('/api/chart/ta', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ mint, timeframe: '1m', candles, tier: 'pro', taskKind: 'chart_setups', chartContext: { nearResistance: true } }),
@@ -226,4 +201,3 @@ describe('POST /api/chart/ta (Chart → Setups → Onchain → Gates → Sort �
     expect(outPlan[0].confidence).not.toBe(setupsBase[0]!.confidence);
   });
 });
-

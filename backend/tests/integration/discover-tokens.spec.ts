@@ -1,8 +1,7 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
-import { createServer, type Server } from 'http';
-import { createApp } from '../../src/app';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { resetEnvCache } from '../../src/config/env';
 import { resetDiscoverCacheForTesting } from '../../src/lib/discover/discoverService';
+import { createAppFetch } from '../helpers/httpClient';
 
 async function readJson(res: Response): Promise<unknown> {
   const text = await res.text();
@@ -19,32 +18,10 @@ function jsonResponse(body: unknown, status = 200): Response {
 
 describe('GET /api/discover/tokens', () => {
   const TEST_TIMEOUT_MS = 15_000;
-  let server: Server;
-  let baseUrl: string;
-
-  beforeAll(async () => {
-    process.env.HELIUS_API_KEY = 'test-helius-api-key';
-    resetEnvCache();
-
-    const app = createApp();
-    server = createServer((req, res) => app.handle(req, res));
-
-    await new Promise<void>((resolve) => {
-      server.listen(0, '127.0.0.1', () => resolve());
-    });
-
-    const addr = server.address();
-    if (!addr || typeof addr === 'string') throw new Error('Failed to bind test server');
-    baseUrl = `http://127.0.0.1:${addr.port}`;
-  });
-
-  afterAll(async () => {
-    await new Promise<void>((resolve, reject) => {
-      server.close((err) => (err ? reject(err) : resolve()));
-    });
-  });
+  const request = createAppFetch();
 
   beforeEach(() => {
+    process.env.HELIUS_API_KEY = 'test-helius-api-key';
     resetEnvCache();
     resetDiscoverCacheForTesting();
   });
@@ -70,7 +47,7 @@ describe('GET /api/discover/tokens', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    const res = await fetch(`${baseUrl}/api/discover/tokens?limit=10`);
+    const res = await request('/api/discover/tokens?limit=10');
     const body = await readJson(res);
 
     expect(res.status).toBe(200);
@@ -108,7 +85,7 @@ describe('GET /api/discover/tokens', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    const res = await fetch(`${baseUrl}/api/discover/tokens?limit=5&cursor=0`);
+    const res = await request('/api/discover/tokens?limit=5&cursor=0');
     const body = await readJson(res);
 
     expect(res.status).toBe(200);

@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
-import { createServer, type Server } from 'http';
-import { createApp } from '../../src/app';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { resetEnvCache } from '../../src/config/env';
-import { request as httpRequest } from 'http';
+import { createAppFetch } from '../helpers/httpClient';
+
+const request = createAppFetch();
 
 async function readJson(res: Response): Promise<any> {
   const text = await res.text();
@@ -21,55 +21,21 @@ function jsonResponse(body: unknown, status = 200, headers?: Record<string, stri
 }
 
 async function postJson(url: string, body: unknown): Promise<{ status: number; text: string }> {
-  const u = new URL(url);
-  return new Promise((resolve, reject) => {
-    const req = httpRequest(
-      {
-        method: 'POST',
-        hostname: u.hostname,
-        port: u.port,
-        path: u.pathname + u.search,
-        headers: {
-          'content-type': 'application/json',
-        },
-      },
-      (res) => {
-        const chunks: Buffer[] = [];
-        res.on('data', (c) => chunks.push(Buffer.from(c)));
-        res.on('end', () => {
-          resolve({ status: res.statusCode || 0, text: Buffer.concat(chunks).toString('utf8') });
-        });
-      }
-    );
-    req.on('error', reject);
-    req.write(JSON.stringify(body));
-    req.end();
+  const response = await request(url, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(body),
   });
+
+  return {
+    status: response.status,
+    text: await response.text(),
+  };
 }
 
 describe('POST /api/llm/execute (router + provider)', () => {
-  let server: Server;
-  let baseUrl: string;
-
-  beforeAll(async () => {
-    const app = createApp();
-    server = createServer((req, res) => app.handle(req, res));
-
-    await new Promise<void>((resolve) => {
-      server.listen(0, '127.0.0.1', () => resolve());
-    });
-
-    const addr = server.address();
-    if (!addr || typeof addr === 'string') throw new Error('Failed to bind test server');
-    baseUrl = `http://127.0.0.1:${addr.port}`;
-  });
-
-  afterAll(async () => {
-    await new Promise<void>((resolve, reject) => {
-      server.close((err) => (err ? reject(err) : resolve()));
-    });
-  });
-
   beforeEach(() => {
     process.env.DEEPSEEK_API_KEY = 'test';
     process.env.DEEPSEEK_BASE_URL = 'https://api.deepseek.test';
@@ -131,7 +97,7 @@ describe('POST /api/llm/execute (router + provider)', () => {
 
     vi.stubGlobal('fetch', fetchMock);
 
-    const { status, text } = await postJson(`${baseUrl}/api/llm/execute`, {
+    const { status, text } = await postJson('/api/llm/execute', {
         tier: 'standard',
         userMessage: 'User question',
         context: {
@@ -205,7 +171,7 @@ describe('POST /api/llm/execute (router + provider)', () => {
 
     vi.stubGlobal('fetch', fetchMock);
 
-    const { status, text } = await postJson(`${baseUrl}/api/llm/execute`, {
+    const { status, text } = await postJson('/api/llm/execute', {
       tier: 'free',
       taskKind: 'chart_analysis',
       userMessage: 'Analyze this chart fully',
@@ -223,4 +189,3 @@ describe('POST /api/llm/execute (router + provider)', () => {
     expect(calls[1]?.url).toContain('api.openai.test/v1/chat/completions');
   });
 });
-

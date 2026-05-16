@@ -110,8 +110,7 @@ export function createApp(): Router {
 
     // Oracle Routes
     router.get('/oracle/daily', handleOracleDaily);
-    router.get('/oracle/read-state', handleOracleReadState);
-    router.put('/oracle/read-state', handleOracleBulkReadState);
+    router.put('/oracle/read-state', handleOracleReadState);
     router.post('/oracle/read-state/bulk', handleOracleBulkReadState);
     router.put('/oracle/read-state/bulk', handleOracleBulkReadState);
 
