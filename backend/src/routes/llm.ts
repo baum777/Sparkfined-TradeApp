@@ -8,6 +8,7 @@ import { routeAndCompress } from '../lib/llm/router/router.js';
 import { callDeepSeek } from '../lib/llm/providers/deepseek.js';
 import { callOpenAI } from '../lib/llm/providers/openai.js';
 import { callGrok } from '../lib/llm/providers/grok.js';
+import { asUntrustedUserInputBlock, sanitizePromptText } from '../lib/llm/promptSecurity.js';
 import type { LlmMessage, ProviderResult } from '../lib/llm/types.js';
 import { getTierSettings, type LlmTaskKind, type Tier } from '../lib/llm/tierPolicy.js';
 import { getTemplateSystemPrompt } from '../lib/llm/templates/solChartJournal.js';
