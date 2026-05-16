@@ -4,7 +4,7 @@
 Owner: Core Team
 Status: active
 Version: 2.0
-LastUpdated: 2026-02-27
+LastUpdated: 2026-05-16
 Canonical: true
 ---
 
@@ -33,6 +33,39 @@ pnpm -C backend dev # Backend:  http://localhost:3000
 |      API | `api/`                 | Vercel Functions alternative / edge routing    | ❌ (non-canonical) |
 |   Alerts | `apps/backend-alerts/` | Push/SSE notifications service                 |         ✅         |
 |   Shared | `shared/contracts/`    | Additive-only TS contracts & docs              |         ✅         |
+
+### Tool & Pipeline Architecture
+
+```mermaid
+flowchart LR
+    User["Trader / Operator"] --> UI["React SPA\nsrc/"]
+    UI --> Tools["Tool surfaces\nTerminal, Discover, Research,\nJournal, Insights, Alerts"]
+    Tools --> Client["API client\nJSON envelope"]
+    Client --> Edge{"Runtime routing"}
+    Edge -->|"local dev\nVite proxy /api"| LocalBackend["backend dev server\nlocalhost:3000"]
+    Edge -->|"production\nVercel rewrite /api/*"| HostedBackend["canonical backend\nRailway/Fly.io"]
+
+    LocalBackend --> Router["Router('/api')\nSERVICE_MODE gates"]
+    HostedBackend --> Router
+
+    Router --> Trading["Trading pipeline\nquote, swap, discover"]
+    Router --> Journal["Journal pipeline\nentries, insights, archive"]
+    Router --> Reasoning["Reasoning pipeline\ntrade review, planning,\nroute, llm execute"]
+    Router --> Alerts["Alerts / Oracle pipeline\nevents, read-state, daily"]
+    Router --> Settings["Settings / Auth pipeline\nprofile, session, prefs"]
+
+    Trading --> Providers["External providers\nJupiter, Helius, market data,\nDeepSeek, OpenAI, Grok"]
+    Reasoning --> Providers
+    Journal --> Storage["Persistence\nSQLite default, Postgres optional,\nKV/cache"]
+    Alerts --> Storage
+    Settings --> Storage
+
+    Dominance["Dominance Layer\nrisk policy, golden tasks,\ntrace/cost/memory"] -. "governs" .-> Router
+    Contracts["shared/contracts\nadditive-only source contracts"] -. "mirrored where needed" .-> Router
+    Contracts -. "typed UI boundary" .-> UI
+```
+
+**Pipeline rule:** the browser talks to the backend through `/api` and JSON envelopes. Runtime behavior is owned by the canonical always-on backend; `api/` remains a separately documented Vercel Functions alternative while the root production rewrite owns `/api/*`.
 
 ### Canonical Source-of-Truth Rules
 
