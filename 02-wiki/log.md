@@ -19,3 +19,4 @@
 ## [2026-05-16] verified | Backend-Baseline repariert: `better-sqlite3` für Node 24 neu aufgebaut, HTTP-Integrationstests auf In-Memory-Router umgestellt, `typecheck` und `vitest` grün [[backend-baseline-repair]]
 ## [2026-05-16] applied | Rebase auf aktuelles `origin/main` abgeschlossen, fehlende Prompt-Security-Imports und Test-Setup-Node-Imports repariert [[backend-rebase-verification-fix]]
 ## [2026-05-16] verified | Rebasierten Backend-Branch erneut verifiziert: `pnpm -C backend run typecheck`, `pnpm -C backend run test`, `pnpm run doc:check` grün [[backend-rebase-verification-fix]]
+## [2026-05-16] applied | README Frontdoor um Tool-, Pipeline- und Architektur-Mermaid-Visualisierung ergänzt [[readme-tool-pipeline-architecture]]

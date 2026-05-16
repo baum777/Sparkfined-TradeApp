@@ -12,3 +12,4 @@
 [[reasoning-planning-api]] | Planning-Prompt Backend-API mit Shared-Contract, Backend-Mirror und Drift-Test | #reasoning #planning #contracts #backend | 2026-05-16
 [[backend-baseline-repair]] | Node-24-SQLite-Binding repariert, socket-freie HTTP-Integrationstests eingeführt und Backend-Checks verifiziert | #backend #testing #sqlite #vitest #typescript | 2026-05-16
 [[backend-rebase-verification-fix]] | Rebase auf aktuelles `main` mit reparierten Backend-Imports und erneut grüner Verifikation | #backend #rebase #verification #tests | 2026-05-16
+[[readme-tool-pipeline-architecture]] | README-Frontdoor mit Tool-, Pipeline- und Architektur-Mermaid-Diagramm | #readme #architecture #pipeline #mermaid | 2026-05-16
