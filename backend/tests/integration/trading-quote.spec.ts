@@ -1,9 +1,7 @@
-import { it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
-import { createServer, type Server } from 'http';
-import { createApp } from '../../src/app';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { resetEnvCache } from '../../src/config/env';
 import { terminalQuoteDataSchema } from '../contracts/tradingTerminal';
-import { describeIfDbAndNet } from '../helpers/testGuards';
+import { createAppFetch } from '../helpers/httpClient';
 
 async function readJson(res: Response): Promise<unknown> {
   const text = await res.text();
@@ -18,34 +16,11 @@ function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 }
 
-describeIfDbAndNet('GET /api/quote', () => {
-  let server: Server;
-  let baseUrl: string;
-
-  beforeAll(async () => {
-    process.env.HELIUS_API_KEY = 'test-helius-api-key';
-    process.env.JUPITER_PLATFORM_FEE_ACCOUNT = ''; // feeBps 0 for test
-    resetEnvCache();
-
-    const app = createApp();
-    server = createServer((req, res) => app.handle(req, res));
-
-    await new Promise<void>((resolve) => {
-      server.listen(0, '127.0.0.1', () => resolve());
-    });
-
-    const addr = server.address();
-    if (!addr || typeof addr === 'string') throw new Error('Failed to bind test server');
-    baseUrl = `http://127.0.0.1:${addr.port}`;
-  });
-
-  afterAll(async () => {
-    await new Promise<void>((resolve, reject) => {
-      server.close((err) => (err ? reject(err) : resolve()));
-    });
-  });
+describe('GET /api/quote', () => {
+  const request = createAppFetch();
 
   beforeEach(() => {
+    process.env.HELIUS_API_KEY = 'test-helius-api-key';
     process.env.JUPITER_PLATFORM_FEE_ACCOUNT = '';
     resetEnvCache();
   });
@@ -82,8 +57,8 @@ describeIfDbAndNet('GET /api/quote', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    const res = await fetch(
-      `${baseUrl}/api/quote?baseMint=${wsol}&quoteMint=${usdc}&side=buy&amount=1&amountMode=quote&slippageBps=50&feeBps=0`
+    const res = await request(
+      `/api/quote?baseMint=${wsol}&quoteMint=${usdc}&side=buy&amount=1&amountMode=quote&slippageBps=50&feeBps=0`
     );
     const body = await readJson(res);
 
@@ -100,8 +75,8 @@ describeIfDbAndNet('GET /api/quote', () => {
   });
 
   it('returns 400 for invalid baseMint', async () => {
-    const res = await fetch(
-      `${baseUrl}/api/quote?baseMint=invalid&quoteMint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v&side=buy&amount=1&amountMode=quote`
+    const res = await request(
+      '/api/quote?baseMint=invalid&quoteMint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v&side=buy&amount=1&amountMode=quote'
     );
     const body = await readJson(res);
 

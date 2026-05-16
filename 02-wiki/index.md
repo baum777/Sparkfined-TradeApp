@@ -10,3 +10,4 @@
 [[packets/2026-05-13-vercel-deploy-policy-block]] | External deploy execution blocked by policy gate | #mspr #risk #deploy #vercel | 2026-05-13
 [[functions/backend-alerts-local-postgres-docker]] | Local Postgres via Docker Compose for backend-alerts dev runtime | #backend-alerts #postgres #docker #local-dev | 2026-05-13
 [[reasoning-planning-api]] | Planning-Prompt Backend-API mit Shared-Contract, Backend-Mirror und Drift-Test | #reasoning #planning #contracts #backend | 2026-05-16
+[[backend-baseline-repair]] | Node-24-SQLite-Binding repariert, socket-freie HTTP-Integrationstests eingeführt und Backend-Checks verifiziert | #backend #testing #sqlite #vitest #typescript | 2026-05-16
