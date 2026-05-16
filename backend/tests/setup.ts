@@ -5,6 +5,11 @@ import { resetEnvCache } from '../src/config/env.js';
 import { resetConfigCache } from '../src/config/config.js';
 import { join } from 'path';
 import { unlinkSync, existsSync, mkdirSync } from 'fs';
+import { Server, type IncomingHttpHeaders, type ServerResponse } from 'http';
+import type { AddressInfo } from 'net';
+import { PassThrough } from 'stream';
+import { EventEmitter } from 'events';
+import { createRequire, syncBuiltinESMExports } from 'module';
 import { spawnSync } from 'node:child_process';
 
 // Test database path - use unique path per test run

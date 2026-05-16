@@ -2,11 +2,15 @@
 Owner: Architecture Team
 Status: draft
 Version: 1.0
-LastUpdated: 2026-02-27
+LastUpdated: 2026-05-16
 Canonical: false
 ---
 
 # Monorepo — Technisches Audit (Ist-Zustand) — 2026-02-19
+
+> **Supersession-Hinweis (Observed, 2026-05-16):**
+> Dieses Dokument bleibt ein historischer Audit-Snapshot. Die aktuellen Routing- und Systemdiagramme liegen in `docs/ARCHITECTURE.md` und `docs/DEPLOYMENT.md`.
+> Aussagen über fehlende canonical Backend-Endpunkte für `/api/quote`, `/api/swap` und `/api/discover/tokens` sind für den heutigen Repo-Zustand nicht mehr aktuell.
 
 **Scope (verifiziert im Code):** SPA (`src/`), canonical Backend (`backend/`), Vercel Functions (`api/`), Alerts-Service (`apps/backend-alerts/`), Shared (`shared/`), Docs (`docs/`, `shared/docs/`), Playwright (`playwright/`).
 
@@ -386,7 +390,7 @@ Canonical: false
 - In dieser Repo-Konfiguration: **nicht genutzt** in Production (Rewrite besitzt keine Ausnahmen).
 - `api/_lib/production-guard.ts` blockt core endpoints in prod bei direktem Function-Hit; Rewrite verhindert diese Hits ohnehin.
 
-### 4) Routing-Diagramm (Ist)
+### 4) Routing-Diagramm (historischer Snapshot vom 2026-02-19)
 ```
 Browser
   |

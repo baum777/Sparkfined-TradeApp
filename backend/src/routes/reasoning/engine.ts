@@ -9,6 +9,8 @@ import type {
   InsightCriticReport,
   InsightCriticRequest,
   JsonObject,
+  PlanningRequest,
+  PlanningResult,
   ReasoningBaseRequest,
   ReasoningErrorCode,
   ReasoningResponse,
@@ -24,11 +26,12 @@ import {
   boardScenariosInsightSchema,
   insightCriticOnlyResultSchema,
   insightCriticReportSchema,
+  planningResultSchema,
   sessionReviewInsightSchema,
   tradeReviewInsightSchema,
 } from './schemas.js';
 import { sanitizePromptText } from '../../lib/llm/promptSecurity.js';
-import { buildCriticPrompt, buildGeneratorPrompt } from './prompts.js';
+import { buildCriticPrompt, buildGeneratorPrompt, buildPlanningPrompt } from './prompts.js';
 import { tradeReviewV1OutputExample } from './tradeReviewContract.js';
 
 type AnyInsight = TradeReviewInsight | SessionReviewInsight | BoardScenariosInsight;
@@ -212,7 +215,7 @@ async function runCritic(input: {
 
 export async function runReasoning(
   req: ParsedRequest,
-  type: Exclude<ReasoningType, 'insight-critic'>,
+  type: Exclude<ReasoningType, 'insight-critic' | 'planning'>,
   body: ReasoningBaseRequest
 ): Promise<ReasoningResponse<AnyInsight>> {
   const started = Date.now();
@@ -409,10 +412,67 @@ export async function runInsightCritic(
   }
 }
 
+export async function runPlanningReasoning(
+  req: ParsedRequest,
+  body: PlanningRequest
+): Promise<ReasoningResponse<PlanningResult>> {
+  const started = Date.now();
+  const env = getEnv();
+  const model = env.DEEPSEEK_MODEL_REASONING || env.OPUS_MODEL || 'deepseek-reasoner';
+
+  try {
+    const prompt = buildPlanningPrompt({
+      type: body.type,
+      scope: body.scope,
+      referenceId: body.referenceId,
+      version: body.version,
+      context: body.context,
+      outputSchemaJson: body.outputSchemaJson,
+    });
+
+    const result = await routeLLMRequest(
+      'reasoning',
+      {
+        prompt,
+        model,
+        timeoutMs: 25000,
+        jsonOnly: true,
+        system: 'You are a governance planning engine. Output valid JSON only.',
+      },
+      { userId: req.userId }
+    );
+
+    const payload = planningResultSchema.parse(result.parsed);
+    const latencyMs = Date.now() - started;
+
+    return ok(payload, {
+      model: result.model,
+      latencyMs,
+      version: body.version,
+      confidence: payload.confidence,
+      warnings: payload.requires_human_review ? ['Human review required by planning output.'] : [],
+    });
+  } catch (e) {
+    const latencyMs = Date.now() - started;
+    const mapped = mapEngineError(e);
+    return err({
+      code: mapped.code,
+      message: mapped.message,
+      retryable: mapped.retryable,
+      latencyMs,
+      model,
+      version: body.version,
+    });
+  }
+}
+
 function mapEngineError(error: unknown): { code: ReasoningErrorCode; message: string; retryable: boolean } {
   const status = (error as any)?.status;
   const msg = error instanceof Error ? error.message : String(error);
 
+  if ((error as any)?.name === 'ZodError') {
+    return { code: 'VALIDATION_FAILED', message: 'Reasoning output failed schema validation', retryable: false };
+  }
   if (msg.includes('MISSING_DEEPSEEK_KEY')) {
     return { code: 'INTERNAL_ERROR', message: 'DeepSeek configuration missing', retryable: false };
   }

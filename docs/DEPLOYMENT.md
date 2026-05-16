@@ -2,43 +2,51 @@
 Owner: DevOps Team
 Status: active
 Version: 1.1
-LastUpdated: 2026-05-09
+LastUpdated: 2026-05-16
 Canonical: true
 ---
 
 # Deployment
 
-**Last Updated:** 2026-05-09
+**Last Updated:** 2026-05-16
 
 ---
-
 ## Production Routing (Frontend)
 
 **Source:** `vercel.json`
 
-- Frontend built as Vite SPA (`buildCommand: "npm run build"`, output `dist/`)
-- **Rewrite Rule:**
-  - `source: /api/(.*)`
-  - `destination: https://$VERCEL_BACKEND_URL/api/$1`
-- All other paths rewrite to `/index.html` (SPA routing)
+- Frontend is deployed as a Vite SPA.
+- Build command: `pnpm run build`
+- Output directory: `dist`
+- Production rewrite: `/api/(.*)` → `https://$VERCEL_BACKEND_URL/api/$1`
+- All other paths rewrite to `/index.html`
 
-**Consequence:**
-- Production API calls go to `/api/*` (same-origin) and are server-side rewritten by Vercel to external backend.
+```mermaid
+flowchart LR
+    Browser["Browser"] --> Vercel["Vercel SPA Hosting\ndist/"]
+    Vercel -->|"rewrite /api/(.*)"| Backend["Railway backend\nbackend/"]
+    Browser -. "registerSW() in PROD" .-> SW["Service Worker"]
+    SW -->|"alerts/events + oracle/daily\nwhen messaged"| Backend
+    Backend --> DB["SQLite / Postgres"]
+    Backend --> Providers["Jupiter / Helius / LLM / Market data"]
+    Vercel -. "optional separate project" .-> ApiFns["api/ Vercel Functions"]
+    Vercel -. "separate deployable" .-> AlertsSvc["apps/backend-alerts"]
+```
 
----
+**Consequence:** Production API traffic from the SPA always targets same-origin `/api/*` and is server-side rewritten to the canonical backend.
 
 ## Backend Hosting (Railway)
 
-**Source:** `railway.toml` (repo root)
+**Source:** `railway.toml`
 
 - Deploys `backend/` as Docker service:
   - Dockerfile: `backend/Dockerfile`
   - Start: `node dist/backend/src/server.js`
   - Healthcheck: `/api/health`
+- Root directory: `backend`
+- Builder: Docker
 
-**Important:** This is an always-on process (not Vercel Functions compatible).
-
----
+This is an always-on Node process, not a serverless deployment.
 
 ## Backend Hosting (Fly.io Alternative)
 
@@ -74,111 +82,82 @@ Canonical: true
 ## Additional Deployables
 
 ### `apps/backend-alerts/`
-- Separate service (Express + Postgres + Watcher/SSE/Push)
-- Own Railway configuration and start scripts
+- separate service with its own `apps/backend-alerts/railway.toml`
+- start command: `pnpm start`
+- health check: `/health`
 
 ### `api/` (Vercel Functions Backend)
-- Implemented in repo, but **not canonical** for this frontend project
-- Can be deployed as separate Vercel project, but not used while `vercel.json` rewrites `/api/*` to `VERCEL_BACKEND_URL`
-
----
+- implemented in the repo
+- deployable as a separate Vercel project
+- not canonical for this frontend while the root `vercel.json` owns `/api/*`
 
 ## Guardrails Against API Drift
 
 **Source:** `scripts/verify-vercel-api-ownership.mjs`
 
-**Policy:**
-- In production, no `/api/*` subpath may point to relative `/api/*` destinations (would activate Vercel Functions)
-- No `/api` rewrite exceptions allowed (allowlist is empty)
+Policy:
+- no relative `/api/*` rewrite destinations in production
+- no `/api` rewrite exceptions
+- `api/` ownership must stay explicit and mechanically verifiable
 
-**Goal:**
-- API ownership remains clear, prevents "half Vercel Functions, half external backend"
-
----
+Goal:
+- prevent mixed ownership such as “half external backend, half Vercel Functions”
 
 ## Local vs Production Differences
 
 | Topic | Local | Production |
 |-------|-------|------------|
 | API Routing | Vite Proxy `/api` → `http://localhost:3000` | Vercel Rewrite `/api/(.*)` → `https://$VERCEL_BACKEND_URL/api/$1` |
-| Backend Runtime | `backend/` Node Server (listen) | External hosted Node Server (Railway oder Fly.io) |
-| Service Worker | Dev: not registered | Production Build: registered optionally (see `VITE_ENABLE_SW_POLLING`) |
+| Backend Runtime | `backend/` Node server via `pnpm -C backend dev` | External hosted Node server (Railway oder Fly.io) |
+| Service Worker | not registered | registered via `virtual:pwa-register` |
+| SW Data Fetching | not active | handler exists, but polling remains message-driven (`SW_TICK`) |
 
----
+**Observed:** The current repo does **not** reference a `VITE_ENABLE_SW_POLLING` flag. Production SW registration is unconditional; actual polling depends on worker messages.
 
 ## Feature Flags
 
 ### `VITE_RESEARCH_EMBED_TERMINAL`
-- **Default:** `false`
-- **Purpose:** Enable Trading Terminal in Research tab
-- **Behavior:** When `true`, Terminal appears as collapsible drawer in Research
-- **Rollback:** Set to `false` to disable instantly
+- default: `false`
+- enables the Embedded Terminal inside Research
 
 ### `VITE_SENTRY_DSN`
-- **Default:** Not set (Sentry disabled)
-- **Purpose:** Error tracking in production
-- **Format:** `https://<key>@<org>.ingest.sentry.io/<project>`
-- **Behavior:** If not set, Sentry is no-op (dev-friendly)
+- default: unset
+- initializes Sentry in production and development-safe no-op mode otherwise
 
-### Other Flags
-See `shared/docs/ENVIRONMENT.md` for complete list.
-
----
+### Other runtime flags
+See `shared/docs/ENVIRONMENT.md` for the full matrix.
 
 ## Monitoring & Error Tracking
 
 ### Sentry Integration
-
-**Setup:**
-1. Create Sentry project
-2. Set `VITE_SENTRY_DSN` in production environment
-3. Errors automatically captured from ErrorBoundary
-
-**Features:**
-- Environment tagging (production/development)
-- Feature flag tagging (`VITE_RESEARCH_EMBED_TERMINAL`)
-- Route tracking (updates on navigation)
-- Browser tracing integration
-- Session replay integration (masked)
-- Before-send filtering (ignores expected errors)
-
-**Sourcemaps (Optional):**
-- Build with `--sourcemap` flag
-- Upload via `@sentry/cli` or Vite plugin
-- Required for readable stack traces in production
-
----
+- initialized in `src/lib/monitoring/sentry.ts`
+- tagged with current route and the `VITE_RESEARCH_EMBED_TERMINAL` flag
+- browser tracing + replay enabled when DSN is configured
+- expected offline fetch failures are filtered before send
 
 ## Pre-Beta Hardening
 
 ### Error Boundaries
-- Global boundary wraps entire app
-- Terminal page has dedicated boundary
-- Discover Overlay has dedicated boundary
-- Research embedded terminal has dedicated boundary
-- Fallback UI with error ID, reset, and reload actions
+- global app boundary
+- dedicated Terminal boundary
+- dedicated Discover boundary
+- guarded Embedded Terminal inside Research
 
 ### Safety Warnings
-- **Slippage Warning:** Shows when slippage >5% (500 bps)
-- **Priority Fee Warning:** Shows when priority fee >50k microLamports
-- Both warnings are informational (non-blocking)
-
-See `PRE_BETA_HARDENING_SUMMARY.md` for implementation details.
-
----
+- slippage warning above 5%
+- priority fee warning above 50k microLamports
+- both remain informational, not blocking
 
 ## Environment Variables
 
-**Complete List:** `shared/docs/ENVIRONMENT.md`
+Key deployment variables:
+- `VERCEL_BACKEND_URL`
+- `VITE_RESEARCH_EMBED_TERMINAL`
+- `VITE_SENTRY_DSN`
+- `VITE_SOLANA_CLUSTER`
+- `VITE_SOLANA_RPC_URL`
 
-**Key Variables:**
-- `VERCEL_BACKEND_URL` - Backend hostname for `/api/*` rewrite
-- `VITE_RESEARCH_EMBED_TERMINAL` - Trading Terminal in Research integration flag
-- `VITE_SENTRY_DSN` - Sentry DSN for error tracking
-- `VITE_SOLANA_CLUSTER` - devnet | mainnet-beta
-- `VITE_SOLANA_RPC_URL` - Custom RPC endpoint (optional)
-
----
+See [Environment](../shared/docs/ENVIRONMENT.md) for details.
 
 ## Health Checks
 
@@ -186,11 +165,9 @@ See `PRE_BETA_HARDENING_SUMMARY.md` for implementation details.
 - Endpoint: `/api/health`
 - Used by Railway/Fly.io for health checks
 
-**Frontend:**
-- No explicit health check endpoint
-- SPA routing handles all paths
-
----
+**Frontend**
+- no dedicated health endpoint
+- SPA rewrite serves all client routes through `index.html`
 
 ## Related Documentation
 

@@ -1,10 +1,8 @@
-import { it, expect, beforeAll, afterAll, vi } from 'vitest';
-import { createServer, type Server } from 'http';
-import { createApp } from '../../src/app';
+import { describe, it, expect, vi } from 'vitest';
 import { signToken } from '../../src/lib/auth/jwt';
 import { getDatabase } from '../../src/db/index';
 import * as grokPulseAdapter from '../../src/domain/grokPulse/grokPulseAdapter';
-import { describeIfDbAndNet } from '../helpers/testGuards';
+import { createAppFetch } from '../helpers/httpClient';
 
 async function readJson(res: Response): Promise<any> {
   const text = await res.text();
@@ -15,33 +13,13 @@ async function readJson(res: Response): Promise<any> {
   }
 }
 
-describeIfDbAndNet('Journal insights Grok gating', () => {
-  let server: Server;
-  let baseUrl: string;
-
-  beforeAll(async () => {
-    const app = createApp();
-    server = createServer((req, res) => app.handle(req, res));
-
-    await new Promise<void>((resolve) => {
-      server.listen(0, '127.0.0.1', () => resolve());
-    });
-
-    const addr = server.address();
-    if (!addr || typeof addr === 'string') throw new Error('Failed to bind test server');
-    baseUrl = `http://127.0.0.1:${addr.port}`;
-  });
-
-  afterAll(async () => {
-    await new Promise<void>((resolve, reject) => {
-      server.close((err) => (err ? reject(err) : resolve()));
-    });
-  });
+describe('Journal insights Grok gating', () => {
+  const request = createAppFetch();
 
   it('includeGrok=true + tier<pro => 403 FORBIDDEN_TIER', async () => {
     const token = signToken({ userId: 'u-ins-free', tier: 'free' });
 
-    const createRes = await fetch(`${baseUrl}/api/journal`, {
+    const createRes = await request('/api/journal', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -54,7 +32,7 @@ describeIfDbAndNet('Journal insights Grok gating', () => {
     expect(createRes.status).toBe(201);
     const id = created.data.id as string;
 
-    const res = await fetch(`${baseUrl}/api/journal/${id}/insights`, {
+    const res = await request(`/api/journal/${id}/insights`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -70,7 +48,7 @@ describeIfDbAndNet('Journal insights Grok gating', () => {
   it('includeGrok=true + pro but grokEnabled=false => 403 GROK_DISABLED', async () => {
     const token = signToken({ userId: 'u-ins-pro-off', tier: 'pro' });
 
-    const createRes = await fetch(`${baseUrl}/api/journal`, {
+    const createRes = await request('/api/journal', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -83,7 +61,7 @@ describeIfDbAndNet('Journal insights Grok gating', () => {
     expect(createRes.status).toBe(201);
     const id = created.data.id as string;
 
-    const res = await fetch(`${baseUrl}/api/journal/${id}/insights`, {
+    const res = await request(`/api/journal/${id}/insights`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -99,7 +77,7 @@ describeIfDbAndNet('Journal insights Grok gating', () => {
   it('includeGrok=false => never calls grokPulseAdapter', async () => {
     const token = signToken({ userId: 'u-ins-pro-nogrok', tier: 'pro' });
 
-    const createRes = await fetch(`${baseUrl}/api/journal`, {
+    const createRes = await request('/api/journal', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -114,7 +92,7 @@ describeIfDbAndNet('Journal insights Grok gating', () => {
 
     const spy = vi.spyOn(grokPulseAdapter, 'getPulseFeedSnapshot');
 
-    const res = await fetch(`${baseUrl}/api/journal/${id}/insights`, {
+    const res = await request(`/api/journal/${id}/insights`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -133,7 +111,7 @@ describeIfDbAndNet('Journal insights Grok gating', () => {
     const token = signToken({ userId: 'u-ins-pro-on', tier: 'pro' });
 
     // enable grok
-    const settingsRes = await fetch(`${baseUrl}/api/settings`, {
+    const settingsRes = await request('/api/settings', {
       method: 'PATCH',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -147,7 +125,7 @@ describeIfDbAndNet('Journal insights Grok gating', () => {
     expect(settingsBody.data).toEqual({ ai: { grokEnabled: true } });
 
     // create a journal entry
-    const createRes = await fetch(`${baseUrl}/api/journal`, {
+    const createRes = await request('/api/journal', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -188,7 +166,7 @@ describeIfDbAndNet('Journal insights Grok gating', () => {
       .spyOn(grokPulseAdapter, 'getPulseFeedSnapshot')
       .mockResolvedValue({ ok: true, source: 'test' } as any);
 
-    const res = await fetch(`${baseUrl}/api/journal/${id}/insights`, {
+    const res = await request(`/api/journal/${id}/insights`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,

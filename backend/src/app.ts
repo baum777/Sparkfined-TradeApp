@@ -33,6 +33,7 @@ import {
   handleReasoningSessionReview,
   handleReasoningBoardScenarios,
   handleReasoningInsightCritic,
+  handleReasoningPlanning,
   handleUsageSummary,
   handleFeedOracle,
   handleFeedPulse,
@@ -109,8 +110,7 @@ export function createApp(): Router {
 
     // Oracle Routes
     router.get('/oracle/daily', handleOracleDaily);
-    router.get('/oracle/read-state', handleOracleReadState);
-    router.put('/oracle/read-state', handleOracleBulkReadState);
+    router.put('/oracle/read-state', handleOracleReadState);
     router.post('/oracle/read-state/bulk', handleOracleBulkReadState);
     router.put('/oracle/read-state/bulk', handleOracleBulkReadState);
 
@@ -123,6 +123,7 @@ export function createApp(): Router {
     router.post('/reasoning/session-review', handleReasoningSessionReview);
     router.post('/reasoning/board-scenarios', handleReasoningBoardScenarios);
     router.post('/reasoning/insight-critic', handleReasoningInsightCritic);
+    router.post('/reasoning/planning', handleReasoningPlanning);
     router.post('/reasoning/route', handleReasoningRoute);
 
     // LLM Execute
