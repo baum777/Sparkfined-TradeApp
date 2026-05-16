@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { it, expect, beforeEach } from 'vitest';
 import {
   alertCreate,
   alertGetById,
@@ -9,8 +9,9 @@ import {
 } from '../../src/domain/alerts/repo';
 import { alertEventCreate, alertEventsQuery } from '../../src/domain/alerts/eventsRepo';
 import type { SimpleAlert, TwoStageAlert, DeadTokenAlert } from '../../src/domain/alerts/types';
+import { describeIfDb } from '../helpers/testGuards';
 
-describe('Alerts Integration', () => {
+describeIfDb('Alerts Integration', () => {
   describe('Create SIMPLE alert', () => {
     it('should create with correct defaults', async () => {
       const alert = await alertCreate({

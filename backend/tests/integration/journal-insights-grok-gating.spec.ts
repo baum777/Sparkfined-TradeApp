@@ -1,9 +1,10 @@
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import { it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { createServer, type Server } from 'http';
 import { createApp } from '../../src/app';
 import { signToken } from '../../src/lib/auth/jwt';
 import { getDatabase } from '../../src/db/index';
 import * as grokPulseAdapter from '../../src/domain/grokPulse/grokPulseAdapter';
+import { describeIfDbAndNet } from '../helpers/testGuards';
 
 async function readJson(res: Response): Promise<any> {
   const text = await res.text();
@@ -14,7 +15,7 @@ async function readJson(res: Response): Promise<any> {
   }
 }
 
-describe('Journal insights Grok gating', () => {
+describeIfDbAndNet('Journal insights Grok gating', () => {
   let server: Server;
   let baseUrl: string;
 
@@ -206,4 +207,3 @@ describe('Journal insights Grok gating', () => {
     spy.mockRestore();
   });
 });
-

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { it, expect, beforeEach } from 'vitest';
 import {
   evaluateTwoStageAlert,
   type TwoStageEvaluationContext,
@@ -11,8 +11,9 @@ import {
 } from '../../src/domain/alerts/deadTokenMachine';
 import { alertCreate, alertGetById } from '../../src/domain/alerts/repo';
 import type { TwoStageAlert, DeadTokenAlert, DeadTokenParams } from '../../src/domain/alerts/types';
+import { describeIfDb } from '../helpers/testGuards';
 
-describe('State Machines', () => {
+describeIfDb('State Machines', () => {
   describe('TWO_STAGE_CONFIRMED', () => {
     let alert: TwoStageAlert;
     

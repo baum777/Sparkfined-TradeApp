@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { it, expect, beforeAll, afterAll } from 'vitest';
 import { createServer, type Server } from 'http';
 import { createApp } from '../../src/app';
+import { describeIfDbAndNet } from '../helpers/testGuards';
  
 async function readJson(res: Response): Promise<any> {
   const text = await res.text();
@@ -11,7 +12,7 @@ async function readJson(res: Response): Promise<any> {
   }
 }
  
-describe('Theme Group 5: Missing/Expected Endpoints (Feeds & Signals)', () => {
+describeIfDbAndNet('Theme Group 5: Missing/Expected Endpoints (Feeds & Signals)', () => {
   let server: Server;
   let baseUrl: string;
  
@@ -126,4 +127,3 @@ describe('Theme Group 5: Missing/Expected Endpoints (Feeds & Signals)', () => {
     expect(res.status).toBe(404);
   });
 });
-

@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { it, expect, beforeAll, afterAll } from 'vitest';
 import { createServer, type Server } from 'http';
 import { createApp } from '../../src/app';
+import { describeIfDbAndNet } from '../helpers/testGuards';
 
 async function readJson(res: Response): Promise<any> {
   const text = await res.text();
@@ -11,7 +12,7 @@ async function readJson(res: Response): Promise<any> {
   }
 }
 
-describe('Response envelope (canonical)', () => {
+describeIfDbAndNet('Response envelope (canonical)', () => {
   let server: Server;
   let baseUrl: string;
 
@@ -52,4 +53,3 @@ describe('Response envelope (canonical)', () => {
     expect(body.data.apiBasePath).toBe('/api');
   });
 });
-

@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { it, expect, beforeAll, afterAll } from 'vitest';
 import { createServer, type Server } from 'http';
 import { createApp } from '../../src/app';
 import { signToken } from '../../src/lib/auth/jwt';
+import { describeIfDbAndNet } from '../helpers/testGuards';
 
 async function readJson(res: Response): Promise<any> {
   const text = await res.text();
@@ -12,7 +13,7 @@ async function readJson(res: Response): Promise<any> {
   }
 }
 
-describe('Journal v1 Contract (Diary/Reflection)', () => {
+describeIfDbAndNet('Journal v1 Contract (Diary/Reflection)', () => {
   let server: Server;
   let baseUrl: string;
   let authHeader: string;
@@ -208,4 +209,3 @@ describe('Journal v1 Contract (Diary/Reflection)', () => {
     expect(badRestoreBody.error).toHaveProperty('code', 'INVALID_TRANSITION');
   });
 });
-

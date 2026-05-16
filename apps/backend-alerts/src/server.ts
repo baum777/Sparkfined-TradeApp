@@ -12,6 +12,14 @@ export const createServer = () => {
   app.use(cors());
   app.use(express.json());
 
+  app.get('/', (_req, res) => {
+    res.json({
+      ok: true,
+      service: 'backend-alerts',
+      health: '/health'
+    });
+  });
+
   app.use('/health', healthRouter);
   app.use('/alerts', alertsRouter);
   app.use('/events', eventsRouter);
@@ -21,3 +29,6 @@ export const createServer = () => {
   return app;
 };
 
+const app = createServer();
+
+export default app;
