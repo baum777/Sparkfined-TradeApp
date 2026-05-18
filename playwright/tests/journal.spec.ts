@@ -41,8 +41,12 @@ test.describe('Journal Page', () => {
 test.describe('Journal Navigation', () => {
   test('sollte von Dashboard zu Journal navigieren können', async ({ page }) => {
     await page.goto('/');
-    const sidebar = page.locator('aside');
-    await clickNavAndWait(page, sidebar.locator(navTestId('journal')), /\/journal/, 'journal');
+    await clickNavAndWait(
+      page,
+      page.locator(`${navTestId('journal')}:visible`).first(),
+      /\/journal/,
+      'journal',
+    );
   });
 
   test('sollte aktiven Nav-Status zeigen', async ({ page }) => {

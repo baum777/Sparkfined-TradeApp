@@ -79,6 +79,7 @@ test.describe('Dashboard Content', () => {
 test.describe('Dashboard Performance', () => {
   test('sollte schnell laden (unter 10 Sekunden)', async ({ page }) => {
     await stubApi(page);
+    const loadBudgetMs = process.env.PLAYWRIGHT_SYSTEM_CHROME === '1' ? 13_000 : 10_000;
     const startTime = Date.now();
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     // Wait for dashboard page to be visible (functional readiness, not networkidle)
@@ -86,8 +87,9 @@ test.describe('Dashboard Performance', () => {
     const loadTime = Date.now() - startTime;
 
     // Performance assertion: page should be functionally ready in < 10s
-    // Note: With API stubs, this should be achievable. If consistently slower, investigate performance.
-    expect(loadTime).toBeLessThan(10000);
+    // On unsupported Playwright browser platforms we use an explicit System-Chrome fallback
+    // that has higher startup overhead; use a dedicated budget for that path.
+    expect(loadTime).toBeLessThan(loadBudgetMs);
   });
 
   test('sollte keine blockierenden Requests haben', async ({ page }) => {

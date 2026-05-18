@@ -199,7 +199,12 @@ test.describe('@gatekeeper Trading Terminal Gatekeeper', () => {
 
   test('Navigation to terminal via Tab', async ({ page }) => {
     await page.goto('/');
-    await clickNavAndWait(page, page.locator(navTestId('terminal')).first(), /\/terminal/, 'terminal');
+    await clickNavAndWait(
+      page,
+      page.locator(`${navTestId('terminal')}:visible`).first(),
+      /\/terminal/,
+      'terminal',
+    );
 
     // Verify terminal loaded
     await expect(page.locator('[data-testid="terminal-shell"]')).toBeVisible();
