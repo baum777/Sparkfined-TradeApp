@@ -46,6 +46,41 @@ export default defineConfig(({ mode }) => ({
     }),
     mode === "development" && componentTagger(),
   ].filter(Boolean),
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) {
+            return;
+          }
+
+          if (id.includes("@solana/web3.js")) {
+            return "vendor-solana-web3";
+          }
+          if (id.includes("@solana/wallet-adapter")) {
+            return "vendor-solana-wallet";
+          }
+          if (id.includes("@radix-ui")) {
+            return "vendor-radix";
+          }
+          if (id.includes("recharts")) {
+            return "vendor-recharts";
+          }
+          if (id.includes("react-router-dom")) {
+            return "vendor-router";
+          }
+          if (id.includes("@tanstack/react-query")) {
+            return "vendor-react-query";
+          }
+          if (id.includes("react") || id.includes("scheduler")) {
+            return "vendor-react";
+          }
+
+          return "vendor";
+        },
+      },
+    },
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

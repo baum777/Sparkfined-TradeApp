@@ -51,8 +51,8 @@ export function updateFunctionWikiFrontmatter(
 ): string {
   return markdown
     .replace(/^updated: .+$/m, `updated: ${metrics.updated}`)
-    .replace(/^  avg_latency_ms: .+$/m, `  avg_latency_ms: ${metrics.avgLatencyMs}`)
-    .replace(/^  avg_tokens_est: .+$/m, `  avg_tokens_est: ${metrics.avgTokensEst}`);
+    .replace(/^\s{2}avg_latency_ms: .+$/m, `  avg_latency_ms: ${metrics.avgLatencyMs}`)
+    .replace(/^\s{2}avg_tokens_est: .+$/m, `  avg_tokens_est: ${metrics.avgTokensEst}`);
 }
 
 function parseArg(name: string, fallback: string): string {
