@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect, type ReactNode } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -10,20 +10,37 @@ import { ErrorBoundary } from "@/components/system/ErrorBoundary";
 import { setRoute } from "@/lib/monitoring/sentry";
 
 // Primary pages (canonical)
-import Dashboard from "@/pages/Dashboard";
-import Research from "@/pages/Research";
-import Journal from "@/pages/Journal";
-import JournalEntry from "@/pages/JournalEntry";
-import Insights from "@/pages/Insights";
-import Alerts from "@/pages/Alerts";
-import SettingsPage from "@/pages/SettingsPage";
-import TradingShell from "@/pages/TradingShell";
-import NotFound from "@/pages/NotFound";
+const Dashboard = lazy(() => import("@/pages/Dashboard"));
+const Research = lazy(() => import("@/pages/Research"));
+const Journal = lazy(() => import("@/pages/Journal"));
+const JournalEntry = lazy(() => import("@/pages/JournalEntry"));
+const Insights = lazy(() => import("@/pages/Insights"));
+const Alerts = lazy(() => import("@/pages/Alerts"));
+const SettingsPage = lazy(() => import("@/pages/SettingsPage"));
+const TradingShell = lazy(() => import("@/pages/TradingShell"));
+const NotFound = lazy(() => import("@/pages/NotFound"));
 
 // Journal queue sync runner
 import { startJournalQueueSync } from "@/services/journal/queueStore";
 
 const queryClient = new QueryClient();
+
+function RouteLoadingFallback() {
+  return (
+    <div
+      className="flex min-h-[320px] items-center justify-center px-4"
+      aria-busy="true"
+      aria-live="polite"
+    >
+      <div className="h-6 w-6 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-primary" />
+      <span className="sr-only">Loading route</span>
+    </div>
+  );
+}
+
+function RouteSuspense({ children }: { children: ReactNode }) {
+  return <Suspense fallback={<RouteLoadingFallback />}>{children}</Suspense>;
+}
 
 // Legacy redirect helpers (must preserve query params)
 function preserveSearchTo(path: string, searchParams: URLSearchParams): string {
@@ -148,7 +165,11 @@ function JournalRoute() {
     return <Navigate to={`/journal?${params.toString()}`} replace />;
   }
 
-  return <Journal />;
+  return (
+    <RouteSuspense>
+      <Journal />
+    </RouteSuspense>
+  );
 }
 
 // Route tracking component
@@ -184,16 +205,16 @@ const App = () => {
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
               {/* PRIMARY ROUTES (6 tabs) */}
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/research" element={<Research />} />
-              <Route path="/research/:assetId" element={<Research />} />
+              <Route path="/dashboard" element={<RouteSuspense><Dashboard /></RouteSuspense>} />
+              <Route path="/research" element={<RouteSuspense><Research /></RouteSuspense>} />
+              <Route path="/research/:assetId" element={<RouteSuspense><Research /></RouteSuspense>} />
               <Route path="/journal" element={<JournalRoute />} />
-              <Route path="/journal/:entryId" element={<JournalEntry />} />
-              <Route path="/insights" element={<Insights />} />
-              <Route path="/insights/:insightId" element={<Insights />} />
-              <Route path="/alerts" element={<Alerts />} />
-              <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/terminal" element={<TradingShell />} />
+              <Route path="/journal/:entryId" element={<RouteSuspense><JournalEntry /></RouteSuspense>} />
+              <Route path="/insights" element={<RouteSuspense><Insights /></RouteSuspense>} />
+              <Route path="/insights/:insightId" element={<RouteSuspense><Insights /></RouteSuspense>} />
+              <Route path="/alerts" element={<RouteSuspense><Alerts /></RouteSuspense>} />
+              <Route path="/settings" element={<RouteSuspense><SettingsPage /></RouteSuspense>} />
+              <Route path="/terminal" element={<RouteSuspense><TradingShell /></RouteSuspense>} />
 
               {/* LEGACY ROUTE REDIRECTS */}
               <Route path="/chart" element={<ChartRedirect />} />
@@ -222,7 +243,7 @@ const App = () => {
             </Route>
 
             {/* 404 outside AppShell */}
-            <Route path="*" element={<NotFound />} />
+            <Route path="*" element={<RouteSuspense><NotFound /></RouteSuspense>} />
           </Routes>
         </BrowserRouter>
       </TooltipProvider>
