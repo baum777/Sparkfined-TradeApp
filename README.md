@@ -4,7 +4,7 @@
 Owner: Core Team
 Status: active
 Version: 2.0
-LastUpdated: 2026-05-16
+LastUpdated: 2026-05-19
 Canonical: true
 ---
 
@@ -131,6 +131,7 @@ Location: `shared/contracts/reasoning-prompts.ts` (single source of truth)
 
 * Small PRs, single concern per PR
 * Update docs when behavior changes
+* E2E standard on this platform (`ubuntu26.04-x64`): `PLAYWRIGHT_SYSTEM_CHROME=1 pnpm test:e2e`
 * Run golden tasks before PR:
   * `pnpm lint`
   * `pnpm -s tsc --noEmit`
