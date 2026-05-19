@@ -24,7 +24,7 @@ export default defineConfig(({ mode }) => ({
       srcDir: "src/sw",
       filename: "service-worker.ts",
       registerType: "prompt",
-      includeAssets: ["favicon.svg", "favicon.ico", "robots.txt", "apple-touch-icon.png"],
+      includeAssets: ["robots.txt"],
       manifest: {
         name: "TradeApp",
         short_name: "TradeApp",
@@ -42,6 +42,7 @@ export default defineConfig(({ mode }) => ({
       },
       injectManifest: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,webmanifest}"],
+        globIgnores: ["**/manifest.webmanifest", "**/pwa-*.png"],
       },
     }),
     mode === "development" && componentTagger(),
@@ -54,25 +55,80 @@ export default defineConfig(({ mode }) => ({
             return;
           }
 
-          if (id.includes("@solana/web3.js")) {
+          const moduleId = id.replace(/\\/g, "/");
+
+          if (
+            moduleId.includes("@solana/wallet-adapter") ||
+            moduleId.includes("@solana/wallet-standard") ||
+            moduleId.includes("@wallet-standard") ||
+            moduleId.includes("@solana-mobile") ||
+            moduleId.includes("@solflare-wallet") ||
+            moduleId.includes("@project-serum") ||
+            moduleId.includes("@keystonehq") ||
+            moduleId.includes("@ledgerhq") ||
+            moduleId.includes("@particle-network") ||
+            moduleId.includes("@walletconnect") ||
+            moduleId.includes("@reown") ||
+            moduleId.includes("@toruslabs") ||
+            moduleId.includes("@fractalwagmi") ||
+            moduleId.includes("salmon-adapter-sdk")
+          ) {
+            return "vendor-wallet-adapters";
+          }
+          if (moduleId.includes("@solana/")) {
             return "vendor-solana-web3";
           }
-          if (id.includes("@solana/wallet-adapter")) {
-            return "vendor-solana-wallet";
+          if (
+            moduleId.includes("/node_modules/buffer/") ||
+            moduleId.includes("/node_modules/borsh/") ||
+            moduleId.includes("/node_modules/bs58/") ||
+            moduleId.includes("/node_modules/bs58check/") ||
+            moduleId.includes("/node_modules/base-x/") ||
+            moduleId.includes("/node_modules/bn.js/") ||
+            moduleId.includes("/node_modules/safe-buffer/") ||
+            moduleId.includes("/node_modules/tweetnacl/") ||
+            moduleId.includes("/node_modules/@noble/") ||
+            moduleId.includes("/node_modules/@scure/")
+          ) {
+            return "vendor-crypto-buffer";
           }
-          if (id.includes("@radix-ui")) {
+          if (moduleId.includes("@radix-ui")) {
             return "vendor-radix";
           }
-          if (id.includes("recharts")) {
-            return "vendor-recharts";
+          if (moduleId.includes("recharts") || moduleId.includes("lightweight-charts")) {
+            return "vendor-charts";
           }
-          if (id.includes("react-router-dom")) {
+          if (moduleId.includes("date-fns") || moduleId.includes("react-day-picker")) {
+            return "vendor-date";
+          }
+          if (moduleId.includes("/node_modules/idb/") || moduleId.includes("/node_modules/idb-keyval/")) {
+            return "vendor-storage";
+          }
+          if (
+            moduleId.includes("cmdk") ||
+            moduleId.includes("vaul") ||
+            moduleId.includes("sonner") ||
+            moduleId.includes("embla-carousel-react") ||
+            moduleId.includes("lucide-react")
+          ) {
+            return "vendor-ui";
+          }
+          if (moduleId.includes("@sentry")) {
+            return "vendor-monitoring";
+          }
+          if (moduleId.includes("zod")) {
+            return "vendor-validation";
+          }
+          if (moduleId.includes("zustand")) {
+            return "vendor-state";
+          }
+          if (moduleId.includes("react-router-dom")) {
             return "vendor-router";
           }
-          if (id.includes("@tanstack/react-query")) {
+          if (moduleId.includes("@tanstack/react-query")) {
             return "vendor-react-query";
           }
-          if (id.includes("react") || id.includes("scheduler")) {
+          if (moduleId.includes("react") || moduleId.includes("scheduler")) {
             return "vendor-react";
           }
 
