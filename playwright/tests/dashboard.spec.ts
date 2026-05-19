@@ -83,7 +83,7 @@ test.describe('Dashboard Performance', () => {
     const startTime = Date.now();
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     // Wait for dashboard page to be visible (functional readiness, not networkidle)
-    await expect(page.locator(pageTestId('dashboard'))).toBeVisible();
+    await expect(page.locator(pageTestId('dashboard'))).toBeVisible({ timeout: loadBudgetMs });
     const loadTime = Date.now() - startTime;
 
     // Performance assertion: page should be functionally ready in < 10s

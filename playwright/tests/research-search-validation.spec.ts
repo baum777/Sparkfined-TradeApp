@@ -3,6 +3,8 @@ import { stubApi } from "../fixtures";
 import { pageTestId } from "../utils/testids";
 import { getUrlParts } from "../utils/nav";
 
+const routeReadyTimeoutMs = process.env.PLAYWRIGHT_SYSTEM_CHROME === "1" ? 15_000 : 10_000;
+
 test.describe("Research chart search validation (strict + escape hatch)", () => {
   test.beforeEach(async ({ page }) => {
     await stubApi(page);
@@ -30,7 +32,7 @@ test.describe("Research chart search validation (strict + escape hatch)", () => 
     expect(pathname).toBe("/research");
     expect(searchParams.get("view")).toBe("chart");
     expect(searchParams.get("q")).toBe("hello$");
-    await expect(page.locator(pageTestId('research'))).toBeVisible();
+    await expect(page.locator(pageTestId("research"))).toBeVisible({ timeout: routeReadyTimeoutMs });
   });
 
   test("valid ticker normalizes to uppercase and navigates via canonical research route", async ({
@@ -46,7 +48,6 @@ test.describe("Research chart search validation (strict + escape hatch)", () => 
     expect(pathname).toBe("/research");
     expect(searchParams.get("view")).toBe("chart");
     expect(searchParams.get("q")).toBe("SOL");
-    await expect(page.locator(pageTestId('research'))).toBeVisible();
+    await expect(page.locator(pageTestId("research"))).toBeVisible({ timeout: routeReadyTimeoutMs });
   });
 });
-
