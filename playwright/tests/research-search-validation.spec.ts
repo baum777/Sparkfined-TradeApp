@@ -1,8 +1,13 @@
 import { test, expect } from "@playwright/test";
+import { stubApi } from "../fixtures";
 import { pageTestId } from "../utils/testids";
 import { getUrlParts } from "../utils/nav";
 
 test.describe("Research chart search validation (strict + escape hatch)", () => {
+  test.beforeEach(async ({ page }) => {
+    await stubApi(page);
+  });
+
   test("invalid input shows inline error and 'Search anyway' navigates with raw trimmed", async ({
     page,
   }) => {
@@ -44,5 +49,4 @@ test.describe("Research chart search validation (strict + escape hatch)", () => 
     await expect(page.locator(pageTestId('research'))).toBeVisible();
   });
 });
-
 
