@@ -20,3 +20,5 @@
 ## [2026-05-16] applied | Rebase auf aktuelles `origin/main` abgeschlossen, fehlende Prompt-Security-Imports und Test-Setup-Node-Imports repariert [[backend-rebase-verification-fix]]
 ## [2026-05-16] verified | Rebasierten Backend-Branch erneut verifiziert: `pnpm -C backend run typecheck`, `pnpm -C backend run test`, `pnpm run doc:check` grün [[backend-rebase-verification-fix]]
 ## [2026-05-16] applied | README Frontdoor um Tool-, Pipeline- und Architektur-Mermaid-Visualisierung ergänzt [[readme-tool-pipeline-architecture]]
+## [2026-05-20] applied | Critical-Smoke-E2E für kritische UI-Flächen ergänzt [[functions/critical-smoke-e2e]]
+## [2026-05-20] verified | Critical-Smoke-E2E mit System Chrome Desktop und Mobile grün: `18 passed` [[functions/critical-smoke-e2e]]

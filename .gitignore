@@ -1,4 +1,3 @@
-```
 # Environment files
 .env
 .env.local
@@ -50,5 +49,14 @@ target/
 # OS generated files
 .DS_Store
 Thumbs.db
-```
-.vercel
+
+# Vercel local project metadata
+.vercel/
+
+# Local runtime data
+.data/
+backend/.data/
+
+# Playwright artifacts
+playwright-report/
+test-results/
