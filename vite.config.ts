@@ -78,20 +78,6 @@ export default defineConfig(({ mode }) => ({
           if (moduleId.includes("@solana/")) {
             return "vendor-solana-web3";
           }
-          if (
-            moduleId.includes("/node_modules/buffer/") ||
-            moduleId.includes("/node_modules/borsh/") ||
-            moduleId.includes("/node_modules/bs58/") ||
-            moduleId.includes("/node_modules/bs58check/") ||
-            moduleId.includes("/node_modules/base-x/") ||
-            moduleId.includes("/node_modules/bn.js/") ||
-            moduleId.includes("/node_modules/safe-buffer/") ||
-            moduleId.includes("/node_modules/tweetnacl/") ||
-            moduleId.includes("/node_modules/@noble/") ||
-            moduleId.includes("/node_modules/@scure/")
-          ) {
-            return "vendor-crypto-buffer";
-          }
           if (moduleId.includes("@radix-ui")) {
             return "vendor-radix";
           }

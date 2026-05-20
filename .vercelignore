@@ -1,0 +1,10 @@
+# Frontend deployment only. API/backend services are deployed separately and
+# /api/* is routed by vercel.json to the configured backend URL.
+/api/
+/backend/
+/apps/backend-alerts/
+
+# Local and generated artifacts.
+.vercel/
+playwright-report/
+test-results/
