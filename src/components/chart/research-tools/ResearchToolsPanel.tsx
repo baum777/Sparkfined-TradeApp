@@ -94,13 +94,10 @@ export function ResearchToolsPanel({ store, onOpenAIAnalyzer }: ResearchToolsPan
               onToggleVisibility={store.toggleIndicatorVisibility}
               onRemove={store.removeIndicator}
               onEdit={setEditingIndicatorId}
+              onUpdateParams={store.updateIndicatorParams}
               onReorder={store.reorderIndicators}
+              editingIndicatorId={editingIndicatorId}
             />
-            {editingIndicatorId && (
-              <p className="text-xs text-muted-foreground mt-2">
-                Editing indicator: {editingIndicatorId}
-              </p>
-            )}
           </TabsContent>
 
           <TabsContent value="library" className="mt-3">

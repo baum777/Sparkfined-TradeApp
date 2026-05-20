@@ -14,3 +14,5 @@
 [[backend-rebase-verification-fix]] | Rebase auf aktuelles `main` mit reparierten Backend-Imports und erneut grüner Verifikation | #backend #rebase #verification #tests | 2026-05-16
 [[readme-tool-pipeline-architecture]] | README-Frontdoor mit Tool-, Pipeline- und Architektur-Mermaid-Diagramm | #readme #architecture #pipeline #mermaid | 2026-05-16
 [[functions/critical-smoke-e2e]] | Playwright-Smoke-Matrix für kritische UI-Flächen mit Desktop- und Mobile-Chrome-Verifikation | #e2e #playwright #smoke #frontend | 2026-05-20
+[[functions/research-chart-timeframe-pills]] | Tooltip-Pills und lazy historische Kerzen für Research-Chart-Timeframes von 15s bis 4h | #research #chart #frontend #live-data | 2026-05-20
+[[functions/research-chart-indicators]] | Technical-Analysis-Indikatoren und Indicator-Visualisierung im Research-Chart | #research #chart #indicators #frontend | 2026-05-20

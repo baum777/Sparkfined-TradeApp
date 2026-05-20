@@ -456,7 +456,11 @@ function ResearchWorkspace() {
 
             {/* Chart Canvas or Empty state */}
             {hasChartData ? (
-              <ChartCanvas symbol={selectedSymbol} timeframe={selectedTimeframe} />
+              <ChartCanvas
+                symbol={selectedSymbol}
+                timeframe={selectedTimeframe}
+                indicators={toolsStore.enabledIndicators}
+              />
             ) : (
               <div
                 data-testid="chart-canvas-container"
