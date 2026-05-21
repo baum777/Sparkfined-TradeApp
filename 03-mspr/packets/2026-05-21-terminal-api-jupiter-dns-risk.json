@@ -1,0 +1,29 @@
+{
+  "id": "terminal-api-jupiter-dns-risk",
+  "date": "2026-05-21",
+  "status": "Risk",
+  "authority": "Observed",
+  "scope": "terminal-api-verification",
+  "trigger": "quote-path-external-provider-unreachable",
+  "observed": {
+    "backend_env_file": "backend/.env missing",
+    "backend_mode": "full",
+    "backend_health": "200 ok",
+    "backend_ready": "200 ready",
+    "database": "ok",
+    "discover_tokens": "200 ok fallback-data",
+    "terminal_ui_quote": "Quote error",
+    "direct_quote_status": "500",
+    "direct_quote_message": "fetch failed",
+    "external_dns": "quote-api.jup.ag ENOTFOUND"
+  },
+  "risk": {
+    "impact": "terminal quote and swap cannot be end-to-end verified locally",
+    "type": "external-provider-network-or-dns",
+    "auto_promotion": false
+  },
+  "review": {
+    "required": true,
+    "gate": "provide reachable Jupiter network path or configured provider mock before quote/swap signoff"
+  }
+}
