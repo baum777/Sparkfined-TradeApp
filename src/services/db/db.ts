@@ -42,6 +42,13 @@ const DB_VERSION = 3; // Bump version for new stores
 
 let dbPromise: Promise<IDBPDatabase<TradeAppDB>> | null = null;
 
+export const ALERTS_CHANGED_EVENT = 'alerts:changed';
+
+function emitAlertsChangedEvent(): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new Event(ALERTS_CHANGED_EVENT));
+}
+
 function getDB() {
   if (!dbPromise) {
     dbPromise = openDB<TradeAppDB>(DB_NAME, DB_VERSION, {
@@ -92,11 +99,13 @@ export const dbService = {
   async saveAlert(alert: Alert): Promise<void> {
     const db = await getDB();
     await db.put('alerts', alert);
+    emitAlertsChangedEvent();
   },
 
   async deleteAlert(id: string): Promise<void> {
     const db = await getDB();
     await db.delete('alerts', id);
+    emitAlertsChangedEvent();
   },
 
   // Sync Queue methods (legacy)
@@ -201,4 +210,3 @@ export const dbService = {
     await db.clear('journalQueue');
   },
 };
-

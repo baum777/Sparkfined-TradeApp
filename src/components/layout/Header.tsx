@@ -4,39 +4,42 @@
  * Per Global UI Infrastructure spec
  */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Bell, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { QuickActionsHeaderButton } from "@/components/quick-actions";
 import { OfflineStatusBadge } from "@/components/offline";
 import { Link, useLocation } from "react-router-dom";
-import { dbService } from "@/services/db/db";
+import { ALERTS_CHANGED_EVENT, dbService } from "@/services/db/db";
 
 export function Header() {
   const location = useLocation();
   const [activeAlertsCount, setActiveAlertsCount] = useState(0);
 
-  useEffect(() => {
-    let isMounted = true;
-
-    async function refreshAlertsBadge() {
-      try {
-        const alerts = await dbService.getAllAlerts();
-        if (!isMounted) return;
-        const count = alerts.filter((alert) => alert.enabled && alert.status !== "paused").length;
-        setActiveAlertsCount(count);
-      } catch {
-        if (!isMounted) return;
-        setActiveAlertsCount(0);
-      }
+  const refreshAlertsBadge = useCallback(async () => {
+    try {
+      const alerts = await dbService.getAllAlerts();
+      const count = alerts.filter((alert) => alert.enabled && alert.status !== "paused").length;
+      setActiveAlertsCount(count);
+    } catch {
+      setActiveAlertsCount(0);
     }
+  }, []);
 
+  useEffect(() => {
     void refreshAlertsBadge();
+  }, [location.pathname, refreshAlertsBadge]);
 
-    return () => {
-      isMounted = false;
+  useEffect(() => {
+    const handleAlertsChanged = () => {
+      void refreshAlertsBadge();
     };
-  }, [location.pathname]);
+
+    window.addEventListener(ALERTS_CHANGED_EVENT, handleAlertsChanged);
+    return () => {
+      window.removeEventListener(ALERTS_CHANGED_EVENT, handleAlertsChanged);
+    };
+  }, [refreshAlertsBadge]);
 
   const badgeText = activeAlertsCount > 9 ? "9+" : String(activeAlertsCount);
 
