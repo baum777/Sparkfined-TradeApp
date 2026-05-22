@@ -84,9 +84,10 @@ test.describe('Mobile Navigation', () => {
     const bottomNav = page.getByRole('navigation', { name: 'Main navigation' });
     const dashboardNav = bottomNav.locator(navTestId('dashboard'));
     await expect(dashboardNav).toBeVisible();
+    await expect(bottomNav.locator(navTestId('alerts'))).toHaveCount(0);
   });
 
-  test('sollte mobile Navigation funktionieren', async ({ page }) => {
+  test('sollte mobile Navigation funktionieren und Alerts über Header öffnen', async ({ page }) => {
     const bottomNav = page.getByRole('navigation', { name: 'Main navigation' });
     
     // Navigiere zu Journal
@@ -105,8 +106,16 @@ test.describe('Mobile Navigation', () => {
       expect(searchParams.get('view')).toBe('chart');
     }
 
-    // Navigiere zu Alerts
-    await clickNavAndWait(page, bottomNav.locator(navTestId('alerts')), /\/alerts/, 'alerts');
+    // Navigiere zu Terminal
+    await clickNavAndWait(page, bottomNav.locator(navTestId('terminal')), /\/terminal/, 'terminal');
+
+    // Alerts sind mobil sekundär über Header erreichbar
+    await clickNavAndWait(
+      page,
+      page.getByRole('link', { name: 'Notifications' }),
+      /\/alerts/,
+      'alerts'
+    );
   });
 });
 
