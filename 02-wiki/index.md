@@ -2,3 +2,4 @@
 [[backend-baseline-repair]] | Node-24-SQLite-Binding repariert, socket-freie HTTP-Integrationstests eingeführt und Backend-Checks verifiziert | #backend #testing #sqlite #vitest #typescript | 2026-05-16
 [[readme-tool-pipeline-architecture]] | README-Frontdoor mit Tool-, Pipeline- und Architektur-Mermaid-Diagramm | #readme #architecture #pipeline #mermaid | 2026-05-16
 [[terminal-api-jupiter-dns-risk]] | Terminal-API lokal gestartet; Health, Ready und Discover verifiziert; Quote durch Jupiter-DNS `ENOTFOUND` blockiert | #terminal #backend #verification #risk #mspr | 2026-05-21
+[[terminal-chart-candles-provider-decision]] | Fail-closed `/api/chart/candles` Backend-Contract und Frontend-Service implementiert; Live-OHLCV-Provider und ChartPanel-Verbrauch bleiben Review-Gate | #terminal #chart #backend #frontend #verification #mspr | 2026-05-22

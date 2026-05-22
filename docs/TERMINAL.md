@@ -2,7 +2,7 @@
 Owner: Trading Terminal Team
 Status: active
 Version: 1.0
-LastUpdated: 2026-05-16
+LastUpdated: 2026-05-22
 Canonical: true
 ---
 
@@ -193,6 +193,14 @@ Body: { publicKey, baseMint, quoteMint, side, amount, amountMode, slippageBps, f
 Response: { swapTransactionBase64, lastValidBlockHeight?, prioritizationFeeLamports? }
 ```
 
+**Chart Candles**
+```text
+GET /api/chart/candles
+Query: mint, quoteMint, timeframe, limit?
+Response: { candles: InputCandle[] }
+Error: 503 PROVIDER_UNAVAILABLE while live OHLCV provider is unconfigured
+```
+
 ## Testing Checklist
 
 1. Standalone Terminal:
@@ -215,8 +223,8 @@ Response: { swapTransactionBase64, lastValidBlockHeight?, prioritizationFeeLampo
 
 ## Known Limitations
 
-1. **Chart data is synthetic**
-   Current `ChartPanel` uses seeded mock candles, not live market candles.
+1. **Chart UI data is synthetic**
+   Current `ChartPanel` still uses seeded mock candles. The backend now exposes a fail-closed `/api/chart/candles` contract, but live OHLCV provider ownership and frontend consumption are not yet promoted.
 
 2. **Symbol resolver is intentionally narrow**
    Embedded Research sync only resolves a well-known symbol subset.

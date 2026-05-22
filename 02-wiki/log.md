@@ -2,3 +2,6 @@
 ## [2026-05-16] verified | Backend-Baseline repariert: `better-sqlite3` für Node 24 neu aufgebaut, HTTP-Integrationstests auf In-Memory-Router umgestellt, `typecheck` und `vitest` grün [[backend-baseline-repair]]
 ## [2026-05-16] applied | README Frontdoor um Tool-, Pipeline- und Architektur-Mermaid-Visualisierung ergänzt [[readme-tool-pipeline-architecture]]
 ## [2026-05-21] risk | Terminal-API lokal gestartet; `/api/health`, `/api/health/ready` und `/api/discover/tokens` verifiziert, `/api/quote` durch externe Jupiter-DNS-Auflösung `ENOTFOUND` blockiert [[terminal-api-jupiter-dns-risk]]
+## [2026-05-22] verified | Audit zur nächsten Terminal-Aufgabe ausgeführt: Discover fail-closed und Quick-Amounts verifiziert; nächster sicherer Scope ist `/api/chart/candles` fail-closed Contract vor Live-Provider-Entscheidung [[terminal-chart-candles-provider-decision]]
+## [2026-05-22] applied | Fail-closed Backend-Contract `GET /api/chart/candles` ergänzt: Query-Validation, Provider-Abstraktion, Terminal-/Full-Mode-Route und Integrationstests [[terminal-chart-candles-provider-decision]]
+## [2026-05-22] applied | Frontend-`chartCandleService` ergänzt: kanonischer `/api/chart/candles`-Client mit `URLSearchParams`, Envelope-Unwrap und Provider-Error-Propagation ohne Fallback-Candles [[terminal-chart-candles-provider-decision]]

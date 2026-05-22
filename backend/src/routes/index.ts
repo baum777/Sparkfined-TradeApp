@@ -7,6 +7,7 @@ export * from './health.js';
 export * from './oracle.js';
 export * from './ta.js';
 export * from './chartAnalysis.js';
+export * from './chartCandles.js';
 export * from './reasoning/index.js';
 export * from './usage.js';
 export * from './feed.js';
