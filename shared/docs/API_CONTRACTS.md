@@ -109,6 +109,7 @@ Diese Endpoints sind im `backend/` Router registriert:
   - `PUT /api/oracle/read-state`
   - `POST /api/oracle/read-state/bulk` (Alias: `PUT` ist ebenfalls registriert)
 - **Chart/TA**
+  - `GET /api/chart/candles`
   - `POST /api/chart/ta`
   - `POST /api/chart/analyze`
 - **Reasoning / LLM**
@@ -162,6 +163,37 @@ interface ApiError {
 | Header | Value | Purpose |
 |--------|-------|---------|
 | `x-request-id` | UUID or trace string | Request tracing across services |
+
+### Discover fail-closed contract
+
+`GET /api/discover/tokens` keeps the canonical success envelope and fails closed on provider outage.
+
+- Success:
+  - HTTP `200`
+  - `{ "status": "ok", "data": Token[] }`
+- Provider outage:
+  - HTTP `503`
+  - `{ "error": { "code": "PROVIDER_UNAVAILABLE", "message": "...", "details": { "provider": "jupiter", "requestId": "..." } } }`
+
+Constraint: provider failures must never be normalized into `200` with `data: []`.
+
+### Chart candles fail-closed contract
+
+`GET /api/chart/candles` is a canonical backend route for terminal chart OHLCV data. The route exists in `terminal` and `full` service modes, but live provider ownership is still gated by MSPR review.
+
+- Query:
+  - `mint`: required base mint
+  - `quoteMint`: required quote mint
+  - `timeframe`: `15s | 30s | 1m | 5m | 15m | 30m | 1h | 4h`
+  - `limit`: optional integer, default `168`, max `500`
+- Success:
+  - HTTP `200`
+  - `{ "status": "ok", "data": { "candles": InputCandle[] } }`
+- Provider outage or unconfigured provider:
+  - HTTP `503`
+  - `{ "error": { "code": "PROVIDER_UNAVAILABLE", "message": "...", "details": { "provider": "chart-candles", "requestId": "..." } } }`
+
+Constraint: route and provider abstraction must not synthesize candles. Live OHLCV provider promotion requires owner review.
 
 ### A) `backend/` Envelope (Node Server)
 

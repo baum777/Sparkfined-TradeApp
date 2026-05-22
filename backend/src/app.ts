@@ -29,6 +29,7 @@ import {
   handleOracleBulkReadState,
   handleTAAnalysis,
   handleChartAnalyze,
+  handleChartCandles,
   handleReasoningTradeReview,
   handleReasoningSessionReview,
   handleReasoningBoardScenarios,
@@ -74,6 +75,7 @@ export function createApp(): Router {
     router.get('/quote', handleQuote);
     router.post('/swap', handleSwap);
     router.get('/discover/tokens', handleDiscoverTokens);
+    router.get('/chart/candles', handleChartCandles);
   }
 
   // JOURNAL MODE: Journal, LLM, Auth, Settings routes
