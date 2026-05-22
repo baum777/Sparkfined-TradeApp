@@ -91,4 +91,72 @@ describe('OrderForm', () => {
 
     expect(screen.queryByTestId('balance-display')).not.toBeInTheDocument();
   });
+
+  it('uses quote balance as quick amount baseline on buy side', async () => {
+    const user = userEvent.setup();
+    const wallet = createMockWallet(true);
+    const connection = {} as Connection;
+
+    useTerminalStore.setState({
+      side: 'buy',
+      balances: { base: '1.5', quote: '100.25', loading: false },
+    });
+
+    render(<OrderForm wallet={wallet} connection={connection} />);
+
+    await user.click(screen.getByRole('button', { name: 'Set amount to 50%' }));
+
+    await waitFor(() => {
+      expect(useTerminalStore.getState().amount.value).toBe('50.125');
+    });
+  });
+
+  it('uses base balance as quick amount baseline on sell side', async () => {
+    const user = userEvent.setup();
+    const wallet = createMockWallet(true);
+    const connection = {} as Connection;
+
+    useTerminalStore.setState({
+      side: 'sell',
+      balances: { base: '1.5', quote: '100.25', loading: false },
+    });
+
+    render(<OrderForm wallet={wallet} connection={connection} />);
+
+    await user.click(screen.getByRole('button', { name: 'Set amount to 50%' }));
+
+    await waitFor(() => {
+      expect(useTerminalStore.getState().amount.value).toBe('0.75');
+    });
+  });
+
+  it('disables quick amount buttons while balances are loading', () => {
+    const wallet = createMockWallet(true);
+    const connection = {} as Connection;
+
+    useTerminalStore.setState({
+      side: 'buy',
+      balances: { base: '1.5', quote: '100.25', loading: true },
+    });
+
+    render(<OrderForm wallet={wallet} connection={connection} />);
+
+    expect(screen.getByRole('button', { name: 'Set amount to 25%' })).toBeDisabled();
+    expect(screen.getByText('Balance unavailable')).toBeInTheDocument();
+  });
+
+  it('disables quick amount buttons when relevant balance is missing', () => {
+    const wallet = createMockWallet(true);
+    const connection = {} as Connection;
+
+    useTerminalStore.setState({
+      side: 'buy',
+      balances: { base: '1.5', quote: null, loading: false },
+    });
+
+    render(<OrderForm wallet={wallet} connection={connection} />);
+
+    expect(screen.getByRole('button', { name: 'Set amount to 25%' })).toBeDisabled();
+    expect(screen.getByText('Balance unavailable')).toBeInTheDocument();
+  });
 });
