@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { OrderForm } from '@/components/terminal/OrderForm';
 import { useTerminalStore } from '@/lib/state/terminalStore';
@@ -31,6 +31,12 @@ function createMockWallet(connected = true) {
   } as Parameters<typeof OrderForm>[0]['wallet'];
 }
 
+type TerminalStoreSnapshot = ReturnType<typeof useTerminalStore.getState>;
+const originalFetchBalances = useTerminalStore.getState().fetchBalances;
+const originalScheduleQuoteFetch = useTerminalStore.getState().scheduleQuoteFetch;
+const noOpFetchBalances: TerminalStoreSnapshot['fetchBalances'] = async (_opts) => {};
+const noOpScheduleQuoteFetch: TerminalStoreSnapshot['scheduleQuoteFetch'] = () => {};
+
 describe('OrderForm', () => {
   beforeEach(() => {
     useTerminalStore.setState({
@@ -40,13 +46,18 @@ describe('OrderForm', () => {
       balances: { base: '1.5', quote: '100.25', loading: false },
       quote: { status: 'idle' },
       tx: { status: 'idle' },
+      fetchBalances: noOpFetchBalances,
+      scheduleQuoteFetch: noOpScheduleQuoteFetch,
     });
   });
 
   afterEach(() => {
+    cleanup();
     useTerminalStore.setState({
       pair: null,
       balances: { base: null, quote: null, loading: false },
+      fetchBalances: originalFetchBalances,
+      scheduleQuoteFetch: originalScheduleQuoteFetch,
     });
   });
 
