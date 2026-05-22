@@ -6,6 +6,21 @@ import { defineConfig, devices } from '@playwright/test';
  * Siehe https://playwright.dev/docs/test-configuration
  */
 export default defineConfig({
+  // Optional override for constrained environments where watcher-based dev server cannot start.
+  // Use with an externally started server at baseURL.
+  ...(process.env.PLAYWRIGHT_SKIP_WEBSERVER === '1'
+    ? {}
+    : {
+        webServer: {
+          command: 'pnpm exec vite --host 127.0.0.1 --port 5173 --strictPort',
+          url: 'http://127.0.0.1:5173',
+          reuseExistingServer: !process.env.CI,
+          timeout: 120 * 1000,
+          env: {
+            VITE_E2E_WALLET_MOCK: process.env.VITE_E2E_WALLET_MOCK ?? (process.env.CI ? '1' : '0'),
+          },
+        },
+      }),
   testDir: './playwright/tests',
   
   /* Maximale Zeit, die ein Test laufen darf */
@@ -96,14 +111,4 @@ export default defineConfig({
     // },
   ],
 
-  /* Run your local dev server before starting the tests */
-  webServer: {
-    command: 'pnpm exec vite --host 127.0.0.1 --port 5173 --strictPort',
-    url: 'http://127.0.0.1:5173',
-    reuseExistingServer: !process.env.CI,
-    timeout: 120 * 1000,
-    env: {
-      VITE_E2E_WALLET_MOCK: process.env.VITE_E2E_WALLET_MOCK ?? (process.env.CI ? '1' : '0'),
-    },
-  },
 });
