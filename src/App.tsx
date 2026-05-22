@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -9,21 +9,33 @@ import { DiscoverOverlay } from "@/components/discover";
 import { ErrorBoundary } from "@/components/system/ErrorBoundary";
 import { setRoute } from "@/lib/monitoring/sentry";
 
-// Primary pages (canonical)
-import Dashboard from "@/pages/Dashboard";
-import Research from "@/pages/Research";
-import Journal from "@/pages/Journal";
-import JournalEntry from "@/pages/JournalEntry";
-import Insights from "@/pages/Insights";
-import Alerts from "@/pages/Alerts";
-import SettingsPage from "@/pages/SettingsPage";
-import TradingShell from "@/pages/TradingShell";
-import NotFound from "@/pages/NotFound";
-
 // Journal queue sync runner
 import { startJournalQueueSync } from "@/services/journal/queueStore";
 
 const queryClient = new QueryClient();
+
+// Route-level code splitting for primary pages
+const Dashboard = lazy(() => import("@/pages/Dashboard"));
+const Research = lazy(() => import("@/pages/Research"));
+const Journal = lazy(() => import("@/pages/Journal"));
+const JournalEntry = lazy(() => import("@/pages/JournalEntry"));
+const Insights = lazy(() => import("@/pages/Insights"));
+const Alerts = lazy(() => import("@/pages/Alerts"));
+const SettingsPage = lazy(() => import("@/pages/SettingsPage"));
+const TradingShell = lazy(() => import("@/pages/TradingShell"));
+const NotFound = lazy(() => import("@/pages/NotFound"));
+
+function RouteFallback() {
+  return (
+    <div
+      className="flex min-h-[40vh] items-center justify-center text-sm text-muted-foreground"
+      role="status"
+      aria-live="polite"
+    >
+      Loading page...
+    </div>
+  );
+}
 
 // Legacy redirect helpers (must preserve query params)
 function preserveSearchTo(path: string, searchParams: URLSearchParams): string {
@@ -178,55 +190,57 @@ const App = () => {
             <ErrorBoundary scope="Discover">
               <DiscoverOverlay />
             </ErrorBoundary>
-            <Routes>
-              <Route element={<AppShell />}>
-              {/* Redirects (Root) */}
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Suspense fallback={<RouteFallback />}>
+              <Routes>
+                <Route element={<AppShell />}>
+                  {/* Redirects (Root) */}
+                  <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-              {/* PRIMARY ROUTES (6 tabs) */}
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/research" element={<Research />} />
-              <Route path="/research/:assetId" element={<Research />} />
-              <Route path="/journal" element={<JournalRoute />} />
-              <Route path="/journal/:entryId" element={<JournalEntry />} />
-              <Route path="/insights" element={<Insights />} />
-              <Route path="/insights/:insightId" element={<Insights />} />
-              <Route path="/alerts" element={<Alerts />} />
-              <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/terminal" element={<TradingShell />} />
+                  {/* PRIMARY ROUTES (6 tabs) */}
+                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/research" element={<Research />} />
+                  <Route path="/research/:assetId" element={<Research />} />
+                  <Route path="/journal" element={<JournalRoute />} />
+                  <Route path="/journal/:entryId" element={<JournalEntry />} />
+                  <Route path="/insights" element={<Insights />} />
+                  <Route path="/insights/:insightId" element={<Insights />} />
+                  <Route path="/alerts" element={<Alerts />} />
+                  <Route path="/settings" element={<SettingsPage />} />
+                  <Route path="/terminal" element={<TradingShell />} />
 
-              {/* LEGACY ROUTE REDIRECTS */}
-              <Route path="/chart" element={<ChartRedirect />} />
-              <Route path="/replay" element={<ReplayRedirect />} />
-              <Route path="/watchlist" element={<WatchlistRedirect />} />
-              <Route path="/asset/:assetId" element={<AssetLegacyRedirect />} />
+                  {/* LEGACY ROUTE REDIRECTS */}
+                  <Route path="/chart" element={<ChartRedirect />} />
+                  <Route path="/replay" element={<ReplayRedirect />} />
+                  <Route path="/watchlist" element={<WatchlistRedirect />} />
+                  <Route path="/asset/:assetId" element={<AssetLegacyRedirect />} />
 
-              <Route path="/oracle" element={<OracleRedirect />} />
-              <Route path="/oracle/inbox" element={<OracleInboxRedirect />} />
-              <Route path="/oracle/status" element={<OracleStatusRedirect />} />
-              <Route path="/oracle/:insightId" element={<OracleInsightLegacyRedirect />} />
+                  <Route path="/oracle" element={<OracleRedirect />} />
+                  <Route path="/oracle/inbox" element={<OracleInboxRedirect />} />
+                  <Route path="/oracle/status" element={<OracleStatusRedirect />} />
+                  <Route path="/oracle/:insightId" element={<OracleInsightLegacyRedirect />} />
 
-              <Route path="/learn" element={<LearnRedirect />} />
-              <Route path="/learn/:id" element={<LearnRedirect />} />
-              <Route path="/handbook" element={<HandbookRedirect />} />
+                  <Route path="/learn" element={<LearnRedirect />} />
+                  <Route path="/learn/:id" element={<LearnRedirect />} />
+                  <Route path="/handbook" element={<HandbookRedirect />} />
 
-              <Route path="/journal/review" element={<JournalReviewRedirect />} />
-              <Route path="/journal/insights" element={<JournalInsightsRedirect />} />
+                  <Route path="/journal/review" element={<JournalReviewRedirect />} />
+                  <Route path="/journal/insights" element={<JournalInsightsRedirect />} />
 
-              <Route path="/settings/providers" element={<SettingsSectionRedirect section="providers" />} />
-              <Route path="/settings/data" element={<SettingsSectionRedirect section="data" />} />
-              <Route path="/settings/privacy" element={<SettingsSectionRedirect section="privacy" />} />
+                  <Route path="/settings/providers" element={<SettingsSectionRedirect section="providers" />} />
+                  <Route path="/settings/data" element={<SettingsSectionRedirect section="data" />} />
+                  <Route path="/settings/privacy" element={<SettingsSectionRedirect section="privacy" />} />
 
-              {/* Existing experiments page is also legacy -> section param */}
-              <Route path="/settings/experiments" element={<SettingsSectionRedirect section="experiments" />} />
-            </Route>
+                  {/* Existing experiments page is also legacy -> section param */}
+                  <Route path="/settings/experiments" element={<SettingsSectionRedirect section="experiments" />} />
+                </Route>
 
-            {/* 404 outside AppShell */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </QueryClientProvider>
+                {/* 404 outside AppShell */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
+          </BrowserRouter>
+        </TooltipProvider>
+      </QueryClientProvider>
     </ErrorBoundary>
   );
 };

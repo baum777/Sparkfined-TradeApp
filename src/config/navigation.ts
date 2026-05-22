@@ -57,7 +57,7 @@ export const primaryNavItems: NavItem[] = primaryTabs.map((tab) => ({
             : [tab.route],
 }));
 
-// Mobile bottom nav items (5 items - Settings excluded)
+// Mobile bottom nav items (5 items - Alerts/Settings excluded)
 export const mobileNavItems: NavItem[] = primaryTabs
   .filter((tab) => tab.showInMobileNav !== false)
   .map((tab) => ({

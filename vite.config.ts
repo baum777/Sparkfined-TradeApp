@@ -4,6 +4,51 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
 
+function manualChunks(id: string): string | undefined {
+  if (!id.includes("node_modules")) return undefined;
+
+  // Keep heavy Solana/wallet dependencies in a dedicated shared chunk.
+  if (
+    id.includes("@solana/") ||
+    id.includes("@solana-mobile/") ||
+    id.includes("@noble/") ||
+    id.includes("bn.js") ||
+    id.includes("borsh") ||
+    id.includes("bs58") ||
+    id.includes("tweetnacl") ||
+    id.includes("superstruct")
+  ) {
+    return "vendor-solana";
+  }
+
+  // Router stack commonly shared by all routes.
+  if (id.includes("react-router") || id.includes("@remix-run/router")) {
+    return "vendor-router";
+  }
+
+  // React runtime/core packages.
+  if (id.includes("react-dom") || id.includes("/react/")) {
+    return "vendor-react";
+  }
+
+  // Large UI libraries used across many screens.
+  if (
+    id.includes("@radix-ui/") ||
+    id.includes("vaul") ||
+    id.includes("lucide-react") ||
+    id.includes("cmdk")
+  ) {
+    return "vendor-ui";
+  }
+
+  // Query/cache layer.
+  if (id.includes("@tanstack/")) {
+    return "vendor-data";
+  }
+
+  return "vendor-misc";
+}
+
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {
@@ -46,6 +91,13 @@ export default defineConfig(({ mode }) => ({
     }),
     mode === "development" && componentTagger(),
   ].filter(Boolean),
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks,
+      },
+    },
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

@@ -15,7 +15,7 @@
     "dev": "pnpm exec vite",
     "dev:backend": "pnpm -C apps/backend-alerts dev",
     "dev:all": "bash -lc 'pnpm -C apps/backend-alerts dev & pnpm exec vite'",
-    "build": "pnpm exec vite build",
+    "build": "NODE_ENV=production pnpm exec vite build",
     "build:dev": "pnpm exec vite build --mode development",
     "build:backend": "pnpm -C apps/backend-alerts build",
     "start:backend": "pnpm -C apps/backend-alerts start",
@@ -35,7 +35,7 @@
     "test:api": "pnpm -C api run test",
     "test:backend": "pnpm -C backend run test",
     "migrate": "pnpm -C backend run migrate",
-    "verify": "pnpm -C backend install && pnpm -C backend run typecheck && pnpm -C backend run build && pnpm -C backend run test && pnpm install && pnpm contract:typecheck && pnpm exec tsc --noEmit && pnpm exec vite build && pnpm exec vitest run",
+    "verify": "pnpm -C backend install && pnpm -C backend run typecheck && pnpm -C backend run build && pnpm -C backend run test && pnpm install && pnpm contract:typecheck && pnpm exec tsc --noEmit && NODE_ENV=production pnpm exec vite build && pnpm exec vitest run",
     "verify:vercel-api-ownership": "node scripts/verify-vercel-api-ownership.mjs",
     "doc:check": "node scripts/verify-doc-metadata.mjs",
     "audit:terminal-ui": "node scripts/audit/capture_terminal_ui.mjs"

@@ -94,7 +94,7 @@ export const primaryTabs: PrimaryTab[] = [
     route: "/alerts",
     tabTestId: "tab-alerts",
     pageTestId: "page-alerts",
-    showInMobileNav: true,
+    showInMobileNav: false, // Secondary entry on mobile to reduce BottomNav density
   },
   {
     key: "terminal",
