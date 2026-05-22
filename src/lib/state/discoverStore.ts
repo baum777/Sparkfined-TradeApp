@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { Token, Tab, PresetId } from '@/features/discover/filter/types';
 import { filterSpec } from '@/features/discover/filter/spec';
 import { discoverService } from '@/lib/discover/discoverService';
+import { getDiscoverErrorMessage } from '@/lib/discover/discoverErrorMessage';
 
 export interface DiscoverFilters {
   launchpads: string[];
@@ -97,7 +98,7 @@ export const useDiscoverStore = create<DiscoverStoreState>((set, get) => ({
       set({ tokens, isLoading: false });
     } catch (error) {
       set({
-        error: error instanceof Error ? error.message : 'Failed to load tokens',
+        error: getDiscoverErrorMessage(error),
         isLoading: false,
       });
     }
@@ -113,4 +114,3 @@ export const useDiscoverStore = create<DiscoverStoreState>((set, get) => ({
       },
     }),
 }));
-

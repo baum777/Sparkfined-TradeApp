@@ -16,13 +16,16 @@ import {
   discoverTokensQuerySchema,
   isValidSolanaAddress,
 } from '../lib/trading/terminalSchemas.js';
-import { badRequest } from '../http/error.js';
+import { AppError, badRequest, ErrorCodes } from '../http/error.js';
 import { getTokenInfo } from '../lib/trading/tokenRegistry.js';
 import { parseUiAmountToBaseUnits } from '../lib/trading/feeEngine.js';
 import { feeQuoteFromJupiter } from '../lib/trading/feeQuote.js';
 import type { JupiterQuoteResponseLike } from '../lib/trading/jupiterTypes.js';
 import { jupiterProvider } from '../lib/trading/jupiterProvider.js';
-import { getDiscoverTokensCached } from '../lib/discover/discoverService.js';
+import {
+  DiscoverProviderUnavailableError,
+  getDiscoverTokensCached,
+} from '../lib/discover/discoverService.js';
 
 type Side = 'buy' | 'sell';
 type AmountMode = 'quote' | 'base';
@@ -161,10 +164,24 @@ export async function handleDiscoverTokens(req: ParsedRequest, res: ServerRespon
   const requester = getRequesterIdentifier(req);
   rateLimiters.discover('/discover/tokens', requester);
 
-  setCacheHeaders(res, { public: true, maxAge: Math.floor(DISCOVER_CACHE_TTL_MS / 1000) });
-
   const query = validateQuery(discoverTokensQuerySchema, req.query);
-  const allTokens = await getDiscoverTokensCached();
+  let allTokens: Awaited<ReturnType<typeof getDiscoverTokensCached>>;
+  try {
+    allTokens = await getDiscoverTokensCached();
+  } catch (error) {
+    if (error instanceof DiscoverProviderUnavailableError) {
+      setCacheHeaders(res, { noStore: true });
+      throw new AppError(
+        'Discover provider unavailable',
+        503,
+        ErrorCodes.PROVIDER_UNAVAILABLE,
+        { provider: error.provider }
+      );
+    }
+    throw error;
+  }
+
+  setCacheHeaders(res, { public: true, maxAge: Math.floor(DISCOVER_CACHE_TTL_MS / 1000) });
   const start = query.cursor ?? 0;
   const end = query.limit ? Math.min(start + query.limit, allTokens.length) : allTokens.length;
   const page = allTokens.slice(start, end);

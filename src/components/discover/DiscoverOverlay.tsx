@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/drawer';
 import { useDiscoverStore } from '@/lib/state/discoverStore';
 import { discoverService } from '@/lib/discover/discoverService';
+import { getDiscoverErrorMessage } from '@/lib/discover/discoverErrorMessage';
 import { DiscoverHeader } from './DiscoverHeader';
 import { DiscoverTabs } from './DiscoverTabs';
 import { X } from 'lucide-react';
@@ -32,7 +33,7 @@ export function DiscoverOverlay() {
           setLoading(false);
         })
         .catch((error) => {
-          setError(error instanceof Error ? error.message : 'Failed to load tokens');
+          setError(getDiscoverErrorMessage(error));
           setLoading(false);
         });
     }
@@ -64,4 +65,3 @@ export function DiscoverOverlay() {
     </Drawer>
   );
 }
-

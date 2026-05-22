@@ -2,7 +2,7 @@
 Owner: Discover Team
 Status: active
 Version: 1.0
-LastUpdated: 2026-05-16
+LastUpdated: 2026-05-22
 Canonical: true
 ---
 
@@ -34,8 +34,8 @@ flowchart LR
     Overlay --> Service["discoverService.getTokens()"]
     Service --> API["GET /api/discover/tokens"]
     API --> Backend["backend handleDiscoverTokens"]
-    Backend --> Catalog["Jupiter token catalog\nor deterministic backend fallback"]
-    Service -. "error / empty fallback" .-> Mock["frontend mock tokens"]
+    Backend --> Catalog["Jupiter token catalog"]
+    Service -. "provider unavailable" .-> ErrorState["Provider unavailable state"]
     List --> Card["DiscoverTokenCard"]
     Card --> Terminal["terminalStore.setPair()"]
 ```
@@ -129,8 +129,9 @@ flowchart TD
 **Current Implementation**
 - `discoverService.getTokens()` calls `/api/discover/tokens`
 - canonical backend route: `backend/src/routes/trading.ts -> handleDiscoverTokens`
-- backend builds a cached deterministic catalog from the Jupiter token list and falls back to generated tokens if upstream fetch fails
-- frontend has an additional mock fallback when the request fails or returns an empty array
+- backend builds a cached deterministic catalog from the Jupiter token list
+- backend fail-closed behavior: provider failure returns `503 PROVIDER_UNAVAILABLE`
+- frontend has no runtime mock fallback for discover tokens
 
 **Endpoint Contract**
 ```text
@@ -138,6 +139,7 @@ GET /api/discover/tokens
 Query: limit?, cursor?
 Response: Token[]
 Header: x-next-cursor when pagination continues
+Error: 503 { error: { code: "PROVIDER_UNAVAILABLE", details: { provider: "jupiter" } } }
 ```
 
 ## Performance
@@ -160,7 +162,8 @@ Header: x-next-cursor when pagination continues
 
 3. Data Paths:
    - successful `/api/discover/tokens` response renders live rows
-   - failed or empty response falls back to mock tokens without crashing the UI
+   - failed provider response renders a provider-unavailable state with retry
+   - successful empty array response renders an empty list state without synthetic rows
 
 4. Performance:
    - long lists remain scrollable without layout thrash
@@ -171,8 +174,8 @@ Header: x-next-cursor when pagination continues
 1. **Data is deterministic, not market-native alpha**
    The canonical backend currently seeds Discover from the Jupiter token catalog plus generated metrics.
 
-2. **Frontend still has a mock fallback**
-   Network failures degrade to locally generated tokens instead of a hard error state.
+2. **Discover is provider-dependent**
+   When Jupiter is unavailable, the route fails closed with `503 PROVIDER_UNAVAILABLE`.
 
 3. **Terminal handoff assumes a default quote asset**
    Discover always routes selected tokens into the default USDC quote pair.

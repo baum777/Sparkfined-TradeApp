@@ -87,12 +87,20 @@ export function DiscoverTokenList({ tab }: DiscoverTokenListProps) {
   }, []);
 
   if (error) {
+    const isProviderUnavailable =
+      error.toUpperCase().includes('PROVIDER_UNAVAILABLE') ||
+      error.toLowerCase().includes('provider unavailable');
+
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4 p-6 text-muted-foreground">
         <AlertTriangle className="h-12 w-12 text-destructive" aria-hidden />
         <div className="text-center">
-          <p className="text-lg font-medium">Failed to load tokens</p>
-          <p className="mt-1 text-sm">{error}</p>
+          <p className="text-lg font-medium">
+            {isProviderUnavailable ? 'Provider unavailable' : 'Failed to load tokens'}
+          </p>
+          <p className="mt-1 text-sm">
+            {isProviderUnavailable ? 'Discover provider is currently unreachable.' : error}
+          </p>
         </div>
         <Button variant="outline" onClick={() => void retryFetch()}>
           Retry
@@ -157,4 +165,3 @@ export function DiscoverTokenList({ tab }: DiscoverTokenListProps) {
     </div>
   );
 }
-

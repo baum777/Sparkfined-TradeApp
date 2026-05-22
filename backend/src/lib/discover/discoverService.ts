@@ -5,6 +5,16 @@
 
 import { getEnv } from '../../config/env.js';
 
+export class DiscoverProviderUnavailableError extends Error {
+  readonly provider: 'jupiter';
+
+  constructor(message: string, provider: 'jupiter' = 'jupiter') {
+    super(message);
+    this.name = 'DiscoverProviderUnavailableError';
+    this.provider = provider;
+  }
+}
+
 export interface DiscoverToken {
   mint: string;
   symbol: string;
@@ -130,17 +140,6 @@ function pickShieldLevel(base: string, salt: number): DiscoverToken['safety']['j
   return null;
 }
 
-function createFallbackMint(index: number): string {
-  const alphabet = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
-  let value = '';
-  for (let i = 0; i < 44; i++) {
-    const unit = seededUnit(`fallback-${index}`, i + 1);
-    const charIndex = Math.floor(unit * alphabet.length) % alphabet.length;
-    value += alphabet[charIndex];
-  }
-  return value;
-}
-
 function buildToken(base: JupiterTokenLite, index: number): DiscoverToken {
   const seedKey = `${base.address}:${index}`;
   const liqSol = roundTo(seededBetween(seedKey, 10, 15, 1_200), 2);
@@ -231,16 +230,26 @@ function normalizeJupiterToken(raw: unknown): JupiterTokenLite | null {
 async function fetchJupiterTokens(): Promise<JupiterTokenLite[]> {
   const { JUPITER_BASE_URL } = getEnv();
   const endpoint = `${JUPITER_BASE_URL.replace(/\/$/, '')}/tokens`;
-  const response = await fetch(endpoint, {
-    headers: { 'Content-Type': 'application/json' },
-  });
+  let response: Response;
+  try {
+    response = await fetch(endpoint, {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch {
+    throw new DiscoverProviderUnavailableError('Discover provider unavailable');
+  }
   if (!response.ok) {
-    throw new Error(`Failed to fetch Jupiter token list (${response.status})`);
+    throw new DiscoverProviderUnavailableError('Discover provider unavailable');
   }
 
-  const payload = (await response.json()) as unknown;
+  let payload: unknown;
+  try {
+    payload = (await response.json()) as unknown;
+  } catch {
+    throw new DiscoverProviderUnavailableError('Discover provider unavailable');
+  }
   if (!Array.isArray(payload)) {
-    throw new Error('Invalid Jupiter token list payload');
+    throw new DiscoverProviderUnavailableError('Discover provider unavailable');
   }
 
   const deduped = new Map<string, JupiterTokenLite>();
@@ -255,21 +264,8 @@ async function fetchJupiterTokens(): Promise<JupiterTokenLite[]> {
   return Array.from(deduped.values());
 }
 
-function buildFallbackCatalog(): JupiterTokenLite[] {
-  const fallbackCount = 400;
-  const fallback: JupiterTokenLite[] = [];
-  for (let i = 0; i < fallbackCount; i++) {
-    fallback.push({
-      address: createFallbackMint(i),
-      symbol: `TOK${String(i + 1).padStart(3, '0')}`,
-      name: `Fallback Token ${i + 1}`,
-    });
-  }
-  return fallback;
-}
-
 async function loadDiscoverTokens(): Promise<DiscoverToken[]> {
-  const catalog = await fetchJupiterTokens().catch(() => buildFallbackCatalog());
+  const catalog = await fetchJupiterTokens();
   return catalog.slice(0, DISCOVER_MAX_TOKENS).map((token, index) => buildToken(token, index));
 }
 

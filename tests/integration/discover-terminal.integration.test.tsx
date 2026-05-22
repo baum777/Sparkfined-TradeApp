@@ -5,6 +5,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import React from 'react';
 import { DiscoverTokenCard } from '@/components/discover/DiscoverTokenCard';
 import { DiscoverTokenList } from '@/components/discover/DiscoverTokenList';
+import { discoverService } from '@/lib/discover/discoverService';
 import { useDiscoverStore } from '@/lib/state/discoverStore';
 import { useTerminalStore } from '@/lib/state/terminalStore';
 import { quoteService } from '@/lib/trading/quote/quoteService';
@@ -307,5 +308,52 @@ describe('Discover/Terminal Integration', () => {
     expect(renderedReasonMessages).toHaveLength(2);
     expect(screen.queryByText('Low quality social')).not.toBeInTheDocument();
     expect(screen.queryByText('Missing LP data')).not.toBeInTheDocument();
+  });
+
+  it('renders provider unavailable state and hides token cards', () => {
+    useDiscoverStore.setState((state) => ({
+      ...state,
+      error: 'Provider unavailable',
+      isLoading: false,
+      tokens: [
+        createToken({
+          mint: 'JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN',
+          symbol: 'JUP',
+          name: 'Jupiter',
+        }),
+      ],
+    }));
+
+    render(<DiscoverTokenList tab="not_bonded" />);
+    expect(screen.getByText('Provider unavailable')).toBeInTheDocument();
+    expect(screen.queryByText('JUP')).not.toBeInTheDocument();
+  });
+
+  it('retry triggers refetch path from provider-unavailable state', async () => {
+    vi.useRealTimers();
+    const getTokensSpy = vi.spyOn(discoverService, 'getTokens').mockResolvedValue([
+      createToken({
+        mint: 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6f4J45jWfNhM6hQd',
+        symbol: 'BONK',
+        name: 'Bonk',
+      }),
+    ]);
+
+    useDiscoverStore.setState((state) => ({
+      ...state,
+      error: 'Provider unavailable',
+      isLoading: false,
+      tokens: [],
+    }));
+
+    render(<DiscoverTokenList tab="not_bonded" />);
+    fireEvent.click(screen.getByRole('button', { name: /retry/i }));
+
+    await waitFor(() => {
+      expect(getTokensSpy).toHaveBeenCalledTimes(1);
+      expect(useDiscoverStore.getState().error).toBeNull();
+      expect(useDiscoverStore.getState().tokens).toHaveLength(1);
+    });
+    getTokensSpy.mockRestore();
   });
 });

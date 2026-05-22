@@ -94,4 +94,46 @@ describe('GET /api/discover/tokens', () => {
     expect(data.length).toBe(5);
     expect(res.headers.get('x-next-cursor')).toBe('5');
   });
+
+  it('fails closed with 503 on provider outage and does not cache outage as success', { timeout: TEST_TIMEOUT_MS }, async () => {
+    const realFetch = globalThis.fetch;
+    let failNextProviderCall = true;
+
+    const fetchMock = vi.fn(async (url: string | URL) => {
+      const u = String(url);
+      if (u.includes('quote-api.jup.ag') || u.includes('jup.ag')) {
+        if (u.includes('/tokens')) {
+          if (failNextProviderCall) {
+            failNextProviderCall = false;
+            throw new Error('ENOTFOUND quote-api.jup.ag');
+          }
+          return jsonResponse([
+            { address: 'So11111111111111111111111111111111111111112', symbol: 'SOL', name: 'Wrapped SOL' },
+          ]);
+        }
+      }
+      return realFetch(url);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const first = await request('/api/discover/tokens?limit=10');
+    const firstBody = await readJson(first);
+
+    expect(first.status).toBe(503);
+    expect(first.headers.get('cache-control')).toBe('no-store');
+    expect(firstBody).toHaveProperty('error.code', 'PROVIDER_UNAVAILABLE');
+    expect(firstBody).toHaveProperty('error.details.provider', 'jupiter');
+    expect(JSON.stringify(firstBody)).not.toMatch(/TOK\d{3}/);
+
+    const second = await request('/api/discover/tokens?limit=10');
+    const secondBody = await readJson(second);
+
+    expect(second.status).toBe(200);
+    expect(secondBody).toHaveProperty('status', 'ok');
+    expect(secondBody).toHaveProperty('data');
+    const tokens = (secondBody as { data: unknown[] }).data;
+    expect(Array.isArray(tokens)).toBe(true);
+    expect(tokens.length).toBeGreaterThan(0);
+    expect((tokens[0] as { symbol?: string }).symbol).toBe('SOL');
+  });
 });

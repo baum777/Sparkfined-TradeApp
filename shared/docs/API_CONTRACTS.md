@@ -2,7 +2,7 @@
 Owner: Architecture Team
 Status: active
 Version: 1.0
-LastUpdated: 2026-02-27
+LastUpdated: 2026-05-22
 Canonical: true
 ---
 
@@ -80,6 +80,8 @@ Diese Endpoints sind im `backend/` Router registriert:
   - `GET /api/feed/pulse`
   - `GET /api/signals/unified`
   - `GET /api/market/daily-bias`
+- **Trading / Discover**
+  - `GET /api/discover/tokens`
 
 Zusätzlich existieren weitere Endpoints in `api/` (Vercel Functions), u.a. Cron/Wallet/Profile. Diese sind im Repo implementiert, aber **nicht** automatisch Production‑kanonisch, solange `/api/*` per Vercel Rewrite auf das externe Backend zeigt (siehe `shared/docs/DEPLOYMENT.md`).
 
@@ -119,6 +121,19 @@ interface ApiError {
 | Header | Value | Purpose |
 |--------|-------|---------|
 | `x-request-id` | UUID or trace string | Request tracing across services |
+
+### Discover fail-closed contract
+
+`GET /api/discover/tokens` keeps the canonical success envelope and fails closed on provider outage.
+
+- Success:
+  - HTTP `200`
+  - `{ "status": "ok", "data": Token[] }`
+- Provider outage:
+  - HTTP `503`
+  - `{ "error": { "code": "PROVIDER_UNAVAILABLE", "message": "...", "details": { "provider": "jupiter", "requestId": "..." } } }`
+
+Constraint: provider failures must never be normalized into `200` with `data: []`.
 
 ### A) `backend/` Envelope (Node Server)
 
@@ -176,4 +191,3 @@ These tests fail at build time if API response shapes drift from TypeScript cont
 
 - **`Idempotency-Key`**: `POST /api/journal` verlangt diesen Header (siehe `backend/src/routes/journal.ts` und CORS Allow-Headers).
 - **`x-request-id`**: Server setzt Response Header. Client kann optional einen Request ID Header senden (**TODO:** ist Request-ID als Request Header bereits genutzt?).
-
