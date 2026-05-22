@@ -1,0 +1,10 @@
+id: 2026-05-13-vercel-deploy-policy-block
+type: deployment-risk
+status: open
+trigger: external-deploy-policy-guard
+observed_command: "corepack pnpm dlx vercel deploy --prebuilt --prod --yes --scope forgedfromwood"
+observed_result: "blocked by runtime policy as external data export"
+verified_local_build: "corepack pnpm dlx vercel build --prod --yes --scope forgedfromwood exit 0"
+verified_runtime_error_before_fix: "ZodError missing DATABASE_URL API_KEY VAPID_SUBJECT VAPID_PUBLIC_KEY VAPID_PRIVATE_KEY"
+blocked_by: "policy gate outside repo runtime"
+next_gate: "user-approved deploy in trusted execution context and post-deploy log check"

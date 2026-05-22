@@ -5,6 +5,7 @@
 
 import { getEnv } from '../../../config/env.js';
 import { logger } from '../../../observability/logger.js';
+import { dexTokenResponseSchema } from './schemas.js';
 
 export interface VolumeData {
   volume24hUsd: number;
@@ -39,7 +40,12 @@ export async function fetchVolumeData(
       return { volume24hUsd: 0 };
     }
     
-    const data = await res.json() as any;
+    const parsed = dexTokenResponseSchema.safeParse(await res.json());
+    if (!parsed.success) {
+      logger.warn('Volume provider response validation failed', { symbolOrAddress });
+      return { volume24hUsd: 0 };
+    }
+    const data = parsed.data;
     
     return {
       volume24hUsd: data.summary?.['24h']?.volume_usd ?? 0,
@@ -49,4 +55,3 @@ export async function fetchVolumeData(
     return { volume24hUsd: 0 };
   }
 }
-

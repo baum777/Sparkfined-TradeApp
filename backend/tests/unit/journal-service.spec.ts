@@ -3,7 +3,7 @@
  * Tests for pending → confirmed and pending → archived flows
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { it, expect, beforeEach } from 'vitest';
 import {
   journalCreate,
   journalConfirm,
@@ -11,10 +11,11 @@ import {
   journalRestore,
   journalRepoSQLite,
 } from '../../src/domain/journal/repo';
+import { describeIfDb } from '../helpers/testGuards';
 
 const TEST_USER = 'test-user-unit-123';
 
-describe('Journal Service - Index Consistency (SQLite)', () => {
+describeIfDb('Journal Service - Index Consistency (SQLite)', () => {
   describe('pending → confirmed flow', () => {
     it('should change status from PENDING to CONFIRMED', async () => {
       const entry = await journalCreate(TEST_USER, {
@@ -158,4 +159,3 @@ describe('Journal Service - Index Consistency (SQLite)', () => {
     });
   });
 });
-

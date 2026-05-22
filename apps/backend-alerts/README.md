@@ -17,16 +17,25 @@ Copy `.env.example` to `.env` and fill in:
 
 ## Local Development
 
-1. Ensure Postgres is running and `DATABASE_URL` is set.
-2. Install dependencies:
+1. Start local Postgres via Docker:
+   ```bash
+   pnpm db:up
+   ```
+2. Copy `.env.example` to `.env` (or `env.example`), then verify `DATABASE_URL` points to local Docker Postgres.
+3. Install dependencies:
    ```bash
    pnpm install
    ```
-3. Run dev server:
+4. Run dev server:
    ```bash
    pnpm dev
    ```
    This runs migrations automatically on start.
+5. Optional: follow DB logs / stop DB
+   ```bash
+   pnpm db:logs
+   pnpm db:down
+   ```
 
 ## Railway Deployment
 
@@ -76,4 +85,3 @@ curl -X POST http://localhost:3000/push/subscribe \
 ```bash
 curl "http://localhost:3000/stream?userId=u1&token=secret"
 ```
-

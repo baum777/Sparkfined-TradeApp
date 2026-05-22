@@ -1,6 +1,6 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { stubApi } from '../fixtures/stubApi';
-import { navTestId } from '../utils/testids';
+import { navTestId, pageTestId } from '../utils/testids';
 import { gotoAndWait, clickNavAndWait } from '../utils/nav';
 
 /**
@@ -18,8 +18,50 @@ import { gotoAndWait, clickNavAndWait } from '../utils/nav';
  * @gatekeeper
  */
 
+async function ensureWalletConnected(page: Page): Promise<void> {
+  const walletButton = page.locator('button.wallet-adapter-button-trigger').first();
+  await expect(walletButton).toBeVisible({ timeout: 10_000 });
+
+  const walletLabel = ((await walletButton.textContent()) ?? '').trim();
+
+  if (/select wallet/i.test(walletLabel)) {
+    await walletButton.click();
+
+    const mockWalletOption = page.getByRole('button', { name: /e2e mock wallet/i });
+    if (await mockWalletOption.count()) {
+      await mockWalletOption.first().click();
+    } else {
+      const firstWalletOption = page.locator('.wallet-adapter-modal-list button').first();
+      await expect(firstWalletOption).toBeVisible({ timeout: 10_000 });
+      await firstWalletOption.click();
+    }
+  }
+
+  const connectButton = page
+    .locator('button.wallet-adapter-button-trigger')
+    .filter({ hasText: /^connect$/i })
+    .first();
+
+  if (await connectButton.isVisible().catch(() => false)) {
+    await connectButton.click();
+  }
+
+  await expect(page.locator('[data-testid="balance-display"]')).toBeVisible({ timeout: 10_000 });
+}
+
 test.describe('@gatekeeper Trading Terminal Gatekeeper', () => {
   test.beforeEach(async ({ page }) => {
+    // Enforce deterministic wallet-connected state for terminal gatekeeper tests,
+    // even if CI env propagation changes.
+    await page.addInitScript(() => {
+      (window as Window & { __E2E_WALLET_MOCK__?: boolean }).__E2E_WALLET_MOCK__ = true;
+      try {
+        window.localStorage.setItem('walletName', JSON.stringify('E2E Mock Wallet'));
+      } catch {
+        // ignore storage access issues in constrained environments
+      }
+    });
+
     // Block all non-API and non-static network calls for deterministic E2E
     // This prevents hidden regressions from analytics, RPC, or third-party calls
     await page.route('**/*', (route, request) => {
@@ -137,10 +179,11 @@ test.describe('@gatekeeper Trading Terminal Gatekeeper', () => {
 
   test('Terminal renders core anchors', async ({ page }) => {
     await gotoAndWait(page, '/terminal', /\/terminal/, 'terminal');
+    await ensureWalletConnected(page);
 
     // Hard anchors via testid (always present)
     await expect(page.locator('[data-testid="terminal-shell"]')).toBeVisible();
-    await expect(page.locator('[data-testid="page-terminal"]')).toBeVisible();
+    await expect(page.locator('[data-testid="trading-terminal"]')).toBeVisible();
 
     // Wallet-dependent elements (mocked in E2E mode)
     await expect(page.locator('[data-testid="balance-display"]')).toBeVisible();
@@ -156,7 +199,12 @@ test.describe('@gatekeeper Trading Terminal Gatekeeper', () => {
 
   test('Navigation to terminal via Tab', async ({ page }) => {
     await page.goto('/');
-    await clickNavAndWait(page, navTestId('terminal'), /\/terminal/, 'terminal');
+    await clickNavAndWait(
+      page,
+      page.locator(`${navTestId('terminal')}:visible`).first(),
+      /\/terminal/,
+      'terminal',
+    );
 
     // Verify terminal loaded
     await expect(page.locator('[data-testid="terminal-shell"]')).toBeVisible();
@@ -194,6 +242,7 @@ test.describe('@gatekeeper Trading Terminal Gatekeeper', () => {
 
   test('Swap Confirm Dialog opens (requires wallet mock)', async ({ page }) => {
     await gotoAndWait(page, '/terminal', /\/terminal/, 'terminal');
+    await ensureWalletConnected(page);
 
     // Fill amount
     await page.locator('[aria-label="Trade amount"]').fill('0.1');
@@ -201,6 +250,7 @@ test.describe('@gatekeeper Trading Terminal Gatekeeper', () => {
     // Wait for quote to load (UI should enable the button)
     const swapButton = page.locator('[aria-label="Buy token"]');
     await expect(swapButton).toBeVisible();
+    await expect(swapButton).toBeEnabled({ timeout: 10_000 });
 
     // Click swap button to open confirm dialog
     await swapButton.click();
@@ -241,12 +291,14 @@ test.describe('@gatekeeper Trading Terminal Gatekeeper', () => {
     });
 
     await gotoAndWait(page, '/terminal', /\/terminal/, 'terminal');
+    await ensureWalletConnected(page);
 
     // Fill amount to enable swap
     await page.locator('[aria-label="Trade amount"]').fill('0.1');
 
     // Open confirm dialog
     const swapButton = page.locator('[aria-label="Buy token"]');
+    await expect(swapButton).toBeEnabled({ timeout: 10_000 });
     await swapButton.click();
 
     // Wait for dialog
@@ -257,9 +309,12 @@ test.describe('@gatekeeper Trading Terminal Gatekeeper', () => {
     const confirmButton = page.locator('[data-testid="swap-confirm-submit"]');
     await expect(confirmButton).toBeVisible();
 
-    // Double-click rapidly on confirm button
-    await confirmButton.click();
-    await confirmButton.click();
+    // Fire two clicks in the same JS task to emulate a rapid double-click
+    // without waiting on Playwright actionability for a button that may disable immediately.
+    await confirmButton.evaluate((button) => {
+      (button as HTMLButtonElement).click();
+      (button as HTMLButtonElement).click();
+    });
 
     // Wait for dialog to close (success)
     await expect(dialog).toBeHidden({ timeout: 5000 });
@@ -296,12 +351,14 @@ test.describe('@gatekeeper Trading Terminal Gatekeeper', () => {
     });
 
     await gotoAndWait(page, '/terminal', /\/terminal/, 'terminal');
+    await ensureWalletConnected(page);
 
     // Fill amount to enable swap
     await page.locator('[aria-label="Trade amount"]').fill('0.1');
 
     // Open confirm dialog
     const swapButton = page.locator('[aria-label="Buy token"]');
+    await expect(swapButton).toBeEnabled({ timeout: 10_000 });
     await swapButton.click();
 
     // Wait for dialog

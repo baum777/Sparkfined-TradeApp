@@ -144,7 +144,7 @@ Canonical: false
   - `/api/(.*)` → `https://$VERCEL_BACKEND_URL/api/$1` (`vercel.json`).
   - Konsequenz: `api/` Vercel Functions werden **nicht** genutzt (auch nicht `/api/quote`/`/api/swap`).
 - **Backend (Railway, Docker)**
-  - `railway.toml` + `backend/Dockerfile`, Start `node dist/server.js`, Health `/api/health`.
+  - `railway.toml` + `backend/Dockerfile`, Start `node dist/backend/src/server.js`, Health `/api/health`.
 - **Alerts-Service (Railway, nixpacks)**
   - `apps/backend-alerts/railway.toml`, Start `pnpm start`, Health `/health`.
 

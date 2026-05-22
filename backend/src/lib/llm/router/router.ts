@@ -2,6 +2,10 @@ import { getEnv } from '../../../config/env.js';
 import { logger } from '../../../observability/logger.js';
 import { callDeepSeek } from '../providers/deepseek.js';
 import type { LlmMessage } from '../types.js';
+import {
+  sanitizePromptMessages,
+  sanitizePromptText,
+} from '../promptSecurity.js';
 import { routerOutputSchema, type RouterOutput } from './schema.js';
 import {
   enforcePermissions,
@@ -47,17 +51,6 @@ function truncate(s: string, max: number): string {
   return s.slice(0, max) + `…[+${s.length - max} chars]`;
 }
 
-function redactSecrets(text: string): string {
-  // Best-effort deterministic redaction (avoid leaking headers/tokens into prompts)
-  return text
-    .replace(/(authorization\s*:\s*)(.+)/gi, '$1[REDACTED]')
-    .replace(/(cookie\s*:\s*)(.+)/gi, '$1[REDACTED]')
-    .replace(/(bearer\s+)[a-z0-9_.-]+/gi, '$1[REDACTED]')
-    .replace(/(sk-[a-z0-9]{16,})/gi, '[REDACTED]')
-    .replace(/(xai-[a-z0-9]{16,})/gi, '[REDACTED]')
-    .replace(/(ds-[a-z0-9]{16,})/gi, '[REDACTED]');
-}
-
 function parseFirstJsonObject(text: string): unknown {
   const trimmed = text.trim();
   if (trimmed.startsWith('{') && trimmed.endsWith('}')) return JSON.parse(trimmed);
@@ -92,16 +85,16 @@ function buildRouterSystemPrompt(): string {
 }
 
 function buildRouterUserPrompt(input: ReasoningRouteInput): string {
-  const messages = (input.context?.messages ?? []).slice(-6).map(m => ({
-    role: m.role,
-    content: truncate(redactSecrets(m.content), 2000),
-  }));
+  const messages = sanitizePromptMessages(input.context?.messages ?? [], {
+    maxMessages: 6,
+    maxCharsPerMessage: 2000,
+  });
 
   const payload = {
     mode: input.mode,
     tier: input.tier,
     taskKind: input.taskKind,
-    userMessage: truncate(redactSecrets(input.userMessage), 8000),
+    userMessage: sanitizePromptText(input.userMessage, { maxChars: 8000 }),
     context: {
       conversationId: input.context?.conversationId,
       messages,
@@ -122,7 +115,7 @@ function fallbackCompressedPrompt(input: ReasoningRouteInput): string {
   const maxFinalTokens = input.constraints?.maxFinalTokens;
   return [
     'TASK:',
-    redactSecrets(input.userMessage),
+    sanitizePromptText(input.userMessage, { maxChars: 8000 }),
     '',
     'CONSTRAINTS:',
     `- safety: ${safety}`,
@@ -175,7 +168,7 @@ export async function routeAndCompress(input: ReasoningRouteInput, requestId: st
         templateId: parsed.templateId,
         maxTokens: parsed.maxTokens,
       },
-      compressedPrompt: redactSecrets(parsed.compressedPrompt),
+      compressedPrompt: sanitizePromptText(parsed.compressedPrompt, { maxChars: 20_000 }),
       mustInclude: parsed.mustInclude ?? [],
       constraints: { maxFinalTokens: input.constraints?.maxFinalTokens },
     });
@@ -239,4 +232,3 @@ export async function routeAndCompress(input: ReasoningRouteInput, requestId: st
     };
   }
 }
-
