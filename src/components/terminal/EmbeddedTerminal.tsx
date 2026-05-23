@@ -11,7 +11,7 @@
 
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { useTerminalStore } from '@/lib/state/terminalStore';
-import { ChartPanel } from './ChartPanel';
+import { TerminalChartPanel } from './TerminalChartPanel';
 import { ExecutionPanel } from './ExecutionPanel';
 import { TxStatusToast } from './TxStatusToast';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -32,7 +32,7 @@ export function EmbeddedTerminal() {
       <div className={isMobile ? 'flex flex-col gap-4' : 'flex gap-4'}>
         {/* Chart Panel */}
         <div className={isMobile ? 'w-full' : 'flex-1'}>
-          <ChartPanel baseMint={pair?.baseMint} quoteMint={pair?.quoteMint} />
+          <TerminalChartPanel baseMint={pair?.baseMint} quoteMint={pair?.quoteMint} />
         </div>
 
         {/* Execution Panel */}
@@ -46,4 +46,3 @@ export function EmbeddedTerminal() {
     </div>
   );
 }
-

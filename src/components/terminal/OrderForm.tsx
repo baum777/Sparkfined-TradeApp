@@ -253,7 +253,7 @@ export function OrderForm({ wallet, connection }: OrderFormProps) {
               loading={balancesLoading}
             />
           )}
-          <QuickAmountButtons />
+          <QuickAmountButtons walletConnected={isWalletConnected} />
         </div>
       </div>
 
@@ -409,4 +409,3 @@ const AdvancedSettingsAccordion = React.memo(function AdvancedSettingsAccordion(
     </Accordion>
   );
 });
-

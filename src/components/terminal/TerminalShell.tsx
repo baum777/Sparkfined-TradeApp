@@ -2,7 +2,7 @@ import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { useTerminalStore } from '@/lib/state/terminalStore';
 import { useDiscoverStore } from '@/lib/state/discoverStore';
-import { ChartPanel } from './ChartPanel';
+import { TerminalChartPanel } from './TerminalChartPanel';
 import { ExecutionPanel } from './ExecutionPanel';
 import { PairSelector } from './PairSelector';
 import { TxStatusToast } from './TxStatusToast';
@@ -39,7 +39,7 @@ export function TerminalShell() {
       <div className="flex flex-1 flex-col gap-4 overflow-hidden p-4 lg:flex-row">
         {/* Chart Panel: full width on mobile, flex-1 on desktop */}
         <div className="h-[50vh] min-h-[200px] shrink-0 lg:h-auto lg:min-h-0 lg:flex-1">
-          <ChartPanel baseMint={pair?.baseMint} quoteMint={pair?.quoteMint} />
+          <TerminalChartPanel baseMint={pair?.baseMint} quoteMint={pair?.quoteMint} />
         </div>
 
         {/* Execution Panel: full width on mobile, fixed 384px on desktop */}
@@ -53,4 +53,3 @@ export function TerminalShell() {
     </div>
   );
 }
-

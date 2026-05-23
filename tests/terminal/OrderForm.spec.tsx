@@ -170,4 +170,19 @@ describe('OrderForm', () => {
     expect(screen.getByRole('button', { name: 'Set amount to 25%' })).toBeDisabled();
     expect(screen.getByText('Balance unavailable')).toBeInTheDocument();
   });
+
+  it('disables quick amount buttons when wallet is disconnected even if stale balances exist', () => {
+    const wallet = createMockWallet(false);
+    const connection = {} as Connection;
+
+    useTerminalStore.setState({
+      side: 'buy',
+      balances: { base: '4.5', quote: '200', loading: false },
+    });
+
+    render(<OrderForm wallet={wallet} connection={connection} />);
+
+    expect(screen.getByRole('button', { name: 'Set amount to 25%' })).toBeDisabled();
+    expect(screen.getByText('Balance unavailable')).toBeInTheDocument();
+  });
 });
