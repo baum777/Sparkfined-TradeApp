@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { OrderForm } from '@/components/terminal/OrderForm';
 import { useTerminalStore } from '@/lib/state/terminalStore';
@@ -31,6 +31,12 @@ function createMockWallet(connected = true) {
   } as Parameters<typeof OrderForm>[0]['wallet'];
 }
 
+type TerminalStoreSnapshot = ReturnType<typeof useTerminalStore.getState>;
+const originalFetchBalances = useTerminalStore.getState().fetchBalances;
+const originalScheduleQuoteFetch = useTerminalStore.getState().scheduleQuoteFetch;
+const noOpFetchBalances: TerminalStoreSnapshot['fetchBalances'] = async (_opts) => {};
+const noOpScheduleQuoteFetch: TerminalStoreSnapshot['scheduleQuoteFetch'] = () => {};
+
 describe('OrderForm', () => {
   beforeEach(() => {
     useTerminalStore.setState({
@@ -40,13 +46,18 @@ describe('OrderForm', () => {
       balances: { base: '1.5', quote: '100.25', loading: false },
       quote: { status: 'idle' },
       tx: { status: 'idle' },
+      fetchBalances: noOpFetchBalances,
+      scheduleQuoteFetch: noOpScheduleQuoteFetch,
     });
   });
 
   afterEach(() => {
+    cleanup();
     useTerminalStore.setState({
       pair: null,
       balances: { base: null, quote: null, loading: false },
+      fetchBalances: originalFetchBalances,
+      scheduleQuoteFetch: originalScheduleQuoteFetch,
     });
   });
 
@@ -90,5 +101,88 @@ describe('OrderForm', () => {
     render(<OrderForm wallet={wallet} connection={connection} />);
 
     expect(screen.queryByTestId('balance-display')).not.toBeInTheDocument();
+  });
+
+  it('uses quote balance as quick amount baseline on buy side', async () => {
+    const user = userEvent.setup();
+    const wallet = createMockWallet(true);
+    const connection = {} as Connection;
+
+    useTerminalStore.setState({
+      side: 'buy',
+      balances: { base: '1.5', quote: '100.25', loading: false },
+    });
+
+    render(<OrderForm wallet={wallet} connection={connection} />);
+
+    await user.click(screen.getByRole('button', { name: 'Set amount to 50%' }));
+
+    await waitFor(() => {
+      expect(useTerminalStore.getState().amount.value).toBe('50.125');
+    });
+  });
+
+  it('uses base balance as quick amount baseline on sell side', async () => {
+    const user = userEvent.setup();
+    const wallet = createMockWallet(true);
+    const connection = {} as Connection;
+
+    useTerminalStore.setState({
+      side: 'sell',
+      balances: { base: '1.5', quote: '100.25', loading: false },
+    });
+
+    render(<OrderForm wallet={wallet} connection={connection} />);
+
+    await user.click(screen.getByRole('button', { name: 'Set amount to 50%' }));
+
+    await waitFor(() => {
+      expect(useTerminalStore.getState().amount.value).toBe('0.75');
+    });
+  });
+
+  it('disables quick amount buttons while balances are loading', () => {
+    const wallet = createMockWallet(true);
+    const connection = {} as Connection;
+
+    useTerminalStore.setState({
+      side: 'buy',
+      balances: { base: '1.5', quote: '100.25', loading: true },
+    });
+
+    render(<OrderForm wallet={wallet} connection={connection} />);
+
+    expect(screen.getByRole('button', { name: 'Set amount to 25%' })).toBeDisabled();
+    expect(screen.getByText('Balance unavailable')).toBeInTheDocument();
+  });
+
+  it('disables quick amount buttons when relevant balance is missing', () => {
+    const wallet = createMockWallet(true);
+    const connection = {} as Connection;
+
+    useTerminalStore.setState({
+      side: 'buy',
+      balances: { base: '1.5', quote: null, loading: false },
+    });
+
+    render(<OrderForm wallet={wallet} connection={connection} />);
+
+    expect(screen.getByRole('button', { name: 'Set amount to 25%' })).toBeDisabled();
+    expect(screen.getByText('Balance unavailable')).toBeInTheDocument();
+  });
+
+  it('disables quick amount buttons when wallet is disconnected even if stale balances exist', () => {
+    const wallet = createMockWallet(false);
+    const connection = {} as Connection;
+
+    useTerminalStore.setState({
+      side: 'buy',
+      balances: { base: '4.5', quote: '200', loading: false },
+    });
+
+    render(<OrderForm wallet={wallet} connection={connection} />);
+
+    expect(screen.getByRole('button', { name: 'Set amount to 25%' })).toBeDisabled();
+    expect(screen.getByText('Balance unavailable')).toBeInTheDocument();
   });
 });

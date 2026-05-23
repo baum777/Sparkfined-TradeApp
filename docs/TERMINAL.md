@@ -33,7 +33,7 @@ flowchart LR
     Discover["DiscoverOverlay"] --> Store
     Shell --> Pair["PairSelector + Discover trigger"]
     Pair --> Store
-    Shell --> Chart["ChartPanel\nlightweight-charts + seeded candles"]
+    Shell --> Chart["TerminalChartPanel\n/api/chart/candles"]
     Shell --> Exec["ExecutionPanel / OrderForm"]
     Store --> Chart
     Store --> Exec
@@ -56,10 +56,15 @@ flowchart LR
 - Hosts `OrderForm`, fee preview, warnings and execute action.
 - Reads and mutates `terminalStore`.
 
+**TerminalChartPanel** (`src/components/terminal/TerminalChartPanel.tsx`)
+- Loads candles from `GET /api/chart/candles`.
+- Surfaces provider-unavailable and empty-data states without generating fallback candles.
+- Passes render state into `ChartPanel`.
+
 **ChartPanel** (`src/components/terminal/ChartPanel.tsx`)
 - Uses `lightweight-charts`.
-- Renders seeded mock candles per `baseMint/quoteMint` pair.
-- Shows an empty-state card when no pair is selected.
+- Renders only caller-provided candle data.
+- Shows state cards for no pair, loading, empty data, and provider errors.
 
 **EmbeddedTerminal** (`src/components/terminal/EmbeddedTerminal.tsx`)
 - Reuses the same store and execution logic as standalone Terminal.
@@ -101,7 +106,7 @@ flowchart TB
     Top["ChartTopBar + MarketsBanner + Watchlist controls"] --> Canvas["ChartCanvas / Chart empty state"]
     Canvas --> Feed["ChartFeedPanel + BottomCardsCarousel"]
     Feed --> Trigger["Collapsible trigger: Trading Terminal"]
-    Trigger --> Embedded["EmbeddedTerminal\nChartPanel + ExecutionPanel"]
+    Trigger --> Embedded["EmbeddedTerminal\nTerminalChartPanel + ExecutionPanel"]
 ```
 
 **Observed:** The Research terminal drawer is **closed by default** and only rendered when the feature flag is enabled.
@@ -223,8 +228,8 @@ Error: 503 PROVIDER_UNAVAILABLE while live OHLCV provider is unconfigured
 
 ## Known Limitations
 
-1. **Chart UI data is synthetic**
-   Current `ChartPanel` still uses seeded mock candles. The backend now exposes a fail-closed `/api/chart/candles` contract, but live OHLCV provider ownership and frontend consumption are not yet promoted.
+1. **Chart provider is fail-closed**
+   Terminal chart UI now consumes `/api/chart/candles` and does not synthesize candles. Until a live OHLCV provider is owner-approved and configured, the UI shows provider-unavailable or empty-data states.
 
 2. **Symbol resolver is intentionally narrow**
    Embedded Research sync only resolves a well-known symbol subset.

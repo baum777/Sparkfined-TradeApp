@@ -260,7 +260,7 @@ export function OrderForm({ wallet, connection }: OrderFormProps) {
               loading={balancesLoading}
             />
           )}
-          <QuickAmountButtons />
+          <QuickAmountButtons walletConnected={isWalletConnected} />
         </div>
       </div>
 
