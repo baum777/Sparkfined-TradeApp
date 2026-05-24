@@ -82,6 +82,8 @@ Diese Endpoints sind im `backend/` Router registriert:
 
 - **Health/Meta**
   - `GET /api/health`
+  - `GET /api/health/ready`
+  - `GET /api/health/upstreams`
   - `GET /api/meta`
   - `GET /api/usage/summary`
 - **Settings**
@@ -194,6 +196,21 @@ Constraint: provider failures must never be normalized into `200` with `data: []
   - `{ "error": { "code": "PROVIDER_UNAVAILABLE", "message": "...", "details": { "provider": "chart-candles", "requestId": "..." } } }`
 
 Constraint: route and provider abstraction must not synthesize candles. Live OHLCV provider promotion requires owner review.
+
+### Health upstream preflight contract
+
+`GET /api/health/upstreams` is a monitoring endpoint, not a traffic-routing gate. It always returns HTTP `200` with canonical success envelope and reports degraded provider state inside `data`.
+
+- Success envelope:
+  - HTTP `200`
+  - `{ "status": "ok", "data": { "status": "ok" | "degraded", "mode": string, "checks": {...}, "now": string } }`
+- Terminal provider checks:
+  - `checks.jupiter`: `ok | error | timeout`
+  - `checks.jupiterReason`: optional `http_error | network_error | timeout`
+  - `checks.jupiterPlatformFeeAccount`: `ok | missing | not_required`
+  - `checks.helius`: `ok | error | timeout | not_configured`
+
+Constraint: health output must not include secret values such as `JUPITER_PLATFORM_FEE_ACCOUNT` or `HELIUS_API_KEY`.
 
 ### A) `backend/` Envelope (Node Server)
 

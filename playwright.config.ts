@@ -1,40 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const useSystemChrome = process.env.PLAYWRIGHT_SYSTEM_CHROME === '1';
-
-const projects = useSystemChrome
-  ? [
-      {
-        name: 'chromium',
-        use: { ...devices['Desktop Chrome'], channel: 'chrome' },
-      },
-      {
-        name: 'Mobile Chrome',
-        use: { ...devices['Pixel 5'], channel: 'chrome' },
-      },
-    ]
-  : [
-      {
-        name: 'chromium',
-        use: { ...devices['Desktop Chrome'] },
-      },
-      {
-        name: 'firefox',
-        use: { ...devices['Desktop Firefox'] },
-      },
-      {
-        name: 'webkit',
-        use: { ...devices['Desktop Safari'] },
-      },
-      {
-        name: 'Mobile Chrome',
-        use: { ...devices['Pixel 5'] },
-      },
-      {
-        name: 'Mobile Safari',
-        use: { ...devices['iPhone 12'] },
-      },
-    ];
+const chromiumExecutablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH;
 
 /**
  * Playwright Test Configuration
@@ -42,6 +8,21 @@ const projects = useSystemChrome
  * Siehe https://playwright.dev/docs/test-configuration
  */
 export default defineConfig({
+  // Optional override for constrained environments where watcher-based dev server cannot start.
+  // Use with an externally started server at baseURL.
+  ...(process.env.PLAYWRIGHT_SKIP_WEBSERVER === '1'
+    ? {}
+    : {
+        webServer: {
+          command: 'pnpm exec vite --host 127.0.0.1 --port 5173 --strictPort',
+          url: 'http://127.0.0.1:5173',
+          reuseExistingServer: !process.env.CI,
+          timeout: 120 * 1000,
+          env: {
+            VITE_E2E_WALLET_MOCK: process.env.VITE_E2E_WALLET_MOCK ?? (process.env.CI ? '1' : '0'),
+          },
+        },
+      }),
   testDir: './playwright/tests',
   
   /* Maximale Zeit, die ein Test laufen darf */
@@ -95,16 +76,44 @@ export default defineConfig({
   },
 
   /* Configure projects for major browsers */
-  projects,
-
-  /* Run your local dev server before starting the tests */
-  webServer: {
-    command: 'pnpm exec vite --host 127.0.0.1 --port 5173 --strictPort',
-    url: 'http://127.0.0.1:5173',
-    reuseExistingServer: !process.env.CI,
-    timeout: 120 * 1000,
-    env: {
-      VITE_E2E_WALLET_MOCK: process.env.VITE_E2E_WALLET_MOCK ?? (process.env.CI ? '1' : '0'),
+  projects: [
+    {
+      name: 'chromium',
+      use: {
+        ...devices['Desktop Chrome'],
+        ...(chromiumExecutablePath ? { launchOptions: { executablePath: chromiumExecutablePath } } : {}),
+      },
     },
-  },
+
+    {
+      name: 'firefox',
+      use: { ...devices['Desktop Firefox'] },
+    },
+
+    {
+      name: 'webkit',
+      use: { ...devices['Desktop Safari'] },
+    },
+
+    /* Test against mobile viewports. */
+    {
+      name: 'Mobile Chrome',
+      use: { ...devices['Pixel 5'] },
+    },
+    {
+      name: 'Mobile Safari',
+      use: { ...devices['iPhone 12'] },
+    },
+
+    /* Test against branded browsers. */
+    // {
+    //   name: 'Microsoft Edge',
+    //   use: { ...devices['Desktop Edge'], channel: 'msedge' },
+    // },
+    // {
+    //   name: 'Google Chrome',
+    //   use: { ...devices['Desktop Chrome'], channel: 'chrome' },
+    // },
+  ],
+
 });

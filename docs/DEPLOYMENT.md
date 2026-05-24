@@ -161,9 +161,13 @@ See [Environment](../shared/docs/ENVIRONMENT.md) for details.
 
 ## Health Checks
 
-**Backend:**
-- Endpoint: `/api/health`
-- Used by Railway/Fly.io for health checks
+**Backend**
+- `/api/health`
+- used by Railway deployment health verification
+- `/api/health/ready`
+- verifies database readiness and optional KV availability
+- `/api/health/upstreams`
+- monitoring-only provider preflight; reports Jupiter reachability, Jupiter platform fee account configuration, and Helius availability without exposing secret values
 
 **Frontend**
 - no dedicated health endpoint
