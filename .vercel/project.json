@@ -1,0 +1,16 @@
+{
+  "projectId": "prj_e1fbdjXCWpXNMSjKGopMWGIWpNzG",
+  "orgId": "team_UDEAB38fNwJF8GYv9wkJsKSc",
+  "projectName": "sparkfinedtradeapp",
+  "settings": {
+    "createdAt": 1778338004662,
+    "framework": "vite",
+    "devCommand": null,
+    "installCommand": null,
+    "buildCommand": "pnpm run build",
+    "outputDirectory": "dist",
+    "rootDirectory": null,
+    "directoryListing": false,
+    "nodeVersion": "24.x"
+  }
+}
