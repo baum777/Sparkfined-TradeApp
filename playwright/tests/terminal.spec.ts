@@ -192,6 +192,38 @@ test.describe('@gatekeeper Trading Terminal Gatekeeper', () => {
     await expect(amountInput).toHaveValue('1.5');
   });
 
+  test('Quote can load without wallet while swap remains disabled', async ({ page }) => {
+    test.skip(
+      process.env.VITE_E2E_WALLET_MOCK === '1' || process.env.CI === 'true',
+      'No-wallet boundary requires VITE_E2E_WALLET_MOCK=0 at app startup.'
+    );
+
+    await gotoAndWait(page, '/terminal', /\/terminal/, 'terminal');
+
+    const amountInput = page.locator('[aria-label="Trade amount"]');
+    await amountInput.fill('0.1');
+
+    const orderForm = page.getByLabel('Trading order form');
+    await expect(orderForm.getByText('Expected Receive')).toBeVisible();
+    await expect(orderForm.getByText('1 SOL')).toBeVisible();
+
+    const swapButton = page.locator('[aria-label="Buy token"]');
+    await expect(swapButton).toBeDisabled();
+    await expect(page.locator('text=Connect wallet to trade')).toBeVisible();
+  });
+
+  test('E2E mock wallet is inactive when explicit build flag is absent', async ({ page }) => {
+    test.skip(
+      process.env.VITE_E2E_WALLET_MOCK === '1' || process.env.CI === 'true',
+      'No-mock boundary requires VITE_E2E_WALLET_MOCK=0 at app startup.'
+    );
+
+    await gotoAndWait(page, '/terminal', /\/terminal/, 'terminal');
+
+    await expect(page.locator('[data-testid="balance-display"]')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Select Wallet' })).toBeVisible();
+  });
+
   test('Swap Confirm Dialog opens (requires wallet mock)', async ({ page }) => {
     await gotoAndWait(page, '/terminal', /\/terminal/, 'terminal');
 
@@ -336,5 +368,21 @@ test.describe('@gatekeeper Trading Terminal Gatekeeper', () => {
 
     // Final assertion: still exactly 1 request (no duplicates)
     expect(swapCount).toBe(1);
+  });
+});
+
+test.describe('@gatekeeper Live Provider Gate', () => {
+  test('Live quote provider verification is explicitly env-gated', async () => {
+    test.skip(
+      process.env.PLAYWRIGHT_LIVE_PROVIDER_E2E !== '1',
+      'Skipped live provider verification: set PLAYWRIGHT_LIVE_PROVIDER_E2E=1 with backend/provider env and reachable DNS.'
+    );
+    test.skip(!process.env.HELIUS_API_KEY, 'Skipped live provider verification: missing HELIUS_API_KEY.');
+    test.skip(
+      !process.env.JUPITER_PLATFORM_FEE_ACCOUNT,
+      'Skipped live provider verification: missing JUPITER_PLATFORM_FEE_ACCOUNT.'
+    );
+
+    expect(process.env.PLAYWRIGHT_LIVE_PROVIDER_E2E).toBe('1');
   });
 });
