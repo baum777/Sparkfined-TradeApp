@@ -1,0 +1,719 @@
+{
+  "config": {
+    "configFile": "/home/baum/Schreibtisch/workspace/main_projects/sparkfined/playwright.config.ts",
+    "rootDir": "/home/baum/Schreibtisch/workspace/main_projects/sparkfined/playwright/tests",
+    "forbidOnly": false,
+    "fullyParallel": true,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 6
+    },
+    "preserveOutput": "always",
+    "reporter": [
+      [
+        "html",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "playwright-report/results.json"
+        }
+      ],
+      [
+        "list",
+        null
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "quiet": false,
+    "projects": [
+      {
+        "outputDir": "/home/baum/Schreibtisch/workspace/main_projects/sparkfined/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 6
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "/home/baum/Schreibtisch/workspace/main_projects/sparkfined/playwright/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/baum/Schreibtisch/workspace/main_projects/sparkfined/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 6
+        },
+        "id": "firefox",
+        "name": "firefox",
+        "testDir": "/home/baum/Schreibtisch/workspace/main_projects/sparkfined/playwright/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/baum/Schreibtisch/workspace/main_projects/sparkfined/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 6
+        },
+        "id": "webkit",
+        "name": "webkit",
+        "testDir": "/home/baum/Schreibtisch/workspace/main_projects/sparkfined/playwright/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/baum/Schreibtisch/workspace/main_projects/sparkfined/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 6
+        },
+        "id": "Mobile Chrome",
+        "name": "Mobile Chrome",
+        "testDir": "/home/baum/Schreibtisch/workspace/main_projects/sparkfined/playwright/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/baum/Schreibtisch/workspace/main_projects/sparkfined/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 6
+        },
+        "id": "Mobile Safari",
+        "name": "Mobile Safari",
+        "testDir": "/home/baum/Schreibtisch/workspace/main_projects/sparkfined/playwright/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.57.0",
+    "workers": 6,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "terminal.spec.ts",
+      "file": "terminal.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "@gatekeeper Trading Terminal Gatekeeper",
+          "file": "terminal.spec.ts",
+          "line": 53,
+          "column": 6,
+          "specs": [
+            {
+              "title": "Terminal renders core anchors",
+              "ok": true,
+              "tags": [
+                "gatekeeper"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 15880,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "[E2E Blocked] https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap\n"
+                        },
+                        {
+                          "text": "[E2E Blocked] https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap\n"
+                        },
+                        {
+                          "text": "[E2E Blocked] https://api.mainnet-beta.solana.com/\n"
+                        },
+                        {
+                          "text": "[E2E Blocked] https://api.mainnet-beta.solana.com/\n"
+                        },
+                        {
+                          "text": "[E2E Blocked] https://api.mainnet-beta.solana.com/\n"
+                        },
+                        {
+                          "text": "[E2E Blocked] https://api.mainnet-beta.solana.com/\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-24T17:41:53.750Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8f9206fb64e745a9d86f-4f728ada88480b9c1c4d",
+              "file": "terminal.spec.ts",
+              "line": 192,
+              "column": 3
+            },
+            {
+              "title": "Navigation to terminal via Tab",
+              "ok": true,
+              "tags": [
+                "gatekeeper"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 16438,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "[E2E Blocked] https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap\n"
+                        },
+                        {
+                          "text": "[E2E Blocked] https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap\n"
+                        },
+                        {
+                          "text": "[E2E Blocked] https://api.mainnet-beta.solana.com/\n"
+                        },
+                        {
+                          "text": "[E2E Blocked] https://api.mainnet-beta.solana.com/\n"
+                        },
+                        {
+                          "text": "[E2E Blocked] https://api.mainnet-beta.solana.com/\n"
+                        },
+                        {
+                          "text": "[E2E Blocked] https://api.mainnet-beta.solana.com/\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-24T17:41:53.953Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8f9206fb64e745a9d86f-6e2037dd46420b538bcb",
+              "file": "terminal.spec.ts",
+              "line": 213,
+              "column": 3
+            },
+            {
+              "title": "Buy/Sell Toggle works (Radix strict)",
+              "ok": true,
+              "tags": [
+                "gatekeeper"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 2,
+                      "status": "passed",
+                      "duration": 15879,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "[E2E Blocked] https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap\n"
+                        },
+                        {
+                          "text": "[E2E Blocked] https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap\n"
+                        },
+                        {
+                          "text": "[E2E Blocked] https://api.mainnet-beta.solana.com/\n"
+                        },
+                        {
+                          "text": "[E2E Blocked] https://api.mainnet-beta.solana.com/\n"
+                        },
+                        {
+                          "text": "[E2E Blocked] https://api.mainnet-beta.solana.com/\n"
+                        },
+                        {
+                          "text": "[E2E Blocked] https://api.mainnet-beta.solana.com/\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-24T17:41:53.927Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8f9206fb64e745a9d86f-87899574970f029c75ea",
+              "file": "terminal.spec.ts",
+              "line": 222,
+              "column": 3
+            },
+            {
+              "title": "Amount input accepts input",
+              "ok": true,
+              "tags": [
+                "gatekeeper"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 3,
+                      "status": "passed",
+                      "duration": 16185,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "[E2E Blocked] https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap\n"
+                        },
+                        {
+                          "text": "[E2E Blocked] https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap\n"
+                        },
+                        {
+                          "text": "[E2E Blocked] https://api.mainnet-beta.solana.com/\n"
+                        },
+                        {
+                          "text": "[E2E Blocked] https://api.mainnet-beta.solana.com/\n"
+                        },
+                        {
+                          "text": "[E2E Blocked] https://api.mainnet-beta.solana.com/\n"
+                        },
+                        {
+                          "text": "[E2E Blocked] https://api.mainnet-beta.solana.com/\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-24T17:41:53.981Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8f9206fb64e745a9d86f-7c057ff22b4be1a067fa",
+              "file": "terminal.spec.ts",
+              "line": 243,
+              "column": 3
+            },
+            {
+              "title": "Quote can load without wallet while swap remains disabled",
+              "ok": true,
+              "tags": [
+                "gatekeeper"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [
+                    {
+                      "type": "skip",
+                      "description": "No-wallet boundary requires VITE_E2E_WALLET_MOCK=0 at app startup.",
+                      "location": {
+                        "file": "/home/baum/Schreibtisch/workspace/main_projects/sparkfined/playwright/tests/terminal.spec.ts",
+                        "line": 244,
+                        "column": 10
+                      }
+                    }
+                  ],
+                  "expectedStatus": "skipped",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 4,
+                      "status": "skipped",
+                      "duration": 1351,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-24T17:41:53.956Z",
+                      "annotations": [
+                        {
+                          "type": "skip",
+                          "description": "No-wallet boundary requires VITE_E2E_WALLET_MOCK=0 at app startup.",
+                          "location": {
+                            "file": "/home/baum/Schreibtisch/workspace/main_projects/sparkfined/playwright/tests/terminal.spec.ts",
+                            "line": 244,
+                            "column": 10
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8f9206fb64e745a9d86f-323fae509060130a0d06",
+              "file": "terminal.spec.ts",
+              "line": 251,
+              "column": 3
+            },
+            {
+              "title": "E2E mock wallet is inactive when explicit build flag is absent",
+              "ok": true,
+              "tags": [
+                "gatekeeper"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [
+                    {
+                      "type": "skip",
+                      "description": "No-mock boundary requires VITE_E2E_WALLET_MOCK=0 at app startup.",
+                      "location": {
+                        "file": "/home/baum/Schreibtisch/workspace/main_projects/sparkfined/playwright/tests/terminal.spec.ts",
+                        "line": 264,
+                        "column": 10
+                      }
+                    }
+                  ],
+                  "expectedStatus": "skipped",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 5,
+                      "parallelIndex": 5,
+                      "status": "skipped",
+                      "duration": 1507,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-24T17:41:53.919Z",
+                      "annotations": [
+                        {
+                          "type": "skip",
+                          "description": "No-mock boundary requires VITE_E2E_WALLET_MOCK=0 at app startup.",
+                          "location": {
+                            "file": "/home/baum/Schreibtisch/workspace/main_projects/sparkfined/playwright/tests/terminal.spec.ts",
+                            "line": 264,
+                            "column": 10
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8f9206fb64e745a9d86f-da5c1acf5f458ea25a9f",
+              "file": "terminal.spec.ts",
+              "line": 265,
+              "column": 3
+            },
+            {
+              "title": "Swap Confirm Dialog opens (requires wallet mock)",
+              "ok": true,
+              "tags": [
+                "gatekeeper"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 4,
+                      "status": "passed",
+                      "duration": 16717,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "[E2E Blocked] https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap\n"
+                        },
+                        {
+                          "text": "[E2E Blocked] https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap\n"
+                        },
+                        {
+                          "text": "[E2E Blocked] https://api.mainnet-beta.solana.com/\n"
+                        },
+                        {
+                          "text": "[E2E Blocked] https://api.mainnet-beta.solana.com/\n"
+                        },
+                        {
+                          "text": "[E2E Blocked] https://api.mainnet-beta.solana.com/\n"
+                        },
+                        {
+                          "text": "[E2E Blocked] https://api.mainnet-beta.solana.com/\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-24T17:41:56.381Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8f9206fb64e745a9d86f-98b8798fee224c08ac6e",
+              "file": "terminal.spec.ts",
+              "line": 275,
+              "column": 3
+            },
+            {
+              "title": "@gatekeeper Double-click guard prevents duplicate swap requests",
+              "ok": true,
+              "tags": [
+                "gatekeeper",
+                "gatekeeper"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 5,
+                      "parallelIndex": 5,
+                      "status": "passed",
+                      "duration": 16491,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "[E2E Blocked] https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap\n"
+                        },
+                        {
+                          "text": "[E2E Blocked] https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap\n"
+                        },
+                        {
+                          "text": "[E2E Blocked] https://api.mainnet-beta.solana.com/\n"
+                        },
+                        {
+                          "text": "[E2E Blocked] https://api.mainnet-beta.solana.com/\n"
+                        },
+                        {
+                          "text": "[E2E Blocked] https://api.mainnet-beta.solana.com/\n"
+                        },
+                        {
+                          "text": "[E2E Blocked] https://api.mainnet-beta.solana.com/\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-24T17:41:56.444Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8f9206fb64e745a9d86f-06b8056aad5bcbf1fa3c",
+              "file": "terminal.spec.ts",
+              "line": 307,
+              "column": 3
+            },
+            {
+              "title": "@gatekeeper Pending-state disables confirm button",
+              "ok": true,
+              "tags": [
+                "gatekeeper",
+                "gatekeeper"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 7041,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "[E2E Blocked] https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap\n"
+                        },
+                        {
+                          "text": "[E2E Blocked] https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap\n"
+                        },
+                        {
+                          "text": "[E2E Blocked] https://api.mainnet-beta.solana.com/\n"
+                        },
+                        {
+                          "text": "[E2E Blocked] https://api.mainnet-beta.solana.com/\n"
+                        },
+                        {
+                          "text": "[E2E Blocked] https://api.mainnet-beta.solana.com/\n"
+                        },
+                        {
+                          "text": "[E2E Blocked] https://api.mainnet-beta.solana.com/\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-24T17:42:10.625Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8f9206fb64e745a9d86f-6146ddf565e55dc716f6",
+              "file": "terminal.spec.ts",
+              "line": 365,
+              "column": 3
+            }
+          ]
+        },
+        {
+          "title": "@gatekeeper Live Provider Gate",
+          "file": "terminal.spec.ts",
+          "line": 443,
+          "column": 6,
+          "specs": [
+            {
+              "title": "Live quote provider verification is explicitly env-gated",
+              "ok": true,
+              "tags": [
+                "gatekeeper"
+              ],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [
+                    {
+                      "type": "skip",
+                      "description": "Skipped live provider verification: set PLAYWRIGHT_LIVE_PROVIDER_E2E=1 with backend/provider env and reachable DNS.",
+                      "location": {
+                        "file": "/home/baum/Schreibtisch/workspace/main_projects/sparkfined/playwright/tests/terminal.spec.ts",
+                        "line": 433,
+                        "column": 10
+                      }
+                    }
+                  ],
+                  "expectedStatus": "skipped",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 2,
+                      "status": "skipped",
+                      "duration": 9,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-24T17:42:10.690Z",
+                      "annotations": [
+                        {
+                          "type": "skip",
+                          "description": "Skipped live provider verification: set PLAYWRIGHT_LIVE_PROVIDER_E2E=1 with backend/provider env and reachable DNS.",
+                          "location": {
+                            "file": "/home/baum/Schreibtisch/workspace/main_projects/sparkfined/playwright/tests/terminal.spec.ts",
+                            "line": 433,
+                            "column": 10
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8f9206fb64e745a9d86f-fed2c2bd7dd1b4e6be39",
+              "file": "terminal.spec.ts",
+              "line": 444,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-05-24T17:41:51.558Z",
+    "duration": 26282.638,
+    "expected": 7,
+    "skipped": 3,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

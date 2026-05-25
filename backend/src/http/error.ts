@@ -1,5 +1,6 @@
 import type { ServerResponse } from 'http';
 import { getRequestId } from './requestId.js';
+import { logger } from '../observability/logger.js';
 
 /**
  * Standardized Error Response
@@ -26,6 +27,7 @@ export const ErrorCodes = {
   UNAUTHORIZED: 'UNAUTHORIZED',
   // New: for endpoints that distinguish "no auth" from "bad auth"
   UNAUTHENTICATED: 'UNAUTHENTICATED',
+  CSRF_INVALID: 'CSRF_INVALID',
   INVALID_JSON: 'INVALID_JSON',
   VALIDATION_FAILED: 'VALIDATION_FAILED',
   // Preferred validation code for query/body semantics that should be actionable by clients.
@@ -40,6 +42,7 @@ export const ErrorCodes = {
   BUDGET_EXCEEDED: 'BUDGET_EXCEEDED',
   FORBIDDEN_TIER: 'FORBIDDEN_TIER',
   GROK_DISABLED: 'GROK_DISABLED',
+  PROVIDER_UNAVAILABLE: 'PROVIDER_UNAVAILABLE',
   
   // Journal
   JOURNAL_NOT_FOUND: 'JOURNAL_NOT_FOUND',
@@ -163,7 +166,7 @@ export function handleError(res: ServerResponse, error: unknown): void {
   }
 
   // Log unexpected errors
-  console.error('Unexpected error:', error);
+  logger.error('Unexpected error', { error });
 
   const appError = internalError(
     error instanceof Error ? error.message : 'Unknown error'

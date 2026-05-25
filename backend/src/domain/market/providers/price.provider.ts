@@ -5,6 +5,7 @@
 
 import { getEnv } from '../../../config/env.js';
 import { logger } from '../../../observability/logger.js';
+import { dexTokenResponseSchema } from './schemas.js';
 
 export interface PriceData {
   priceUsd: number;
@@ -40,7 +41,12 @@ export async function fetchPriceData(
       return { priceUsd: 0, marketCapUsd: 0 };
     }
     
-    const data = await res.json() as any;
+    const parsed = dexTokenResponseSchema.safeParse(await res.json());
+    if (!parsed.success) {
+      logger.warn('Price provider response validation failed', { symbolOrAddress });
+      return { priceUsd: 0, marketCapUsd: 0 };
+    }
+    const data = parsed.data;
     
     return {
       priceUsd: data.summary?.price_usd ?? 0,
@@ -51,4 +57,3 @@ export async function fetchPriceData(
     return { priceUsd: 0, marketCapUsd: 0 };
   }
 }
-

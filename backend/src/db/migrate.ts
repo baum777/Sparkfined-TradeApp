@@ -107,6 +107,6 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   await initDatabase(env.DATABASE_URL);
   await runMigrations(join(process.cwd(), 'migrations'));
 
-  console.log('Migrations complete');
+  logger.info('Migrations complete (cli)');
   process.exit(0);
 }

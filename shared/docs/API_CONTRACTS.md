@@ -2,7 +2,11 @@
 Owner: Architecture Team
 Status: active
 Version: 1.0
+<<<<<<< HEAD
 LastUpdated: 2026-05-22
+=======
+LastUpdated: 2026-05-08
+>>>>>>> codex/terminal-provider-runtime-gates-fresh
 Canonical: true
 ---
 
@@ -20,12 +24,55 @@ Wichtige Contracts:
 - `shared/contracts/reasoning-router.ts`: Reasoning Router + `/llm/execute` Request/Response
 - `shared/contracts/grokPulse.ts`: Grok Pulse Snapshot/History
 - `shared/contracts/journal.settings.ts`: `/settings` + Journal Insights Request Types
+- `shared/contracts/trading-assistant/trade-review.ts`: Trading Assistant `trade_review_v1`
+  Output Contract
 
 ## Frontend-Verbrauch (Contract-First)
 
 Frontend soll Shapes **aus `shared/contracts/*` importieren** und nicht Backend-Verhalten erraten.
 
 Beispiel: `src/services/api/grokPulse.ts` importiert `shared/contracts/grokPulse.ts`.
+
+## Trading Assistant Contract: `trade_review_v1`
+
+**Contract Name / Version:** `trade_review_v1`
+
+**Source of Truth:**
+- Kanonisch: `shared/contracts/trading-assistant/trade-review.ts`
+- Backend-Mirror: `backend/src/routes/reasoning/tradeReviewContract.ts`
+
+Der Backend-Mirror bleibt absichtlich bestehen, weil `docs/ARCHITECTURE.md` beschreibt, dass
+`backend/` wegen `tsconfig.rootDir` bei Bedarf Contracts spiegelt. Keine Import-Umstellung ist
+Teil dieses Contract-Status.
+
+**Stabilitätsentscheidung:**
+- Die aktuelle Shape ist bewusst stabil gehalten.
+- `assistantDecision.decision` erlaubt aktuell nur:
+  - `no_trade`
+  - `paper_trade_candidate`
+  - `blocked_by_risk`
+- `watchlist`, `manual_review_required` und `sourceQuality` sind aktuell **keine** Felder oder
+  Entscheidungswerte von `trade_review_v1` und dürfen nicht als Contract-Anforderung behandelt
+  werden.
+
+**Vorhandene Qualitäts-/Quellenfelder:**
+- `marketDataQuality.dataFreshness`: `fresh | delayed | fallback | stale`
+- `marketDataQuality.sources`: nicht-leere Stringliste der genutzten Quellen
+- `marketDataQuality.warnings`: Warnhinweise zur Datenlage
+- `riskDecision.warnings`: Pflicht-Warnungen für `blocked_by_risk`
+
+**Bestehende Contract-Regeln:**
+- `no_trade` erzwingt `direction: "none"`.
+- `paper_trade_candidate` darf nicht mit `fallback` oder `stale` Market Data validieren.
+- `paper_trade_candidate` braucht `riskDecision.stopLoss`.
+- `blocked_by_risk` braucht mindestens eine `riskDecision.warning`.
+- `schemaVersion` bleibt fix `trade_review_v1`.
+
+**Drift-Schutz:**
+- `tests/unit/trade-review-contract.test.ts` validiert die Shape-Regeln und vergleicht den
+  Backend-Mirror byte-for-byte mit dem kanonischen Shared Contract.
+- Änderungen an `shared/contracts/trading-assistant/trade-review.ts` müssen den Mirror und den
+  Drift-Test konsistent halten.
 
 ## API Base Path
 

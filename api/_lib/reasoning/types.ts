@@ -6,6 +6,8 @@
  * - Keep this file's TYPE SHAPES identical across those layers.
  */
 
+import type { TradeReviewV1 } from '../../../shared/contracts/trading-assistant/trade-review.js';
+
 export const REASONING_CONTRACT_VERSION = '0.1.0' as const;
 
 // ─────────────────────────────────────────────────────────────
@@ -133,6 +135,7 @@ export interface TradeReviewInsight {
     why: string;
   }>;
   questions: string[];
+  assistantReview?: TradeReviewV1;
   critic: InsightCriticReport;
 }
 
@@ -192,5 +195,4 @@ export interface ReasoningBaseRequest {
 export interface InsightCriticRequest extends ReasoningBaseRequest {
   insight: JsonObject; // the insight to critique (strict JSON)
 }
-
 

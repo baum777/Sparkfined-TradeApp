@@ -1,11 +1,12 @@
-import { describe, it, expect } from 'vitest';
+import { it, expect } from 'vitest';
 import {
   oracleGetDaily,
   oracleSetReadState,
   oracleBulkSetReadState,
 } from '../../src/domain/oracle/repo';
+import { describeIfDb } from '../helpers/testGuards';
 
-describe('Oracle Integration', () => {
+describeIfDb('Oracle Integration', () => {
   const userId = 'test-user';
   
   describe('Daily Feed', () => {

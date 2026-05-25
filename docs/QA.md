@@ -2,7 +2,7 @@
 Owner: QA Team
 Status: active
 Version: 1.0
-LastUpdated: 2026-02-27
+LastUpdated: 2026-05-19
 Canonical: true
 ---
 
@@ -338,6 +338,7 @@ Canonical: true
 **Environment:**
 - Runs with `VITE_E2E_WALLET_MOCK=1` for deterministic wallet state
 - All trading APIs stubbed (Jupiter quote/swap never hits live network)
+- Plattformstandard auf `ubuntu26.04-x64`: `PLAYWRIGHT_SYSTEM_CHROME=1 pnpm test:e2e`
 
 **Run Gatekeeper:**
 ```bash
@@ -354,6 +355,7 @@ pnpm exec playwright test playwright/tests/terminal.spec.ts --project=chromium
 - Never rely on live Jupiter/Jupiter APIs
 - Use only stable selectors (`data-testid`, `aria-label`)
 - Pass in all 5 browsers (chromium, firefox, webkit, mobile)
+- Specs mit `page.goto(...)` sollen `stubApi(page)` im Setup verwenden, um `/api`-Proxy-Noise in lokalen E2E-Runs zu vermeiden
 
 ---
 
@@ -363,4 +365,3 @@ pnpm exec playwright test playwright/tests/terminal.spec.ts --project=chromium
 - [Discover](./DISCOVER.md) - Discover documentation
 - [Deployment](./DEPLOYMENT.md) - Feature flags, monitoring
 - [Security](./SECURITY.md) - Security constraints
-

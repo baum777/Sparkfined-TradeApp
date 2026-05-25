@@ -30,7 +30,13 @@ import {
   sessionReviewInsightSchema,
   tradeReviewInsightSchema,
 } from './schemas.js';
+<<<<<<< HEAD
 import { buildCriticPrompt, buildGeneratorPrompt, buildPlanningPrompt } from './prompts.js';
+=======
+import { sanitizePromptText } from '../../lib/llm/promptSecurity.js';
+import { buildCriticPrompt, buildGeneratorPrompt, buildPlanningPrompt } from './prompts.js';
+import { tradeReviewV1OutputExample } from './tradeReviewContract.js';
+>>>>>>> codex/terminal-provider-runtime-gates-fresh
 
 type AnyInsight = TradeReviewInsight | SessionReviewInsight | BoardScenariosInsight;
 
@@ -116,6 +122,7 @@ function tradeReviewOutputSchemaJson(): string {
       risks: [{ label: 'string', severity: 'low|medium|high', evidence: ['string'] }],
       fixes: [{ action: 'string', why: 'string' }],
       questions: ['string'],
+      assistantReview: tradeReviewV1OutputExample,
       critic: {
         issues: [{ kind: 'missing_data|overreach|contradiction', message: 'string', fields: ['string?'] }],
         adjustedConfidence: 0.7,
@@ -183,13 +190,14 @@ async function runCritic(input: {
   const schemaJson = criticOutputSchemaJson();
 
   try {
-    const prompt = buildCriticPrompt({
+    const rawPrompt = buildCriticPrompt({
       referenceId: input.referenceId,
       version: input.version,
       context: input.context,
       insight: input.insight,
       outputSchemaJson: schemaJson,
     });
+    const prompt = sanitizePromptText(rawPrompt, { maxChars: 60_000 });
 
     const result = await routeLLMRequest('reasoning_critic', {
       prompt,
@@ -258,13 +266,14 @@ export async function runReasoning(
               ? sessionReviewOutputSchemaJson()
               : boardScenariosOutputSchemaJson();
 
-        const prompt = buildGeneratorPrompt({
+        const rawPrompt = buildGeneratorPrompt({
           type,
           referenceId: body.referenceId,
           version,
           context: builtContext,
           outputSchemaJson,
         });
+        const prompt = sanitizePromptText(rawPrompt, { maxChars: 60_000 });
 
         const result = await routeLLMRequest('reasoning', {
             prompt,

@@ -1,8 +1,8 @@
 ---
 Owner: Security Team
 Status: active
-Version: 1.0
-LastUpdated: 2026-02-27
+Version: 1.1
+LastUpdated: 2026-05-09
 Canonical: true
 ---
 
@@ -17,9 +17,12 @@ Canonical: true
 
 ### Backend `backend/` (Node Server)
 
-- Router extrahiert optional einen JWT aus `Authorization: Bearer <token>` und setzt dann `req.userId = sub`.
+- Router extrahiert JWT aus `Authorization: Bearer <token>` oder `access_token` Cookie und setzt `req.userId = sub`.
 - Ohne gültigen Token läuft alles als `userId = "anon"` (siehe `backend/src/http/router.ts`).
-- JWT Secret: `JWT_SECRET` (Default `dev-secret`, was production-unsafe ist).
+- Credentials-basierte Auth (`auth_users_v1`) mit bcrypt-Hashing (salt rounds 12) für Register/Login.
+- JWT Secret: `JWT_SECRET`; in Production muss es gesetzt sein, darf nicht `dev-secret` sein und muss mind. 32 Zeichen haben.
+- CSRF-Schutz für state-changing Cookie-Auth Requests via Double-Submit (`csrf_token` Cookie + `x-csrf-token` Header).
+- CORS nutzt Origin-Whitelist über `BACKEND_CORS_ORIGINS`.
 
 ### Backend `api/` (Vercel Functions)
 
@@ -55,9 +58,10 @@ Canonical: true
 
 ### `backend/`
 
-- In-memory rate limiter (`backend/src/http/rateLimit.ts`), inkl. `setInterval` Cleanup.
-- Limits sind pro Path+userId definiert (journal/alerts/oracle/ta/reasoning).
-- **Production Hinweis:** in-memory ist nicht cluster-safe (TODO: Redis/KV-backed).
+- Einheitlicher Counter-Store für HTTP-Limits und globale User/IP-Limits (`backend/src/lib/rateLimit/store.ts`).
+- Backend-Limits sind pro Scope/Path/User definiert (`backend/src/http/rateLimit.ts`, `backend/src/lib/rateLimit/limiter.ts`).
+- Store-Auswahl über `RATE_LIMIT_STORE=memory|redis`; in Production ist `redis` verpflichtend.
+- `REDIS_URL` ist in Production verpflichtend, wenn `RATE_LIMIT_STORE=redis`.
 
 ### `api/`
 
@@ -69,7 +73,23 @@ Canonical: true
 - `x-request-id` wird serverseitig gesetzt:
   - `backend/`: `backend/src/http/requestId.ts` + `backend/src/http/response.ts`
   - `api/`: `api/_lib/request-id.ts` + `api/_lib/response.ts`
-- Logging existiert in beiden Backends; Provider-Calls enthalten explizite Regeln, keine Secrets zu loggen (z.B. LLM Router Prompt-Redactions).
+- `backend/` Logger schreibt strukturierte JSON-Logs mit Redaction sensibler Felder (`authorization`, `token`, `secret`, `cookie`, etc.).
+- Provider-Calls enthalten zusätzliche Prompt-Redaction/Sanitizing-Regeln.
+
+## CI/CD Security Gates
+
+- CI blockiert bei High/Critical Dependency Findings (`pnpm audit`) in `.github/workflows/ci.yml`.
+- SAST läuft verpflichtend als CodeQL-Job (`codeql-sast`) im selben CI-Workflow.
+
+## Incident Response (Owner Gate)
+
+- Incident Response ist Security-Team-owned.
+- Ein verbindlicher Kontaktkanal (On-Call Alias/Channel) ist **noch nicht in diesem Repo hinterlegt**.
+- Bis dieser Kanal vom Owner freigegeben ist, darf keine feste externe Kontaktadresse in diese Doku aufgenommen werden.
+- Mindestprozess bis zur Owner-Freigabe:
+  - Security-relevanten Vorfall intern als P0 markieren.
+  - Reproduzierbare Evidenz + betroffene Surface (`backend`, `api`, `apps/backend-alerts`) dokumentieren.
+  - Security Team als Owner zur Kanal-Freigabe und Priorisierung anfordern.
 
 ## Cron / interne Endpoints
 
@@ -78,7 +98,6 @@ Canonical: true
 
 ## TODOs / Risiken
 
-- **TODO:** Einheitliche Auth-Policy zwischen Frontend + dem tatsächlich in Production genutzten Backend.
-- **TODO:** Production-Härtung für `backend/` JWT_SECRET (kein Default) + Secret Rotation.
-- **TODO:** Cluster-sicheres Rate Limiting für `backend/` (Redis/KV).
-
+- ~~**TODO:** Einheitliche Auth-Policy zwischen Frontend + dem tatsächlich in Production genutzten Backend.~~ → **IN PROGRESS**: Siehe `SECURITY_HARDENING_ROADMAP.md` für Implementierungsplan
+- ~~**TODO:** JWT Secret Rotation-Prozess dokumentieren.~~ → **ERLEDIGT**: Script verfügbar unter `scripts/rotate-jwt-secret.mjs`
+- **TODO:** Security Team muss verbindlichen Incident-Response-Kontaktkanal freigeben. → **BLOCKED**: Wartet auf Owner-Freigabe

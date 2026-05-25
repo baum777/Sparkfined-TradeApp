@@ -1,0 +1,1 @@
+import{r as s}from"./vendor-react-Bf5JFhPE.js";function d(c="ready"){const[t,e]=s.useState(c),r=t==="loading",o=t==="error",a=t==="empty",n=t==="ready",i=s.useCallback(()=>{e("loading"),setTimeout(()=>{e("ready")},1e3)},[]);return s.useMemo(()=>({state:t,setState:e,isLoading:r,isError:o,isEmpty:a,isReady:n,retry:i}),[t,r,o,a,n,i])}export{d as u};

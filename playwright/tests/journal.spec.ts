@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { stubApi } from '../fixtures';
 import { navTestId } from '../utils/testids';
 import { clickNavAndWait } from '../utils/nav';
 
@@ -10,6 +11,7 @@ import { clickNavAndWait } from '../utils/nav';
 
 test.describe('Journal Page', () => {
   test.beforeEach(async ({ page }) => {
+    await stubApi(page);
     await page.goto('/journal');
   });
 
@@ -40,12 +42,18 @@ test.describe('Journal Page', () => {
 
 test.describe('Journal Navigation', () => {
   test('sollte von Dashboard zu Journal navigieren können', async ({ page }) => {
+    await stubApi(page);
     await page.goto('/');
-    const sidebar = page.locator('aside');
-    await clickNavAndWait(page, sidebar.locator(navTestId('journal')), /\/journal/, 'journal');
+    await clickNavAndWait(
+      page,
+      page.locator(`${navTestId('journal')}:visible`).first(),
+      /\/journal/,
+      'journal',
+    );
   });
 
   test('sollte aktiven Nav-Status zeigen', async ({ page }) => {
+    await stubApi(page);
     await page.goto('/journal');
     const journalLink = page.locator('aside').locator(navTestId('journal'));
     await expect(journalLink).toHaveClass(/nav-item-active/);
@@ -54,6 +62,7 @@ test.describe('Journal Navigation', () => {
 
 test.describe('Journal Responsive', () => {
   test('sollte auf Mobile korrekt angezeigt werden', async ({ page }) => {
+    await stubApi(page);
     await page.setViewportSize({ width: 375, height: 667 });
     await page.goto('/journal');
     
@@ -67,6 +76,7 @@ test.describe('Journal Responsive', () => {
   });
 
   test('sollte auf Tablet korrekt angezeigt werden', async ({ page }) => {
+    await stubApi(page);
     await page.setViewportSize({ width: 768, height: 1024 });
     await page.goto('/journal');
     
@@ -75,6 +85,7 @@ test.describe('Journal Responsive', () => {
   });
 
   test('sollte auf Desktop korrekt angezeigt werden', async ({ page }) => {
+    await stubApi(page);
     await page.setViewportSize({ width: 1920, height: 1080 });
     await page.goto('/journal');
     

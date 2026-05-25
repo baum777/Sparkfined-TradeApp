@@ -26,6 +26,7 @@ import {
   tradeReviewInsightSchema,
 } from './schemas';
 import { buildCriticPrompt, buildGeneratorPrompt } from './prompts';
+import { tradeReviewV1OutputExample } from '../../../shared/contracts/trading-assistant/trade-review.js';
 
 type AnyInsight = TradeReviewInsight | SessionReviewInsight | BoardScenariosInsight;
 
@@ -123,6 +124,7 @@ function tradeReviewOutputSchemaJson(): string {
       risks: [{ label: 'string', severity: 'low|medium|high', evidence: ['string'] }],
       fixes: [{ action: 'string', why: 'string' }],
       questions: ['string'],
+      assistantReview: tradeReviewV1OutputExample,
       critic: {
         issues: [{ kind: 'missing_data|overreach|contradiction', message: 'string', fields: ['string?'] }],
         adjustedConfidence: 0.7,

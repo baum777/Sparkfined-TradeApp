@@ -2,7 +2,7 @@
 Owner: Core Team
 Status: active
 Version: 1.0
-LastUpdated: 2026-02-27
+LastUpdated: 2026-05-19
 Canonical: true
 ---
 
@@ -47,6 +47,14 @@ pnpm test:backend
 pnpm test:e2e
 ```
 
+Plattformstandard für `ubuntu26.04-x64` (Playwright Browser-Download nicht verfügbar):
+
+```bash
+PLAYWRIGHT_SYSTEM_CHROME=1 pnpm test:e2e
+# oder äquivalent
+pnpm test:e2e:system-chrome
+```
+
 Hinweis: Der Dominance „Golden Task“ Runner referenziert Kommandos als Strings (z.B. `npm run lint`). Das ist ok, solange die Scripts im Root stabil bleiben.
 
 ## Contract-Änderungen (streng)
@@ -67,4 +75,3 @@ Hinweis: Der Dominance „Golden Task“ Runner referenziert Kommandos als Strin
 ## Feature Flags (Kurz)
 - `VITE_ENABLE_AUTH="true"`: UI/SW nutzen credentials + behandeln 401/403 als „auth required“ nur in diesem Modus.
 - `ENABLE_SPARKFINED_DOMINANCE="true"`: Dominance Layer aktiv (Policy/Golden Tasks/Memory/Trace).
-

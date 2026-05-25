@@ -3,7 +3,7 @@
  * MULTITENANCY: All operations require userId
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { it, expect, beforeEach } from 'vitest';
 import {
   journalCreate,
   journalGetById,
@@ -15,12 +15,13 @@ import {
   journalSystemArchive,
 } from '../../src/domain/journal/repo';
 import { AppError } from '../../src/http/error';
+import { describeIfDb } from '../helpers/testGuards';
 
 // Test userId - all operations are scoped to this user
 const TEST_USER_ID = 'test-user-123';
 const OTHER_USER_ID = 'other-user-456';
 
-describe('Journal Integration', () => {
+describeIfDb('Journal Integration', () => {
   describe('Create', () => {
     it('should create entry with PENDING status', async () => {
       const entry = await journalCreate(TEST_USER_ID, {

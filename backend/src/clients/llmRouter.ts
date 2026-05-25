@@ -6,6 +6,7 @@ import { callGrok } from './grokClient.js';
 import { checkRateLimit } from '../lib/rateLimit/limiter.js';
 import { checkAndConsumeBudget, releaseConcurrency } from '../lib/budget/budgetGate.js';
 import { getUserSettings } from '../lib/budget/settings.js';
+import { sanitizePromptText } from '../lib/llm/promptSecurity.js';
 import { AppError, ErrorCodes } from '../http/error.js';
 
 export async function routeLLMRequest(
@@ -59,6 +60,8 @@ export async function routeLLMRequest(
   
   const baseRequest: LLMRequest = {
     ...request,
+    prompt: sanitizePromptText(request.prompt, { maxChars: 60_000 }),
+    system: request.system ? sanitizePromptText(request.system, { maxChars: 20_000 }) : undefined,
     model: request.model || 'gpt-4o-mini', 
   };
 

@@ -1,0 +1,11 @@
+id: 2026-05-13-p0-runtime-verification-risk
+type: verification-risk
+status: open
+trigger: constrained-runtime-and-ci-secret-dependency
+observed_backend_gate_behavior: "DB- und NET-gebundene Suites werden bei fehlender Runtime-Faehigkeit explizit geskippt"
+observed_native_binding_warning: "better-sqlite3 native binding in Sandbox nicht verfuegbar"
+observed_ci_secret_dependency: "deploy.yml benoetigt VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID"
+verified_backend_tests: "corepack pnpm -C backend run test exit 0"
+verified_api_tests: "corepack pnpm -C api run test exit 0"
+blocked_by: "keine GitHub-Actions-Ausfuehrung und keine Secret-Werte im lokalen Sandbox-Kontext"
+next_gate: "Workflow-Runs in GitHub Actions mit gesetzten Vercel-Secrets und nativer DB-Runtime pruefen"
