@@ -1,11 +1,7 @@
 ---
 Owner: DevOps Team
 Status: active
-<<<<<<< HEAD
-Version: 1.0
-=======
 Version: 1.1
->>>>>>> codex/terminal-provider-runtime-gates-fresh
 LastUpdated: 2026-05-16
 Canonical: true
 ---

@@ -246,7 +246,3 @@ export interface ReasoningBaseRequest {
 export interface InsightCriticRequest extends ReasoningBaseRequest {
   insight: JsonObject; // the insight to critique (strict JSON)
 }
-<<<<<<< HEAD
-
-=======
->>>>>>> codex/terminal-provider-runtime-gates-fresh

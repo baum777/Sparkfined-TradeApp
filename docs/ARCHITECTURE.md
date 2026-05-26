@@ -225,15 +225,9 @@ flowchart TD
 - SW caching headers: `sw.js` / `service-worker.js` mit `max-age=0, must-revalidate`
 
 ### Backend (external host, canonical)
-<<<<<<< HEAD
-- Start: `node dist/server.js` nach `pnpm -C backend build`
-- DB: `DATABASE_URL` steuert SQLite vs. Postgres
-- Migrations: `pnpm -C backend migrate`
-=======
 - Start: `node dist/backend/src/server.js` nach `pnpm -C backend build`
 - DB: `DATABASE_URL` steuert SQLite vs. Postgres
 - Migrations: `pnpm -C backend migrate` (kontrolliert ausführen; nicht „best-effort“)
->>>>>>> codex/terminal-provider-runtime-gates-fresh
 
 ### Parallel Deployables
 - `api/`: Vercel Functions Backend, separat deploybar, aber nicht canonical für dieses Frontend

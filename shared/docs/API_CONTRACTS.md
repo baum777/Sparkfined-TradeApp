@@ -2,11 +2,7 @@
 Owner: Architecture Team
 Status: active
 Version: 1.0
-<<<<<<< HEAD
 LastUpdated: 2026-05-22
-=======
-LastUpdated: 2026-05-08
->>>>>>> codex/terminal-provider-runtime-gates-fresh
 Canonical: true
 ---
 

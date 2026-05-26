@@ -30,13 +30,9 @@ import {
   sessionReviewInsightSchema,
   tradeReviewInsightSchema,
 } from './schemas.js';
-<<<<<<< HEAD
-import { buildCriticPrompt, buildGeneratorPrompt, buildPlanningPrompt } from './prompts.js';
-=======
 import { sanitizePromptText } from '../../lib/llm/promptSecurity.js';
 import { buildCriticPrompt, buildGeneratorPrompt, buildPlanningPrompt } from './prompts.js';
 import { tradeReviewV1OutputExample } from './tradeReviewContract.js';
->>>>>>> codex/terminal-provider-runtime-gates-fresh
 
 type AnyInsight = TradeReviewInsight | SessionReviewInsight | BoardScenariosInsight;
 

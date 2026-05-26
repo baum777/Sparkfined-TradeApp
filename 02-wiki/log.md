@@ -1,7 +1,3 @@
-<<<<<<< HEAD
-## [2026-05-16] applied | Planning-Prompt Backend-API ergänzt, Backend-RootDir-Konflikt per Mirror gelöst und Drift-Test abgesichert [[reasoning-planning-api]]
-## [2026-05-16] verified | Backend-Baseline repariert: `better-sqlite3` für Node 24 neu aufgebaut, HTTP-Integrationstests auf In-Memory-Router umgestellt, `typecheck` und `vitest` grün [[backend-baseline-repair]]
-=======
 ## [2026-05-09] create | function-wiki MVP baseline [[functions/buildGeneratorPrompt]] [[dashboards/performance-hotspots]]
 ## [2026-05-09] profile | buildGeneratorPrompt | avg_tokens_est: 169 | avg_latency_ms: 0 | token_authority: v1_estimate_chars_div_4 [[functions/buildGeneratorPrompt]]
 ## [2026-05-09] risk | verification gate open [[packets/2026-05-09-verification-gate]]
@@ -23,7 +19,6 @@
 ## [2026-05-16] verified | Backend-Baseline repariert: `better-sqlite3` für Node 24 neu aufgebaut, HTTP-Integrationstests auf In-Memory-Router umgestellt, `typecheck` und `vitest` grün [[backend-baseline-repair]]
 ## [2026-05-16] applied | Rebase auf aktuelles `origin/main` abgeschlossen, fehlende Prompt-Security-Imports und Test-Setup-Node-Imports repariert [[backend-rebase-verification-fix]]
 ## [2026-05-16] verified | Rebasierten Backend-Branch erneut verifiziert: `pnpm -C backend run typecheck`, `pnpm -C backend run test`, `pnpm run doc:check` grün [[backend-rebase-verification-fix]]
->>>>>>> codex/terminal-provider-runtime-gates-fresh
 ## [2026-05-16] applied | README Frontdoor um Tool-, Pipeline- und Architektur-Mermaid-Visualisierung ergänzt [[readme-tool-pipeline-architecture]]
 ## [2026-05-21] risk | Terminal-API lokal gestartet; `/api/health`, `/api/health/ready` und `/api/discover/tokens` verifiziert, `/api/quote` durch externe Jupiter-DNS-Auflösung `ENOTFOUND` blockiert [[terminal-api-jupiter-dns-risk]]
 ## [2026-05-22] verified | Audit zur nächsten Terminal-Aufgabe ausgeführt: Discover fail-closed und Quick-Amounts verifiziert; nächster sicherer Scope ist `/api/chart/candles` fail-closed Contract vor Live-Provider-Entscheidung [[terminal-chart-candles-provider-decision]]

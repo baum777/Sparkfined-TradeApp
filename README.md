@@ -4,11 +4,7 @@
 Owner: Core Team
 Status: active
 Version: 2.0
-<<<<<<< HEAD
-LastUpdated: 2026-05-16
-=======
 LastUpdated: 2026-05-19
->>>>>>> codex/terminal-provider-runtime-gates-fresh
 Canonical: true
 ---
 

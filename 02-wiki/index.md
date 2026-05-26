@@ -1,7 +1,3 @@
-<<<<<<< HEAD
-[[reasoning-planning-api]] | Planning-Prompt Backend-API mit Shared-Contract, Backend-Mirror und Drift-Test | #reasoning #planning #contracts #backend | 2026-05-16
-[[backend-baseline-repair]] | Node-24-SQLite-Binding repariert, socket-freie HTTP-Integrationstests eingeführt und Backend-Checks verifiziert | #backend #testing #sqlite #vitest #typescript | 2026-05-16
-=======
 [[functions/buildGeneratorPrompt]] | buildGeneratorPrompt profiling baseline for prompt token estimates | #function #reasoning #perf | 2026-05-09
 [[functions/llm-execute-provider-usage]] | Provider usage hook for final /api/llm/execute calls | #route #llm #provider-usage | 2026-05-09
 [[dashboards/performance-hotspots]] | Obsidian Dataview for token and latency hotspots | #dashboard #perf | 2026-05-09
@@ -16,7 +12,6 @@
 [[reasoning-planning-api]] | Planning-Prompt Backend-API mit Shared-Contract, Backend-Mirror und Drift-Test | #reasoning #planning #contracts #backend | 2026-05-16
 [[backend-baseline-repair]] | Node-24-SQLite-Binding repariert, socket-freie HTTP-Integrationstests eingeführt und Backend-Checks verifiziert | #backend #testing #sqlite #vitest #typescript | 2026-05-16
 [[backend-rebase-verification-fix]] | Rebase auf aktuelles `main` mit reparierten Backend-Imports und erneut grüner Verifikation | #backend #rebase #verification #tests | 2026-05-16
->>>>>>> codex/terminal-provider-runtime-gates-fresh
 [[readme-tool-pipeline-architecture]] | README-Frontdoor mit Tool-, Pipeline- und Architektur-Mermaid-Diagramm | #readme #architecture #pipeline #mermaid | 2026-05-16
 [[terminal-api-jupiter-dns-risk]] | Terminal-API lokal gestartet; Health, Ready und Discover verifiziert; Quote durch Jupiter-DNS `ENOTFOUND` blockiert | #terminal #backend #verification #risk #mspr | 2026-05-21
 [[terminal-chart-candles-provider-decision]] | Fail-closed `/api/chart/candles` Backend-Contract und Frontend-Service implementiert; Live-OHLCV-Provider und ChartPanel-Verbrauch bleiben Review-Gate | #terminal #chart #backend #frontend #verification #mspr | 2026-05-22
