@@ -1,6 +1,14 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const chromiumExecutablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH;
+const useSystemChrome = process.env.PLAYWRIGHT_SYSTEM_CHROME === '1';
+const chromiumExecutablePath =
+  process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ?? (useSystemChrome ? '/usr/bin/google-chrome' : undefined);
+const playwrightHost = '127.0.0.1';
+const playwrightPort = process.env.PLAYWRIGHT_PORT ?? '5173';
+const baseURL = `http://${playwrightHost}:${playwrightPort}`;
+const chromiumLaunchOptions = chromiumExecutablePath
+  ? { launchOptions: { executablePath: chromiumExecutablePath } }
+  : {};
 
 /**
  * Playwright Test Configuration
@@ -14,8 +22,8 @@ export default defineConfig({
     ? {}
     : {
         webServer: {
-          command: 'pnpm exec vite --host 127.0.0.1 --port 5173 --strictPort',
-          url: 'http://127.0.0.1:5173',
+          command: `pnpm exec vite --host ${playwrightHost} --port ${playwrightPort} --strictPort`,
+          url: baseURL,
           reuseExistingServer: !process.env.CI,
           timeout: 120 * 1000,
           env: {
@@ -58,7 +66,7 @@ export default defineConfig({
   /* Shared settings for all the projects below. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: 'http://127.0.0.1:5173',
+    baseURL,
 
     /* Collect trace when retrying the failed test. */
     trace: 'on-first-retry',
@@ -81,10 +89,20 @@ export default defineConfig({
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
-        ...(chromiumExecutablePath ? { launchOptions: { executablePath: chromiumExecutablePath } } : {}),
+        ...chromiumLaunchOptions,
+      },
+    },
+    {
+      name: 'Mobile Chrome',
+      use: {
+        ...devices['Pixel 5'],
+        ...chromiumLaunchOptions,
       },
     },
 
+    ...(useSystemChrome
+      ? []
+      : [
     {
       name: 'firefox',
       use: { ...devices['Desktop Firefox'] },
@@ -94,16 +112,11 @@ export default defineConfig({
       name: 'webkit',
       use: { ...devices['Desktop Safari'] },
     },
-
-    /* Test against mobile viewports. */
-    {
-      name: 'Mobile Chrome',
-      use: { ...devices['Pixel 5'] },
-    },
     {
       name: 'Mobile Safari',
       use: { ...devices['iPhone 12'] },
     },
+      ]),
 
     /* Test against branded browsers. */
     // {

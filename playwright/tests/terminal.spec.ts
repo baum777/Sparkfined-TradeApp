@@ -64,6 +64,7 @@ test.describe('@gatekeeper Trading Terminal Gatekeeper', () => {
 
     // Block all non-API and non-static network calls for deterministic E2E
     // This prevents hidden regressions from analytics, RPC, or third-party calls
+    const devServerOrigin = `http://127.0.0.1:${process.env.PLAYWRIGHT_PORT ?? '5173'}/`;
     await page.route('**/*', (route, request) => {
       const url = request.url();
 
@@ -85,7 +86,7 @@ test.describe('@gatekeeper Trading Terminal Gatekeeper', () => {
       }
 
       // Allow same-origin requests (dev server)
-      if (url.startsWith('http://127.0.0.1:5173/') || url.startsWith('http://localhost:')) {
+      if (url.startsWith(devServerOrigin) || url.startsWith('http://localhost:')) {
         return route.fallback();
       }
 
