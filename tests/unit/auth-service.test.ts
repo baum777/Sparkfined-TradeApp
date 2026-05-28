@@ -37,12 +37,22 @@ function makeAuthResponse() {
   };
 }
 
+function makeRefreshResponse() {
+  return {
+    tokens: {
+      accessToken: 'refreshed-access-token',
+      refreshToken: 'refreshed-refresh-token',
+      expiresIn: 3600,
+    },
+  };
+}
+
 describe('AuthService auth-enabled token wiring', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.stubEnv('VITE_ENABLE_AUTH', 'true');
     vi.resetModules();
-    vi.clearAllMocks();
+    vi.resetAllMocks();
   });
 
   afterEach(() => {
@@ -86,11 +96,7 @@ describe('AuthService auth-enabled token wiring', () => {
   it('reattaches the refreshed access token to the API client', async () => {
     apiClientMock.post
       .mockResolvedValueOnce(makeAuthResponse())
-      .mockResolvedValueOnce({
-        accessToken: 'refreshed-access-token',
-        refreshToken: 'refreshed-refresh-token',
-        expiresIn: 3600,
-      });
+      .mockResolvedValueOnce(makeRefreshResponse());
     const { authService } = await import('../../src/services/auth/auth.service');
 
     await authService.login({ email: 'trader@example.com', password: 'secret' });
@@ -109,11 +115,7 @@ describe('AuthService auth-enabled token wiring', () => {
     });
     apiClientMock.post
       .mockResolvedValueOnce(makeAuthResponse())
-      .mockResolvedValueOnce({
-        accessToken: 'refreshed-access-token',
-        refreshToken: 'refreshed-refresh-token',
-        expiresIn: 3600,
-      });
+      .mockResolvedValueOnce(makeRefreshResponse());
     const { authService } = await import('../../src/services/auth/auth.service');
 
     await authService.login({ email: 'trader@example.com', password: 'secret' });
@@ -125,6 +127,43 @@ describe('AuthService auth-enabled token wiring', () => {
       { refreshToken: 'refresh-token' },
       { headers: { 'x-csrf-token': 'csrf-refresh-token' } }
     );
+  });
+
+  it('initializes a session from refresh cookies and loads the current user', async () => {
+    vi.stubGlobal('document', {
+      cookie: 'csrf_token=csrf-init-token',
+    });
+    apiClientMock.post.mockResolvedValueOnce(makeRefreshResponse());
+    apiClientMock.get.mockResolvedValueOnce(makeAuthResponse().user);
+    const { authService } = await import('../../src/services/auth/auth.service');
+
+    const user = await authService.initializeSession();
+
+    expect(apiClientMock.post).toHaveBeenCalledWith(
+      '/auth/refresh',
+      { refreshToken: undefined },
+      { headers: { 'x-csrf-token': 'csrf-init-token' } }
+    );
+    expect(apiClientMock.setAuthToken).toHaveBeenCalledWith('refreshed-access-token');
+    expect(apiClientMock.get).toHaveBeenCalledWith('/auth/me');
+    expect(user).toMatchObject({ id: 'user-1', email: 'trader@example.com' });
+    expect(authService.isAuthenticated()).toBe(true);
+  });
+
+  it('returns null and clears auth state when session initialization fails', async () => {
+    apiClientMock.post
+      .mockResolvedValueOnce(makeAuthResponse())
+      .mockRejectedValueOnce(new Error('refresh failed'));
+    const { authService } = await import('../../src/services/auth/auth.service');
+
+    await authService.login({ email: 'trader@example.com', password: 'secret' });
+    vi.clearAllMocks();
+
+    const user = await authService.initializeSession();
+
+    expect(user).toBeNull();
+    expect(apiClientMock.removeAuthToken).toHaveBeenCalledOnce();
+    expect(authService.isAuthenticated()).toBe(false);
   });
 
   it('removes the API client auth token when logout fails', async () => {

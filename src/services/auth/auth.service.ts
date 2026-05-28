@@ -64,6 +64,10 @@ export interface AuthResponse {
   tokens: AuthTokens;
 }
 
+export interface AuthRefreshResponse {
+  tokens: AuthTokens;
+}
+
 class AuthService {
   private readonly basePath = '/auth';
   private currentUser: User | null = null;
@@ -121,6 +125,18 @@ class AuthService {
       }
     } finally {
       this.clearSession();
+    }
+  }
+
+  async initializeSession(): Promise<User | null> {
+    if (!ENABLE_AUTH) return null;
+
+    try {
+      await this.refreshAccessToken();
+      return await this.getCurrentUser();
+    } catch {
+      this.clearSession();
+      return null;
     }
   }
 
@@ -213,9 +229,10 @@ class AuthService {
     this.assertEnabled();
     const body = { refreshToken: this.refreshToken || undefined };
     const options = this.csrfRequestOptions();
-    const tokens = options
-      ? await apiClient.post<AuthTokens>(`${this.basePath}/refresh`, body, options)
-      : await apiClient.post<AuthTokens>(`${this.basePath}/refresh`, body);
+    const refresh = options
+      ? await apiClient.post<AuthRefreshResponse>(`${this.basePath}/refresh`, body, options)
+      : await apiClient.post<AuthRefreshResponse>(`${this.basePath}/refresh`, body);
+    const tokens = refresh.tokens;
 
     this.storeTokens(tokens);
     this.scheduleTokenRefresh(tokens.expiresIn);
