@@ -1,3 +1,16 @@
+# Sparkfined Agent Frontdoor
+
+Class: repo-local agent frontdoor.
+Use rule: read this file before working inside this repo, then follow repo-local `README.md`, relevant docs, manifests, contracts, tests, and validators before editing.
+
+## Repo-Local Orientation
+
+- Owner / Surface: `sparkfined` repository.
+- Local role: Trading intelligence platform with a Vite/React frontend, canonical backend, journal, signals, AI-powered research tools, and governed contracts documented in the repo README.
+- Authority: repo-local files govern product, runtime, tests, and validation for this repo.
+- Workspace root: root `AGENTS.md` and root `README.md` provide routing and workspace entry order only; they do not replace this repo's local truth.
+- Work rule: before edits, inspect `git status`, identify owner/scope, preserve existing changes, choose the smallest safe slice, and verify with repo-local checks where available.
+- Stop rule: fail closed if product purpose, runtime ownership, validation path, or write scope is unclear.
 
 <!-- workspace-root-sync:agents:start -->
 ## Workspace Root Integration
