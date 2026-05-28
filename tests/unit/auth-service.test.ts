@@ -63,4 +63,37 @@ describe('AuthService auth-enabled token wiring', () => {
     });
     expect(apiClientMock.setAuthToken).toHaveBeenCalledWith('access-token');
   });
+
+  it('reattaches the refreshed access token to the API client', async () => {
+    apiClientMock.post
+      .mockResolvedValueOnce(makeAuthResponse())
+      .mockResolvedValueOnce({
+        accessToken: 'refreshed-access-token',
+        refreshToken: 'refreshed-refresh-token',
+        expiresIn: 3600,
+      });
+    const { authService } = await import('../../src/services/auth/auth.service');
+
+    await authService.login({ email: 'trader@example.com', password: 'secret' });
+    vi.clearAllMocks();
+    await authService.refreshAccessToken();
+
+    expect(apiClientMock.post).toHaveBeenCalledWith('/auth/refresh', {
+      refreshToken: 'refresh-token',
+    });
+    expect(apiClientMock.setAuthToken).toHaveBeenCalledWith('refreshed-access-token');
+  });
+
+  it('removes the API client auth token when logout fails', async () => {
+    apiClientMock.post
+      .mockResolvedValueOnce(makeAuthResponse())
+      .mockRejectedValueOnce(new Error('network down'));
+    const { authService } = await import('../../src/services/auth/auth.service');
+
+    await authService.login({ email: 'trader@example.com', password: 'secret' });
+    vi.clearAllMocks();
+
+    await expect(authService.logout()).rejects.toThrow('network down');
+    expect(apiClientMock.removeAuthToken).toHaveBeenCalledOnce();
+  });
 });
