@@ -113,7 +113,12 @@ class AuthService {
   async logout(): Promise<void> {
     this.assertEnabled();
     try {
-      await apiClient.post(`${this.basePath}/logout`);
+      const options = this.csrfRequestOptions();
+      if (options) {
+        await apiClient.post(`${this.basePath}/logout`, undefined, options);
+      } else {
+        await apiClient.post(`${this.basePath}/logout`);
+      }
     } finally {
       this.clearSession();
     }
@@ -206,9 +211,11 @@ class AuthService {
    */
   async refreshAccessToken(): Promise<AuthTokens> {
     this.assertEnabled();
-    const tokens = await apiClient.post<AuthTokens>(`${this.basePath}/refresh`, {
-      refreshToken: this.refreshToken || undefined,
-    });
+    const body = { refreshToken: this.refreshToken || undefined };
+    const options = this.csrfRequestOptions();
+    const tokens = options
+      ? await apiClient.post<AuthTokens>(`${this.basePath}/refresh`, body, options)
+      : await apiClient.post<AuthTokens>(`${this.basePath}/refresh`, body);
 
     this.storeTokens(tokens);
     this.scheduleTokenRefresh(tokens.expiresIn);
@@ -320,6 +327,25 @@ class AuthService {
       accessToken,
     };
     controller.postMessage(message);
+  }
+
+  private csrfRequestOptions(): RequestInit | undefined {
+    const csrfToken = this.readCookie('csrf_token');
+    if (!csrfToken) return undefined;
+    return { headers: { 'x-csrf-token': csrfToken } };
+  }
+
+  private readCookie(name: string): string | null {
+    if (typeof document === 'undefined') return null;
+
+    const encodedName = `${encodeURIComponent(name)}=`;
+    const cookie = document.cookie
+      .split(';')
+      .map((part) => part.trim())
+      .find((part) => part.startsWith(encodedName));
+
+    if (!cookie) return null;
+    return decodeURIComponent(cookie.slice(encodedName.length));
   }
 }
 

@@ -103,6 +103,30 @@ describe('AuthService auth-enabled token wiring', () => {
     expect(apiClientMock.setAuthToken).toHaveBeenCalledWith('refreshed-access-token');
   });
 
+  it('sends the csrf token header when refreshing with a csrf cookie', async () => {
+    vi.stubGlobal('document', {
+      cookie: 'theme=dark; csrf_token=csrf-refresh-token',
+    });
+    apiClientMock.post
+      .mockResolvedValueOnce(makeAuthResponse())
+      .mockResolvedValueOnce({
+        accessToken: 'refreshed-access-token',
+        refreshToken: 'refreshed-refresh-token',
+        expiresIn: 3600,
+      });
+    const { authService } = await import('../../src/services/auth/auth.service');
+
+    await authService.login({ email: 'trader@example.com', password: 'secret' });
+    vi.clearAllMocks();
+    await authService.refreshAccessToken();
+
+    expect(apiClientMock.post).toHaveBeenCalledWith(
+      '/auth/refresh',
+      { refreshToken: 'refresh-token' },
+      { headers: { 'x-csrf-token': 'csrf-refresh-token' } }
+    );
+  });
+
   it('removes the API client auth token when logout fails', async () => {
     apiClientMock.post
       .mockResolvedValueOnce(makeAuthResponse())
@@ -114,6 +138,26 @@ describe('AuthService auth-enabled token wiring', () => {
 
     await expect(authService.logout()).rejects.toThrow('network down');
     expect(apiClientMock.removeAuthToken).toHaveBeenCalledOnce();
+  });
+
+  it('sends the csrf token header when logging out with a csrf cookie', async () => {
+    vi.stubGlobal('document', {
+      cookie: 'csrf_token=csrf-logout-token',
+    });
+    apiClientMock.post
+      .mockResolvedValueOnce(makeAuthResponse())
+      .mockResolvedValueOnce({ ok: true });
+    const { authService } = await import('../../src/services/auth/auth.service');
+
+    await authService.login({ email: 'trader@example.com', password: 'secret' });
+    vi.clearAllMocks();
+    await authService.logout();
+
+    expect(apiClientMock.post).toHaveBeenCalledWith(
+      '/auth/logout',
+      undefined,
+      { headers: { 'x-csrf-token': 'csrf-logout-token' } }
+    );
   });
 
   it('clears the service worker auth token when logout fails', async () => {
