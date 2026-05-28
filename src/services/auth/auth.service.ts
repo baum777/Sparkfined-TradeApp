@@ -244,6 +244,7 @@ class AuthService {
   private storeTokens(tokens: AuthTokens): void {
     this.accessToken = tokens.accessToken;
     this.refreshToken = tokens.refreshToken;
+    apiClient.setAuthToken(tokens.accessToken);
   }
 
   /**
@@ -262,6 +263,7 @@ class AuthService {
     this.currentUser = null;
     this.accessToken = null;
     this.refreshToken = null;
+    apiClient.removeAuthToken();
 
     if (this.tokenRefreshTimer) {
       clearTimeout(this.tokenRefreshTimer);
