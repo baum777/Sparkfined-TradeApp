@@ -49,6 +49,7 @@ describe('AuthService auth-enabled token wiring', () => {
     vi.clearAllTimers();
     vi.useRealTimers();
     vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
   });
 
   it('attaches the access token to the API client after login', async () => {
@@ -62,6 +63,24 @@ describe('AuthService auth-enabled token wiring', () => {
       password: 'secret',
     });
     expect(apiClientMock.setAuthToken).toHaveBeenCalledWith('access-token');
+  });
+
+  it('notifies the service worker with the access token after login', async () => {
+    const postMessage = vi.fn();
+    vi.stubGlobal('navigator', {
+      serviceWorker: {
+        controller: { postMessage },
+      },
+    });
+    apiClientMock.post.mockResolvedValueOnce(makeAuthResponse());
+    const { authService } = await import('../../src/services/auth/auth.service');
+
+    await authService.login({ email: 'trader@example.com', password: 'secret' });
+
+    expect(postMessage).toHaveBeenCalledWith({
+      type: 'SW_AUTH_UPDATE',
+      accessToken: 'access-token',
+    });
   });
 
   it('reattaches the refreshed access token to the API client', async () => {
@@ -95,5 +114,27 @@ describe('AuthService auth-enabled token wiring', () => {
 
     await expect(authService.logout()).rejects.toThrow('network down');
     expect(apiClientMock.removeAuthToken).toHaveBeenCalledOnce();
+  });
+
+  it('clears the service worker auth token when logout fails', async () => {
+    const postMessage = vi.fn();
+    vi.stubGlobal('navigator', {
+      serviceWorker: {
+        controller: { postMessage },
+      },
+    });
+    apiClientMock.post
+      .mockResolvedValueOnce(makeAuthResponse())
+      .mockRejectedValueOnce(new Error('network down'));
+    const { authService } = await import('../../src/services/auth/auth.service');
+
+    await authService.login({ email: 'trader@example.com', password: 'secret' });
+    postMessage.mockClear();
+
+    await expect(authService.logout()).rejects.toThrow('network down');
+    expect(postMessage).toHaveBeenCalledWith({
+      type: 'SW_AUTH_UPDATE',
+      accessToken: null,
+    });
   });
 });

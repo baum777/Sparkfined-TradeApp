@@ -7,6 +7,7 @@
 
 import { apiClient } from '../api/client';
 import { ENABLE_AUTH } from '@/config/features';
+import type { SwAuthUpdateMessage } from '@/sw/sw-contracts';
 
 export interface User {
   id: string;
@@ -245,6 +246,7 @@ class AuthService {
     this.accessToken = tokens.accessToken;
     this.refreshToken = tokens.refreshToken;
     apiClient.setAuthToken(tokens.accessToken);
+    this.notifyServiceWorkerAuth(tokens.accessToken);
   }
 
   /**
@@ -264,6 +266,7 @@ class AuthService {
     this.accessToken = null;
     this.refreshToken = null;
     apiClient.removeAuthToken();
+    this.notifyServiceWorkerAuth(null);
 
     if (this.tokenRefreshTimer) {
       clearTimeout(this.tokenRefreshTimer);
@@ -304,6 +307,19 @@ class AuthService {
     } catch {
       return true;
     }
+  }
+
+  private notifyServiceWorkerAuth(accessToken: string | null): void {
+    if (typeof navigator === 'undefined') return;
+
+    const controller = navigator.serviceWorker?.controller;
+    if (!controller) return;
+
+    const message: SwAuthUpdateMessage = {
+      type: 'SW_AUTH_UPDATE',
+      accessToken,
+    };
+    controller.postMessage(message);
   }
 }
 
