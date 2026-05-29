@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { LogIn, LogOut, ShieldCheck } from "lucide-react";
+import { LogIn, LogOut, ShieldCheck, UserPlus } from "lucide-react";
 import { ENABLE_AUTH } from "@/config/features";
 import { authService } from "@/services/auth";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +9,9 @@ import { Label } from "@/components/ui/label";
 import { SettingsSectionCard } from "./SettingsSectionCard";
 
 export function AuthAccessSection() {
+  const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(() => authService.isAuthenticated());
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -25,11 +27,19 @@ export function AuthAccessSection() {
     setError(null);
 
     try {
-      await authService.login({ email, password });
+      if (mode === "register") {
+        await authService.register({ email, username, password });
+      } else {
+        await authService.login({ email, password });
+      }
       setIsAuthenticated(true);
       setPassword("");
     } catch {
-      setError("Sign in failed. Check your credentials and try again.");
+      setError(
+        mode === "register"
+          ? "Account creation failed. Check your details and try again."
+          : "Sign in failed. Check your credentials and try again."
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -89,13 +99,27 @@ export function AuthAccessSection() {
                 required
               />
             </div>
+            {mode === "register" && (
+              <div className="space-y-2">
+                <Label htmlFor="auth-username">Username</Label>
+                <Input
+                  id="auth-username"
+                  type="text"
+                  value={username}
+                  autoComplete="username"
+                  onChange={(event) => setUsername(event.target.value)}
+                  required
+                />
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="auth-password">Password</Label>
               <Input
                 id="auth-password"
                 type="password"
                 value={password}
-                autoComplete="current-password"
+                autoComplete={mode === "register" ? "new-password" : "current-password"}
+                minLength={mode === "register" ? 12 : undefined}
                 onChange={(event) => setPassword(event.target.value)}
                 required
               />
@@ -107,11 +131,25 @@ export function AuthAccessSection() {
             )}
             <Button
               type="submit"
-              disabled={isSubmitting || !email || !password}
-              data-testid="btn-auth-login"
+              disabled={isSubmitting || !email || !password || (mode === "register" && !username)}
+              data-testid={mode === "register" ? "btn-auth-register" : "btn-auth-login"}
             >
-              <LogIn className="h-4 w-4" aria-hidden="true" />
-              Sign in
+              {mode === "register" ? (
+                <UserPlus className="h-4 w-4" aria-hidden="true" />
+              ) : (
+                <LogIn className="h-4 w-4" aria-hidden="true" />
+              )}
+              {mode === "register" ? "Create account" : "Sign in"}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setMode(mode === "register" ? "login" : "register");
+                setError(null);
+              }}
+            >
+              {mode === "register" ? "Use sign in" : "Create account"}
             </Button>
           </form>
         )}
