@@ -15,7 +15,9 @@ import {
   PushAlertsSection,
   PrivacyDiagnosticsSection,
   TradingWalletSection,
+  AuthAccessSection,
 } from "@/components/settings";
+import { ENABLE_AUTH } from "@/config/features";
 import {
   Accordion,
   AccordionContent,
@@ -47,6 +49,7 @@ import {
 } from "lucide-react";
 
 const SECTION_MAPPING: Record<string, string> = {
+  auth: "account-access",
   providers: "provider-params",
   data: "cache-offline",
   experiments: "privacy-diagnostics",
@@ -468,6 +471,9 @@ export default function Settings() {
                 <ConnectionSection />
               </SettingsSectionCard>
 
+              {/* Account Access */}
+              {ENABLE_AUTH && <AuthAccessSection />}
+
               {/* App Preferences */}
               <SettingsSectionCard title="App Preferences" description="Theme and display settings">
                 <AppPreferencesSection />
@@ -579,6 +585,21 @@ export default function Settings() {
                 <ConnectionSection />
               </AccordionContent>
             </AccordionItem>
+
+            {/* Account Access */}
+            {ENABLE_AUTH && (
+              <AccordionItem value="account-access" className="border rounded-lg px-4">
+                <AccordionTrigger className="hover:no-underline">
+                  <div className="text-left">
+                    <div className="font-medium">Account Access</div>
+                    <div className="text-xs text-muted-foreground">Authenticated backend session</div>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="pt-2 pb-4">
+                  <AuthAccessSection />
+                </AccordionContent>
+              </AccordionItem>
+            )}
 
             {/* App Preferences */}
             <AccordionItem value="preferences" className="border rounded-lg px-4">

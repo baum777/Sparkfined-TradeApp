@@ -1,8 +1,8 @@
 ---
 Owner: Security Team
 Status: active
-Version: 1.1
-LastUpdated: 2026-05-09
+Version: 1.2
+LastUpdated: 2026-05-28
 Canonical: true
 ---
 
@@ -98,6 +98,6 @@ Canonical: true
 
 ## TODOs / Risiken
 
-- ~~**TODO:** Einheitliche Auth-Policy zwischen Frontend + dem tatsächlich in Production genutzten Backend.~~ → **IN PROGRESS**: Siehe `SECURITY_HARDENING_ROADMAP.md` für Implementierungsplan
-- ~~**TODO:** JWT Secret Rotation-Prozess dokumentieren.~~ → **ERLEDIGT**: Script verfügbar unter `scripts/rotate-jwt-secret.mjs`
+- ~~**TODO:** Einheitliche Auth-Policy zwischen Frontend + dem tatsächlich in Production genutzten Backend.~~ -> **IN PROGRESS**: Siehe Repo-Root `SECURITY_HARDENING_ROADMAP.md` für Implementierungsplan.
+- ~~**TODO:** JWT Secret Rotation-Prozess dokumentieren.~~ -> **ERLEDIGT**: Manueller Helper verfügbar unter `scripts/rotate-jwt-secret.mjs`; Grace-Period-Automation bleibt als Roadmap-Follow-up gekennzeichnet.
 - **TODO:** Security Team muss verbindlichen Incident-Response-Kontaktkanal freigeben. → **BLOCKED**: Wartet auf Owner-Freigabe

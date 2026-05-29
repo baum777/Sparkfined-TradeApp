@@ -172,7 +172,7 @@ export const routeHelpers = {
   alerts: () => "/alerts",
   
   // Settings with section params
-  settings: (opts?: { section?: "providers" | "data" | "experiments" | "privacy" }) => {
+  settings: (opts?: { section?: "auth" | "providers" | "data" | "experiments" | "privacy" }) => {
     if (opts?.section) {
       return `/settings?section=${opts.section}`;
     }

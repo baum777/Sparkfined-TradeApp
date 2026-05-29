@@ -1,6 +1,6 @@
 # Security Hardening Roadmap
 
-## Status: 2026-05-09
+## Status: 2026-05-28
 
 ### ✅ Abgeschlossene Security-Maßnahmen
 
@@ -12,6 +12,7 @@
 - [x] Environment Validation (Zod-Schemata)
 - [x] Security Integration Tests (8 Tests)
 - [x] Production Guards (JWT_SECRET ≥32 chars, Redis required)
+- [x] JWT Secret Rotation Helper (`scripts/rotate-jwt-secret.mjs`) dokumentiert und verfügbar
 
 ---
 
@@ -36,45 +37,7 @@ VITE_ENABLE_AUTH=true
 
 ---
 
-### 2. JWT Secret Rotation Implementieren
-
-**Problem:** Kein dokumentierter Prozess für Secret-Rotation
-
-**Lösung:** Rotation-Skript erstellen
-
-**Datei:** `scripts/rotate-jwt-secret.mjs`
-```javascript
-/**
- * JWT Secret Rotation Script
- * 
- * Usage: node scripts/rotate-jwt-secret.mjs --service backend|api
- * 
- * Process:
- * 1. Generate new secret (crypto.randomBytes(32))
- * 2. Update environment variable in deployment platform
- * 3. Grace period: Accept both old and new tokens for 5 minutes
- * 4. Invalidate all existing sessions (optional)
- */
-
-import { randomBytes } from 'crypto';
-
-function generateSecret() {
-  return randomBytes(32).toString('base64');
-}
-
-// TODO: Implement rotation logic with grace period
-console.log('New JWT Secret:', generateSecret());
-console.log('⚠️ Update this in your deployment platform immediately!');
-```
-
-**Dokumentation ergänzen in:** `docs/SECURITY.md`
-
-**Aufwand:** 4-6 Stunden
-**Risiko:** Hoch - Careful planning required, test in staging
-
----
-
-### 3. Incident Response Plan Finalisieren
+### 2. Incident Response Plan Finalisieren
 
 **Problem:** Kein verbindlicher Kontaktkanal definiert (TODO in SECURITY.md Zeile 103)
 
@@ -103,6 +66,29 @@ console.log('⚠️ Update this in your deployment platform immediately!');
 ---
 
 ## 🟡 MITTEL: Nächster Sprint (Priorität 2)
+
+### 3. JWT Secret Rotation Operationalisieren
+
+**Aktueller Stand:**
+- Manueller Helper existiert: `scripts/rotate-jwt-secret.mjs`
+- `docs/SECURITY.md` verweist auf den Helper.
+- Grace Period und Session-Invalidierung sind im Helper als operative Hinweise dokumentiert, aber nicht als automatische Runtime-Funktion umgesetzt.
+
+**Empfehlung:** Einen Owner-geprüften Runbook-/Automation-Slice ergänzen:
+- Rotation dry-run verifizieren (`--dry-run`)
+- Deployment-Plattform-Schritte getrennt für `backend` und `api` festlegen
+- Grace-Period-Entscheidung explizit dokumentieren
+- Audit-Log-Pflicht und 401-Monitoring als Checkliste aufnehmen
+
+**Betroffene Dateien:**
+- `scripts/rotate-jwt-secret.mjs`
+- `docs/SECURITY.md`
+- optional `docs/DEPLOYMENT.md`
+
+**Aufwand:** 2-4 Stunden
+**Risiko:** Mittel - Staging-Probe vor Production-Rotation
+
+---
 
 ### 4. Token Refresh Rotation
 
@@ -200,7 +186,7 @@ test('Security headers are present', async ({ page }) => {
 | Metric | Current | Target | Timeline |
 |--------|---------|--------|----------|
 | Auth Coverage | 0% (disabled) | 100% | Sprint 1 |
-| JWT Rotation | Manual | Automated | Sprint 2 |
+| JWT Rotation | Manual helper available | Operational runbook / automation | Sprint 2 |
 | Incident Response Time | Undefined | <15min (P0) | Sprint 1 |
 | Security Test Coverage | 8 tests | 20+ tests | Sprint 2 |
 | Critical Vulnerabilities | 0 | 0 | Ongoing |
@@ -209,9 +195,9 @@ test('Security headers are present', async ({ page }) => {
 
 ## 🎯 Nächste Schritte (Diese Woche)
 
-1. **[SOFORT]** Security Team kontaktierten für Incident-Response-Kanal-Freigabe
+1. **[SOFORT]** Security Team für Incident-Response-Kanal-Freigabe kontaktieren
 2. **[2 Tage]** Auth im Frontend aktivieren + End-to-End testen
-3. **[3 Tage]** JWT Rotation-Skript implementieren
+3. **[3 Tage]** JWT Rotation operationalisieren (Runbook, Grace-Period-Entscheidung, Monitoring)
 4. **[5 Tage]** Security Monitoring Alerts konfigurieren
 
 ---
@@ -226,6 +212,6 @@ test('Security headers are present', async ({ page }) => {
 
 ---
 
-**Owner:** Security Team  
-**Last Updated:** 2026-05-09  
-**Next Review:** 2026-05-16
+**Owner:** Security Team
+**Last Updated:** 2026-05-28
+**Next Review:** 2026-06-04

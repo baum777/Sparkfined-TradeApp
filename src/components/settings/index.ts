@@ -14,3 +14,4 @@ export * from "./UsageCountersSection";
 export * from "./ProviderParamsSection";
 export * from "./AdvancedSections";
 export * from "./TradingWalletSection";
+export * from "./AuthAccessSection";

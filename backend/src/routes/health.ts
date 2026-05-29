@@ -5,6 +5,12 @@ import { getConfig } from '../config/config.js';
 import { getEnv } from '../config/env.js';
 import { getDatabase } from '../db/index.js';
 import { logger } from '../observability/logger.js';
+import {
+  buildJupiterPreflight,
+  classifyFetchFailure,
+  type PlatformFeeAccountStatus,
+  type UpstreamFailureReason,
+} from '../lib/trading/providerPreflight.js';
 
 /**
  * Health & Meta Routes
@@ -35,6 +41,8 @@ export interface HealthUpstreamsResponse {
   mode: string;
   checks: {
     jupiter: 'ok' | 'error' | 'timeout';
+    jupiterReason?: UpstreamFailureReason;
+    jupiterPlatformFeeAccount: PlatformFeeAccountStatus;
     helius?: 'ok' | 'error' | 'timeout' | 'not_configured';
   };
   now: string;
@@ -136,6 +144,7 @@ export async function handleHealthUpstreams(_req: ParsedRequest, res: ServerResp
   const env = getEnv();
   const checks: HealthUpstreamsResponse['checks'] = {
     jupiter: 'error',
+    jupiterPlatformFeeAccount: 'missing',
   };
 
   // Check Jupiter API (5s timeout)
@@ -149,13 +158,20 @@ export async function handleHealthUpstreams(_req: ParsedRequest, res: ServerResp
     });
     clearTimeout(timeout);
 
-    checks.jupiter = response.ok ? 'ok' : 'error';
+    const preflight = buildJupiterPreflight({
+      env,
+      status: response.ok ? 'ok' : 'error',
+      reason: response.ok ? undefined : 'http_error',
+    });
+    Object.assign(checks, preflight);
   } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') {
-      checks.jupiter = 'timeout';
-    } else {
-      checks.jupiter = 'error';
-    }
+    const reason = classifyFetchFailure(error);
+    const preflight = buildJupiterPreflight({
+      env,
+      status: reason === 'timeout' ? 'timeout' : 'error',
+      reason,
+    });
+    Object.assign(checks, preflight);
   }
 
   // Check Helius if configured (5s timeout)
@@ -189,7 +205,10 @@ export async function handleHealthUpstreams(_req: ParsedRequest, res: ServerResp
     checks.helius = 'not_configured';
   }
 
-  const isDegraded = checks.jupiter !== 'ok' || (checks.helius && checks.helius !== 'ok' && checks.helius !== 'not_configured');
+  const isDegraded =
+    checks.jupiter !== 'ok' ||
+    checks.jupiterPlatformFeeAccount !== 'ok' ||
+    (checks.helius && checks.helius !== 'ok' && checks.helius !== 'not_configured');
 
   const response: HealthUpstreamsResponse = {
     status: isDegraded ? 'degraded' : 'ok',

@@ -28,9 +28,9 @@ test.describe('Dashboard', () => {
   });
 
   test('sollte Header mit Notification und User Icons anzeigen', async ({ page }) => {
-    // Notification Button
-    const notificationButton = page.locator('button[aria-label="Notifications"]');
-    await expect(notificationButton).toBeVisible();
+    // Notification entry is a navigation link to Alerts.
+    const notificationLink = page.getByRole('link', { name: 'Notifications' });
+    await expect(notificationLink).toBeVisible();
 
     // User Menu Button
     const userButton = page.locator('button[aria-label="User menu"]');

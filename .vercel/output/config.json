@@ -1,0 +1,53 @@
+{
+  "version": 3,
+  "routes": [
+    {
+      "src": "^/api(?:/(.*))$",
+      "headers": {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization, x-request-id, Idempotency-Key"
+      },
+      "continue": true
+    },
+    {
+      "src": "^/sw\\.js$",
+      "headers": {
+        "Cache-Control": "public, max-age=0, must-revalidate"
+      },
+      "continue": true
+    },
+    {
+      "src": "^/service-worker\\.js$",
+      "headers": {
+        "Cache-Control": "public, max-age=0, must-revalidate"
+      },
+      "continue": true
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "^/api(?:/(.*))$",
+      "dest": "https://$vercel_backend_url/api/$1",
+      "check": true
+    },
+    {
+      "src": "^(?:/(.*))$",
+      "dest": "/index.html",
+      "check": true
+    },
+    {
+      "handle": "error"
+    },
+    {
+      "status": 404,
+      "src": "^(?!/api).*$",
+      "dest": "/404.html"
+    }
+  ],
+  "framework": {
+    "version": "5.4.21"
+  },
+  "crons": []
+}

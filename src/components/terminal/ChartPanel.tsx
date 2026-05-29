@@ -2,53 +2,15 @@ import { useEffect, useRef } from 'react';
 import { createChart, CandlestickSeries, ColorType } from 'lightweight-charts';
 import type { CandlestickData, UTCTimestamp } from 'lightweight-charts';
 import { Card, CardContent } from '@/components/ui/card';
+import type { ChartCandle } from '@/lib/trading/chart/chartCandleService';
+import type { SolTimeframe } from '../../../shared/contracts/sol-chart-ta-journal';
 
 interface ChartPanelProps {
-  baseMint?: string;
-  quoteMint?: string;
-}
-
-/** Seeded random for consistent mock data per pair */
-function seededUnit(base: string, salt: number): number {
-  let hash = 2166136261 ^ salt;
-  for (let i = 0; i < base.length; i++) {
-    hash ^= base.charCodeAt(i);
-    hash = Math.imul(hash, 16777619);
-  }
-  return (hash >>> 0) / 4294967295;
-}
-
-function seededBetween(base: string, salt: number, min: number, max: number): number {
-  return min + seededUnit(base, salt) * (max - min);
-}
-
-function generateMockCandles(baseMint: string, quoteMint: string, count: number): CandlestickData[] {
-  const seedKey = `${baseMint}:${quoteMint}`;
-  const basePrice = 50 + seededBetween(seedKey, 0, 0, 200);
-  const candles: CandlestickData[] = [];
-  let open = basePrice;
-  const now = Math.floor(Date.now() / 1000) as UTCTimestamp;
-  const intervalSeconds = 3600; // 1h candles
-
-  for (let i = count - 1; i >= 0; i--) {
-    const time = (now - i * intervalSeconds) as UTCTimestamp;
-    const volatility = seededBetween(seedKey, i * 4, 0.005, 0.03);
-    const change = (seededUnit(seedKey, i * 4 + 1) - 0.5) * 2 * volatility * open;
-    const close = Math.max(open * 0.5, open + change);
-    const high = Math.max(open, close) * (1 + seededUnit(seedKey, i * 4 + 2) * 0.01);
-    const low = Math.min(open, close) * (1 - seededUnit(seedKey, i * 4 + 3) * 0.01);
-
-    candles.push({
-      time,
-      open: Math.round(open * 100) / 100,
-      high: Math.round(high * 100) / 100,
-      low: Math.round(low * 100) / 100,
-      close: Math.round(close * 100) / 100,
-    });
-    open = close;
-  }
-
-  return candles;
+  candles: ChartCandle[];
+  status: 'idle' | 'loading' | 'ready' | 'empty' | 'error';
+  pairLabel: string;
+  timeframe: SolTimeframe;
+  error?: string | null;
 }
 
 const DARK_THEME = {
@@ -75,11 +37,42 @@ const DARK_THEME = {
   },
 };
 
-export function ChartPanel({ baseMint, quoteMint }: ChartPanelProps) {
+function toSeriesData(candles: ChartCandle[]): CandlestickData[] {
+  return candles.map((candle) => ({
+    time: Math.floor(candle.ts / 1000) as UTCTimestamp,
+    open: candle.open,
+    high: candle.high,
+    low: candle.low,
+    close: candle.close,
+  }));
+}
+
+function ChartStateMessage({
+  title,
+  message,
+}: {
+  title: string;
+  message: string;
+}) {
+  return (
+    <Card className="h-full">
+      <CardContent className="flex h-full items-center justify-center p-6">
+        <div className="text-center text-muted-foreground">
+          <p className="text-lg font-medium">{title}</p>
+          <p className="mt-2 text-sm">{message}</p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+export function ChartPanel({ candles, status, pairLabel, timeframe, error }: ChartPanelProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<ReturnType<typeof createChart> | null>(null);
+  const shouldRenderChart = status === 'ready' && candles.length > 0;
 
   useEffect(() => {
+    if (!shouldRenderChart) return;
     const container = containerRef.current;
     if (!container) return;
 
@@ -106,13 +99,13 @@ export function ChartPanel({ baseMint, quoteMint }: ChartPanelProps) {
       chart.remove();
       chartRef.current = null;
     };
-  }, []);
+  }, [shouldRenderChart]);
 
   useEffect(() => {
+    if (!shouldRenderChart) return;
     const chart = chartRef.current;
-    if (!chart || !baseMint || !quoteMint) return;
+    if (!chart) return;
 
-    const candles = generateMockCandles(baseMint, quoteMint, 168);
     const series = chart.addSeries(CandlestickSeries, {
       upColor: '#22c55e',
       downColor: '#ef4444',
@@ -122,36 +115,49 @@ export function ChartPanel({ baseMint, quoteMint }: ChartPanelProps) {
       wickUpColor: '#22c55e',
     });
 
-    series.setData(candles);
+    series.setData(toSeriesData(candles));
     chart.timeScale().fitContent();
 
     return () => {
       chart.removeSeries(series);
     };
-  }, [baseMint, quoteMint]);
+  }, [candles, shouldRenderChart]);
 
-  const pairLabel =
-    baseMint && quoteMint
-      ? `${baseMint.slice(0, 4)}...${baseMint.slice(-4)} / ${quoteMint.slice(0, 4)}...${quoteMint.slice(-4)}`
-      : 'Select a pair';
-
-  if (!baseMint || !quoteMint) {
+  if (status === 'idle') {
     return (
-      <Card className="h-full">
-        <CardContent className="flex h-full items-center justify-center p-6">
-          <div className="text-center text-muted-foreground">
-            <p className="text-lg font-medium">{pairLabel}</p>
-            <p className="mt-2 text-sm">Select a trading pair to view the chart</p>
-          </div>
-        </CardContent>
-      </Card>
+      <ChartStateMessage
+        title={pairLabel}
+        message="Select a trading pair to view the chart"
+      />
     );
+  }
+
+  if (status === 'loading') {
+    return <ChartStateMessage title={pairLabel} message="Loading chart candles..." />;
+  }
+
+  if (status === 'error') {
+    const isProviderUnavailable =
+      error?.toUpperCase().includes('PROVIDER_UNAVAILABLE') ||
+      error?.toLowerCase().includes('provider unavailable');
+    return (
+      <ChartStateMessage
+        title={isProviderUnavailable ? 'Provider unavailable' : 'Chart unavailable'}
+        message={isProviderUnavailable ? 'Chart candle provider is currently unreachable.' : error ?? 'Unable to load chart candles'}
+      />
+    );
+  }
+
+  if (status === 'empty' || candles.length === 0) {
+    return <ChartStateMessage title={pairLabel} message="No chart candles available" />;
   }
 
   return (
     <Card className="h-full overflow-hidden">
       <CardContent className="relative h-full p-2">
-        <p className="absolute left-4 top-2 z-10 text-sm font-medium text-muted-foreground">{pairLabel}</p>
+        <p className="absolute left-4 top-2 z-10 text-sm font-medium text-muted-foreground">
+          {pairLabel} · {timeframe}
+        </p>
         <div ref={containerRef} className="h-full w-full" style={{ minHeight: 200 }} />
       </CardContent>
     </Card>

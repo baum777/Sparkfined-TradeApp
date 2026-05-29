@@ -1,7 +1,7 @@
 ---
 Owner: DevOps Team
 Status: active
-Version: 1.0
+Version: 1.1
 LastUpdated: 2026-05-16
 Canonical: true
 ---

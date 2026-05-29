@@ -1,0 +1,24 @@
+{
+  "id": "terminal-chart-candles-provider-decision",
+  "date": "2026-05-22",
+  "status": "Open",
+  "authority": "Observed",
+  "scope": "terminal-chart-candles-next-scope",
+  "trigger": "seeded-chart-candles-still-present",
+  "observed": {
+    "chart_panel": "src/components/terminal/ChartPanel.tsx generates seeded mock candles",
+    "backend_route": "fail-closed /api/chart/candles route implemented and tested",
+    "frontend_service": "chartCandleService implemented against /api/chart/candles without fallback candles",
+    "quick_amounts": "balance-based quick amounts covered by OrderForm tests",
+    "discover_fail_closed": "PROVIDER_UNAVAILABLE contract implemented and verified"
+  },
+  "open": {
+    "decision": "choose canonical chart candle provider before live candle data implementation",
+    "options": ["dexpaprika", "jupiter_price_api", "helius_indexed", "market_data_service"],
+    "next_safe_slice": "refactor ChartPanel consumption without synthetic fallback"
+  },
+  "review": {
+    "required": true,
+    "gate": "owner approves candle provider before replacing fail-closed provider abstraction with live OHLCV data"
+  }
+}

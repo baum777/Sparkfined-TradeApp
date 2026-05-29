@@ -7,6 +7,7 @@
 
 import { apiClient } from '../api/client';
 import { ENABLE_AUTH } from '@/config/features';
+import type { SwAuthUpdateMessage } from '@/sw/sw-contracts';
 
 export interface User {
   id: string;
@@ -63,6 +64,10 @@ export interface AuthResponse {
   tokens: AuthTokens;
 }
 
+export interface AuthRefreshResponse {
+  tokens: AuthTokens;
+}
+
 class AuthService {
   private readonly basePath = '/auth';
   private currentUser: User | null = null;
@@ -112,9 +117,26 @@ class AuthService {
   async logout(): Promise<void> {
     this.assertEnabled();
     try {
-      await apiClient.post(`${this.basePath}/logout`);
+      const options = this.csrfRequestOptions();
+      if (options) {
+        await apiClient.post(`${this.basePath}/logout`, undefined, options);
+      } else {
+        await apiClient.post(`${this.basePath}/logout`);
+      }
     } finally {
       this.clearSession();
+    }
+  }
+
+  async initializeSession(): Promise<User | null> {
+    if (!ENABLE_AUTH) return null;
+
+    try {
+      await this.refreshAccessToken();
+      return await this.getCurrentUser();
+    } catch {
+      this.clearSession();
+      return null;
     }
   }
 
@@ -205,9 +227,12 @@ class AuthService {
    */
   async refreshAccessToken(): Promise<AuthTokens> {
     this.assertEnabled();
-    const tokens = await apiClient.post<AuthTokens>(`${this.basePath}/refresh`, {
-      refreshToken: this.refreshToken || undefined,
-    });
+    const body = { refreshToken: this.refreshToken || undefined };
+    const options = this.csrfRequestOptions();
+    const refresh = options
+      ? await apiClient.post<AuthRefreshResponse>(`${this.basePath}/refresh`, body, options)
+      : await apiClient.post<AuthRefreshResponse>(`${this.basePath}/refresh`, body);
+    const tokens = refresh.tokens;
 
     this.storeTokens(tokens);
     this.scheduleTokenRefresh(tokens.expiresIn);
@@ -244,6 +269,8 @@ class AuthService {
   private storeTokens(tokens: AuthTokens): void {
     this.accessToken = tokens.accessToken;
     this.refreshToken = tokens.refreshToken;
+    apiClient.setAuthToken(tokens.accessToken);
+    this.notifyServiceWorkerAuth(tokens.accessToken);
   }
 
   /**
@@ -262,6 +289,8 @@ class AuthService {
     this.currentUser = null;
     this.accessToken = null;
     this.refreshToken = null;
+    apiClient.removeAuthToken();
+    this.notifyServiceWorkerAuth(null);
 
     if (this.tokenRefreshTimer) {
       clearTimeout(this.tokenRefreshTimer);
@@ -302,6 +331,38 @@ class AuthService {
     } catch {
       return true;
     }
+  }
+
+  private notifyServiceWorkerAuth(accessToken: string | null): void {
+    if (typeof navigator === 'undefined') return;
+
+    const controller = navigator.serviceWorker?.controller;
+    if (!controller) return;
+
+    const message: SwAuthUpdateMessage = {
+      type: 'SW_AUTH_UPDATE',
+      accessToken,
+    };
+    controller.postMessage(message);
+  }
+
+  private csrfRequestOptions(): RequestInit | undefined {
+    const csrfToken = this.readCookie('csrf_token');
+    if (!csrfToken) return undefined;
+    return { headers: { 'x-csrf-token': csrfToken } };
+  }
+
+  private readCookie(name: string): string | null {
+    if (typeof document === 'undefined') return null;
+
+    const encodedName = `${encodeURIComponent(name)}=`;
+    const cookie = document.cookie
+      .split(';')
+      .map((part) => part.trim())
+      .find((part) => part.startsWith(encodedName));
+
+    if (!cookie) return null;
+    return decodeURIComponent(cookie.slice(encodedName.length));
   }
 }
 

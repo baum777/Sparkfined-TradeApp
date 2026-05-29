@@ -4,13 +4,19 @@ import { Button } from '@/components/ui/button';
 
 const QUICK_PERCENTAGES = [25, 50, 75, 100] as const;
 
+interface QuickAmountButtonsProps {
+  walletConnected?: boolean;
+}
+
 function formatAmount(value: number): string {
   if (!Number.isFinite(value)) return '';
   return value.toFixed(6).replace(/\.?0+$/, '');
 }
 
 // Sprint 3: P0-1 - Memoized component to prevent re-render cascades
-export const QuickAmountButtons = React.memo(function QuickAmountButtons() {
+export const QuickAmountButtons = React.memo(function QuickAmountButtons({
+  walletConnected = true,
+}: QuickAmountButtonsProps) {
   // Sprint 3: Granular selectors - only re-render when these specific values change
   const side = useTerminalStore((s) => s.side);
   const baseBalance = useTerminalStore((s) => s.balances.base);
@@ -29,7 +35,7 @@ export const QuickAmountButtons = React.memo(function QuickAmountButtons() {
     return parsed;
   }, [spendableBalance]);
 
-  const isDisabled = balancesLoading || spendableBalanceValue === null;
+  const isDisabled = !walletConnected || balancesLoading || spendableBalanceValue === null;
 
   // Sprint 3: Stable callback using useCallback
   const handleQuickAmount = useCallback(

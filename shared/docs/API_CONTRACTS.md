@@ -39,6 +39,8 @@ Diese Endpoints sind im `backend/` Router registriert:
 
 - **Health/Meta**
   - `GET /api/health`
+  - `GET /api/health/ready`
+  - `GET /api/health/upstreams`
   - `GET /api/meta`
   - `GET /api/usage/summary`
 - **Settings**
@@ -66,6 +68,7 @@ Diese Endpoints sind im `backend/` Router registriert:
   - `PUT /api/oracle/read-state`
   - `POST /api/oracle/read-state/bulk` (Alias: `PUT` ist ebenfalls registriert)
 - **Chart/TA**
+  - `GET /api/chart/candles`
   - `POST /api/chart/ta`
   - `POST /api/chart/analyze`
 - **Reasoning / LLM**
@@ -134,6 +137,39 @@ interface ApiError {
   - `{ "error": { "code": "PROVIDER_UNAVAILABLE", "message": "...", "details": { "provider": "jupiter", "requestId": "..." } } }`
 
 Constraint: provider failures must never be normalized into `200` with `data: []`.
+
+### Chart candles fail-closed contract
+
+`GET /api/chart/candles` is a canonical backend route for terminal chart OHLCV data. The route exists in `terminal` and `full` service modes, but live provider ownership is still gated by MSPR review.
+
+- Query:
+  - `mint`: required base mint
+  - `quoteMint`: required quote mint
+  - `timeframe`: `15s | 30s | 1m | 5m | 15m | 30m | 1h | 4h`
+  - `limit`: optional integer, default `168`, max `500`
+- Success:
+  - HTTP `200`
+  - `{ "status": "ok", "data": { "candles": InputCandle[] } }`
+- Provider outage or unconfigured provider:
+  - HTTP `503`
+  - `{ "error": { "code": "PROVIDER_UNAVAILABLE", "message": "...", "details": { "provider": "chart-candles", "requestId": "..." } } }`
+
+Constraint: route and provider abstraction must not synthesize candles. Live OHLCV provider promotion requires owner review.
+
+### Health upstream preflight contract
+
+`GET /api/health/upstreams` is a monitoring endpoint, not a traffic-routing gate. It always returns HTTP `200` with canonical success envelope and reports degraded provider state inside `data`.
+
+- Success envelope:
+  - HTTP `200`
+  - `{ "status": "ok", "data": { "status": "ok" | "degraded", "mode": string, "checks": {...}, "now": string } }`
+- Terminal provider checks:
+  - `checks.jupiter`: `ok | error | timeout`
+  - `checks.jupiterReason`: optional `http_error | network_error | timeout`
+  - `checks.jupiterPlatformFeeAccount`: `ok | missing | not_required`
+  - `checks.helius`: `ok | error | timeout | not_configured`
+
+Constraint: health output must not include secret values such as `JUPITER_PLATFORM_FEE_ACCOUNT` or `HELIUS_API_KEY`.
 
 ### A) `backend/` Envelope (Node Server)
 
