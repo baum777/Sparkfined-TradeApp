@@ -8,6 +8,8 @@ import { AppShell } from "@/components/layout/AppShell";
 import { DiscoverOverlay } from "@/components/discover";
 import { ErrorBoundary } from "@/components/system/ErrorBoundary";
 import { setRoute } from "@/lib/monitoring/sentry";
+import { ENABLE_AUTH } from "@/config/features";
+import { authService } from "@/services/auth";
 
 // Journal queue sync runner
 import { startJournalQueueSync } from "@/services/journal/queueStore";
@@ -174,6 +176,15 @@ function RouteTracker() {
   return null;
 }
 
+export function AuthSessionBootstrap() {
+  useEffect(() => {
+    if (!ENABLE_AUTH) return;
+    void authService.initializeSession();
+  }, []);
+
+  return null;
+}
+
 const App = () => {
   useEffect(() => {
     startJournalQueueSync();
@@ -185,6 +196,7 @@ const App = () => {
         <TooltipProvider>
           <Toaster />
           <Sonner />
+          <AuthSessionBootstrap />
           <BrowserRouter>
             <RouteTracker />
             <ErrorBoundary scope="Discover">
