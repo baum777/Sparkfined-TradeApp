@@ -123,6 +123,78 @@ describe('Auth + Security (Phase 1)', () => {
     expect(loginBody).toHaveProperty('error.code', 'UNAUTHENTICATED');
   });
 
+  it('supports register, cookie session read, refresh, and logout', async () => {
+    if (listenBlocked) return;
+    const register = await fetch(`${baseUrl}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: 'security-full-flow@example.com',
+        username: 'security-full-flow',
+        password: 'CorrectHorseBatteryStaple!46',
+      }),
+    });
+    const registerBody = await readJson(register);
+    const registerCookies = (
+      register.headers as unknown as { getSetCookie?: () => string[] }
+    ).getSetCookie?.() || [];
+    const registerCookieMap = parseCookieMap(registerCookies);
+
+    expect(register.status).toBe(200);
+    expect(registerBody).toHaveProperty('data.user.email', 'security-full-flow@example.com');
+    expect(registerBody).toHaveProperty('data.tokens.accessToken');
+    expect(registerCookieMap).toHaveProperty('access_token');
+    expect(registerCookieMap).toHaveProperty('refresh_token');
+    expect(registerCookieMap).toHaveProperty('csrf_token');
+
+    const me = await fetch(`${baseUrl}/api/auth/me`, {
+      headers: { Cookie: toCookieHeader(registerCookieMap) },
+    });
+    const meBody = await readJson(me);
+
+    expect(me.status).toBe(200);
+    expect(meBody).toHaveProperty('data.email', 'security-full-flow@example.com');
+
+    const refresh = await fetch(`${baseUrl}/api/auth/refresh`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Cookie: toCookieHeader(registerCookieMap),
+        'x-csrf-token': registerCookieMap.csrf_token || '',
+      },
+      body: JSON.stringify({}),
+    });
+    const refreshBody = await readJson(refresh);
+    const refreshCookies = (
+      refresh.headers as unknown as { getSetCookie?: () => string[] }
+    ).getSetCookie?.() || [];
+    const refreshCookieMap = parseCookieMap(refreshCookies);
+
+    expect(refresh.status).toBe(200);
+    expect(refreshBody).toHaveProperty('data.tokens.accessToken');
+    expect(refreshCookieMap).toHaveProperty('access_token');
+    expect(refreshCookieMap).toHaveProperty('refresh_token');
+    expect(refreshCookieMap).toHaveProperty('csrf_token');
+
+    const logout = await fetch(`${baseUrl}/api/auth/logout`, {
+      method: 'POST',
+      headers: {
+        Cookie: toCookieHeader(refreshCookieMap),
+        'x-csrf-token': refreshCookieMap.csrf_token || '',
+      },
+    });
+    const logoutBody = await readJson(logout);
+    const clearCookies = (
+      logout.headers as unknown as { getSetCookie?: () => string[] }
+    ).getSetCookie?.() || [];
+
+    expect(logout.status).toBe(200);
+    expect(logoutBody).toHaveProperty('data.ok', true);
+    expect(clearCookies.some((cookie) => cookie.startsWith('access_token=') && cookie.includes('Max-Age=0'))).toBe(true);
+    expect(clearCookies.some((cookie) => cookie.startsWith('refresh_token=') && cookie.includes('Max-Age=0'))).toBe(true);
+    expect(clearCookies.some((cookie) => cookie.startsWith('csrf_token=') && cookie.includes('Max-Age=0'))).toBe(true);
+  });
+
   it('enforces CSRF for cookie-authenticated state-changing requests', async () => {
     if (listenBlocked) return;
     const register = await fetch(`${baseUrl}/api/auth/register`, {
